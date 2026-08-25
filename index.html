@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>NEWFORM Multi Cuisine Restaurant | Kalpetta, Wayanad</title>
+  <meta name="description" content="Authentic Mandhi, Alfaham, Kerala Beef Fry, Seafood, Broast, and Chinese multi cuisine restaurant in Kakkavayal, Kalpetta, Wayanad.">
+  <link rel="icon" type="image/png" href="assets/newform_logo.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#52796f">
+
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Custom Design System matching Minimalist Reference Template -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Top Minimalist Navigation Header -->
+  <header class="header">
+    <div class="header-container">
+      <a href="#" class="brand-logo">
+        <img src="assets/newform_logo.png" alt="NEWFORM Multi Cuisine Restaurant Logo" class="brand-logo-img">
+        <div class="brand-text">NEWFORM</div>
+      </a>
+
+      <!-- Minimalist Navigation Bar -->
+      <nav class="nav-links">
+        <a href="#" class="nav-link active">HOME</a>
+        <a href="#menuSection" class="nav-link">MENU</a>
+        <a href="tel:7593881112" class="nav-link">DELIVERY</a>
+        <button id="adminToggleBtnNav" class="nav-link" style="background:none; border:none; cursor:pointer;">
+          <span id="adminToggleTextNav">ADMIN</span>
+        </button>
+      </nav>
+
+      <div class="nav-actions">
+        <!-- Theme Toggle Button -->
+        <button id="themeToggleBtn" class="theme-toggle-btn" aria-label="Toggle Light/Dark Theme" title="Toggle Theme">
+          <i class="fa-solid fa-moon" id="themeIcon"></i>
+        </button>
+
+        <!-- Admin Only Add Item Button -->
+        <button id="addItemBtn" class="btn-minimal btn-primary-minimal admin-only-element" style="display:none; padding:8px 16px;">
+          <i class="fa-solid fa-plus"></i> ADD ITEM
+        </button>
+
+        <button id="cartBtn" class="cart-icon-btn" aria-label="View Order Cart">
+          <i class="fa-solid fa-bag-shopping"></i>
+          <span id="cartBadge" class="cart-badge">0</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section - REPLICATING MINIMALIST TEMPLATE WITH OFFICIAL NEWFORM LOGO -->
+  <section class="hero-minimal">
+    <div class="hero-grid">
+      <!-- Left Column: Title & Action -->
+      <div class="hero-left-col">
+        <span class="hero-sub-tag">KAKKAVAYAL, KALPETTA, WAYANAD</span>
+        <h1 class="hero-main-title">
+          NEWFORM
+          <strong>MULTI CUISINE</strong>
+        </h1>
+        <a href="#menuSection" class="btn-minimal">
+          EXPLORE MENU
+        </a>
+      </div>
+
+      <!-- Center Column: Large Circular Dish Platter & Floating Elements -->
+      <div class="hero-center-col">
+        <div class="center-dish-wrapper">
+          <img src="assets/mandhi.png" alt="Chicken Mandhi Platter" class="center-dish-img">
+          <!-- Floating garnish splashes -->
+          <div class="garnish-leaf garnish-1">🥒</div>
+          <div class="garnish-leaf garnish-2">🌿</div>
+          <div class="garnish-leaf garnish-3">🌶️</div>
+        </div>
+      </div>
+
+      <!-- Right Column: Current Featured Dish Preview -->
+      <div class="hero-right-col">
+        <span class="current-dish-label">FEATURED DISH</span>
+        <p class="current-dish-desc">Chicken Mandhi cooked with Yemeni aromatic spices & woodfire roasted tender chicken.</p>
+        <div class="current-dish-price">₹240<sup>.00</sup></div>
+        <button onclick="addToCart('m1')" class="btn-minimal btn-primary-minimal">
+          ORDER NOW
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Search & Category Controls Bar -->
+  <div class="controls-wrapper">
+    <div class="controls-container">
+      <div class="search-filter-row">
+        <div class="search-box">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="searchInput" class="search-input" placeholder="Search Mandhi, Alfaham, Beef Fry, Paneer...">
+        </div>
+
+        <div class="diet-filters">
+          <button class="filter-btn active" data-diet="all">All</button>
+          <button class="filter-btn veg" data-diet="veg"><i class="fa-solid fa-leaf"></i> Veg</button>
+          <button class="filter-btn non-veg" data-diet="non-veg"><i class="fa-solid fa-drumstick-bite"></i> Non-Veg</button>
+        </div>
+      </div>
+
+      <!-- Horizontal Categories Bar -->
+      <div class="category-scroll">
+        <button class="cat-tab active" data-category="all">All</button>
+        <button class="cat-tab" data-category="mandhi">Mandhi & Rice</button>
+        <button class="cat-tab" data-category="broast_alfaham">Broast & Alfaham</button>
+        <button class="cat-tab" data-category="beef">Beef Specials</button>
+        <button class="cat-tab" data-category="chicken">Chicken</button>
+        <button class="cat-tab" data-category="seafood">Seafood</button>
+        <button class="cat-tab" data-category="mutton">Mutton</button>
+        <button class="cat-tab" data-category="veg">Vegetarian</button>
+        <button class="cat-tab" data-category="kada_egg">Kada & Egg</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Food Menu Grid Section -->
+  <main class="menu-section" id="menuSection">
+    <div class="section-header">
+      <h2 class="section-title">OUR MENU</h2>
+      <span class="item-count" id="itemCount">0 DISHES</span>
+    </div>
+
+    <div class="food-grid" id="foodGrid">
+      <!-- Food Cards rendered dynamically via JavaScript -->
+    </div>
+  </main>
+
+  <!-- Minimalist Info Highlights Section -->
+  <section class="info-section">
+    <div class="info-card">
+      <div class="info-icon"><i class="fa-solid fa-truck-fast"></i></div>
+      <div class="info-text">
+        <h3 style="font-family:var(--font-heading); font-weight:700;">FREE DELIVERY</h3>
+        <p style="font-size:0.85rem; color:var(--text-muted);">Free delivery within Kalpetta city limits for orders above ₹300.</p>
+      </div>
+    </div>
+
+    <div class="info-card">
+      <div class="info-icon"><i class="fa-solid fa-utensils"></i></div>
+      <div class="info-text">
+        <h3 style="font-family:var(--font-heading); font-weight:700;">OUTDOOR CATERING</h3>
+        <p style="font-size:0.85rem; color:var(--text-muted);">Specially undertaken for tour packages, events, and functions.</p>
+      </div>
+    </div>
+
+    <div class="info-card">
+      <div class="info-icon"><i class="fa-solid fa-phone"></i></div>
+      <div class="info-text">
+        <h3 style="font-family:var(--font-heading); font-weight:700;">HOTLINE ORDERS</h3>
+        <p style="font-size:0.85rem; color:var(--text-muted);">Call <strong>7593 881 112</strong> / <strong>7593 881 113</strong> for quick orders.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer with Official NEWFORM Logo Image -->
+  <footer>
+    <img src="assets/newform_logo.png" alt="NEWFORM Multi Cuisine Restaurant Logo" style="width:70px; height:70px; margin-bottom:12px; display:inline-block;">
+    <p style="font-family:var(--font-heading); font-weight:700; letter-spacing:2px;">NEWFORM MULTI CUISINE RESTAURANT</p>
+    <p>Kakkavayal, Kalpetta, Wayanad, Kerala | Contact: 7593881112, 7593881113</p>
+    <p style="margin-top:8px; font-size:0.75rem; color:var(--text-dim);">© 2026 NEWFORM Restaurant. Built for Windows & Android.</p>
+  </footer>
+
+  <!-- Modal Overlay -->
+  <div class="overlay" id="overlay"></div>
+
+  <!-- Admin PIN Login Modal -->
+  <div class="modal" id="adminLoginModal">
+    <div class="modal-header">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <img src="assets/newform_logo.png" alt="Logo" style="width:28px; height:28px;">
+        <h3 style="font-family:var(--font-heading); font-weight:700; letter-spacing:1px;">ADMIN AUTHENTICATION</h3>
+      </div>
+      <button class="cart-icon-btn" id="closeAdminModalBtn"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body" style="text-align:center;">
+      <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:16px;">Enter 4-Digit Admin Security PIN to manage menu items.</p>
+      
+      <div class="form-group" style="max-width:240px; margin:0 auto 16px;">
+        <input type="password" id="adminPinInput" class="form-control" placeholder="Default PIN: 1234" maxlength="6" style="text-align:center; font-size:1.5rem; letter-spacing:8px;">
+      </div>
+
+      <div id="pinErrorMsg" style="color:var(--accent-red); font-size:0.8rem; display:none; margin-bottom:12px;">
+        <i class="fa-solid fa-circle-exclamation"></i> Incorrect PIN. Please try again.
+      </div>
+
+      <button id="submitAdminPinBtn" class="btn-minimal btn-primary-minimal" style="width:100%; padding:12px;">
+        VERIFY & UNLOCK
+      </button>
+
+      <p style="font-size:0.75rem; color:var(--text-muted); margin-top:12px;">* Default Admin PIN is <strong>1234</strong></p>
+    </div>
+  </div>
+
+  <!-- Cart Drawer -->
+  <aside class="cart-drawer" id="cartDrawer">
+    <div class="drawer-header">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <img src="assets/newform_logo.png" alt="Logo" style="width:28px; height:28px;">
+        <h3 style="font-family:var(--font-heading); font-weight:700; letter-spacing:1px;">YOUR CART</h3>
+      </div>
+      <button class="cart-icon-btn" id="closeCartBtn"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+
+    <div class="drawer-body" id="cartBody">
+      <!-- Cart items rendered dynamically -->
+    </div>
+
+    <div class="drawer-footer">
+      <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:0.85rem; color:var(--text-muted);">
+        <span>Subtotal</span>
+        <span id="cartSubtotal">₹0</span>
+      </div>
+      <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:0.85rem; color:var(--text-muted);">
+        <span>5% GST</span>
+        <span id="cartTax">₹0</span>
+      </div>
+      <div style="display:flex; justify-content:space-between; font-weight:700; font-size:1.1rem; color:var(--text-main); border-top:1px solid #ddd; padding-top:8px; margin-top:8px;">
+        <span>Total</span>
+        <span id="cartTotal">₹0</span>
+      </div>
+
+      <div style="margin-top:16px;">
+        <div class="form-group" style="margin-bottom:10px;">
+          <label style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Name</label>
+          <input type="text" id="custName" class="form-control" placeholder="Enter your name">
+        </div>
+        <div class="form-group" style="margin-bottom:10px;">
+          <label style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Phone</label>
+          <input type="tel" id="custPhone" class="form-control" placeholder="Enter mobile number">
+        </div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Delivery Address</label>
+          <textarea id="custAddress" class="form-control" rows="2" placeholder="House/Hotel name, Landmark, Kalpetta area"></textarea>
+        </div>
+
+        <button id="whatsappCheckoutBtn" class="btn-minimal btn-primary-minimal" style="width:100%; padding:14px; background:#2a9d8f; border-color:#2a9d8f;">
+          <i class="fa-brands fa-whatsapp" style="font-size:1.1rem;"></i> ORDER VIA WHATSAPP
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Add New Food Item Manager Modal (ADMIN ONLY) -->
+  <div class="modal" id="addItemModal">
+    <div class="modal-header">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <img src="assets/newform_logo.png" alt="Logo" style="width:28px; height:28px;">
+        <h3 style="font-family:var(--font-heading); font-weight:700; letter-spacing:1px;">ADD NEW ITEM</h3>
+      </div>
+      <button class="cart-icon-btn" id="closeAddModalBtn"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    
+    <div class="modal-body">
+      <form id="addItemForm">
+        <div class="form-group" style="margin-bottom:12px;">
+          <label style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Dish Name *</label>
+          <input type="text" id="formItemName" class="form-control" placeholder="e.g. Dragon Chicken, Mutton Fry" required>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+          <div>
+            <label style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Category</label>
+            <select id="formCategory" class="form-control">
+              <option value="mandhi">Mandhi & Rice</option>
+              <option value="broast_alfaham">Broast & Alfaham</option>
+              <option value="beef">Beef Specials</option>
+              <option value="chicken">Chicken Curries</option>
+              <option value="seafood">Seafood & Prawns</option>
+              <option value="mutton">Mutton</option>
+              <option value="veg">Vegetarian</option>
+              <option value="kada_egg">Kada & Egg</option>
+            </select>
+          </div>
+
+          <div>
+            <label style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Dietary Type</label>
+            <select id="formDiet" class="form-control">
+              <option value="non-veg">Non-Veg</option>
+              <option value="veg">Vegetarian</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+          <div>
+            <label style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Special Tag</label>
+            <input type="text" id="formTag" class="form-control" placeholder="e.g. NEW, Bestseller">
+          </div>
+
+          <div>
+            <label style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Price Mode</label>
+            <select id="formPortionType" class="form-control">
+              <option value="single">Single Fixed Price</option>
+              <option value="multi">Portion Prices (Q / H / F)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group" id="singlePriceGroup" style="margin-bottom:12px;">
+          <label style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Price (₹)</label>
+          <input type="number" id="formSinglePrice" class="form-control" placeholder="e.g. 250" value="250">
+        </div>
+
+        <div class="form-group" id="multiPriceGroup" style="display:none; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:12px;">
+          <div>
+            <label style="font-size:0.75rem; font-weight:700;">Quarter (₹)</label>
+            <input type="number" id="formQPrice" class="form-control" placeholder="150" value="150">
+          </div>
+          <div>
+            <label style="font-size:0.75rem; font-weight:700;">Half (₹)</label>
+            <input type="number" id="formHPrice" class="form-control" placeholder="300" value="300">
+          </div>
+          <div>
+            <label style="font-size:0.75rem; font-weight:700;">Full (₹)</label>
+            <input type="number" id="formFPrice" class="form-control" placeholder="550" value="550">
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:12px;">
+          <label style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Dish Image</label>
+          <select id="formImage" class="form-control">
+            <option value="assets/mandhi.png">Mandhi Rice Platter</option>
+            <option value="assets/alfaham.png">Charcoal Alfaham Chicken</option>
+            <option value="assets/beeffry.png">Spicy Kerala Beef Fry / Roast</option>
+            <option value="assets/hero.png">Multi-Cuisine Feast</option>
+          </select>
+        </div>
+
+        <div class="form-group" style="margin-bottom:14px;">
+          <label style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Description</label>
+          <textarea id="formDesc" class="form-control" rows="2" placeholder="Brief description of dish..."></textarea>
+        </div>
+
+        <button type="submit" class="btn-minimal btn-primary-minimal" style="width:100%; padding:14px;">
+          SAVE DISH TO MENU
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Mobile Bottom Navigation (For Android & Touch Devices) -->
+  <nav class="mobile-nav">
+    <a href="#" class="nav-item active">
+      <i class="fa-solid fa-house"></i>
+      <span>Home</span>
+    </a>
+    <a href="#menuSection" class="nav-item">
+      <i class="fa-solid fa-utensils"></i>
+      <span>Menu</span>
+    </a>
+    <button id="addItemBtnMobile" class="nav-item admin-only-element" style="display:none;">
+      <i class="fa-solid fa-plus" style="color:var(--primary);"></i>
+      <span>Add Item</span>
+    </button>
+    <button id="adminToggleBtnMobile" class="nav-item">
+      <i class="fa-solid fa-user-shield"></i>
+      <span id="adminToggleTextMobile">Admin</span>
+    </button>
+    <button id="themeToggleBtnMobile" class="nav-item">
+      <i class="fa-solid fa-moon" id="themeIconMobile"></i>
+      <span>Theme</span>
+    </button>
+    <button onclick="openCart()" class="nav-item">
+      <i class="fa-solid fa-bag-shopping"></i>
+      <span>Cart</span>
+    </button>
+  </nav>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Application Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
