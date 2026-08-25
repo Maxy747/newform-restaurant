@@ -1,0 +1,24 @@
+{
+  "name": "NEWFORM Multi Cuisine Restaurant",
+  "short_name": "NEWFORM",
+  "description": "Authentic Malabar, Arabian, Mandhi, Alfaham & Chinese Cuisine in Kakkavayal, Kalpetta, Wayanad.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0d0f12",
+  "theme_color": "#ff6b00",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "assets/hero.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/hero.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
