@@ -1,0 +1,26 @@
+{
+  "name": "newform-restaurant",
+  "version": "2.0.0",
+  "description": "Newform Multi Cuisine Restaurant - Supabase powered",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JUUDER/newform-restaurant.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/JUUDER/newform-restaurant/issues"
+  },
+  "homepage": "https://github.com/JUUDER/newform-restaurant#readme",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.112.4",
+    "vite": "^8.2.2"
+  }
+}

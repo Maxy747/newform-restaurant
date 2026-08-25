@@ -1,3 +1,5 @@
+import { supabase } from './supabaseClient.js';
+
 // Default Menu Dataset extracted directly from Newform Multi Cuisine Restaurant Menu Cards
 const DEFAULT_MENU = [
   // --- MANDHI & RICE ---
@@ -154,12 +156,8 @@ let searchQuery = '';
 let selectedPortions = {};
 let isAdmin = false;
 
-const DEFAULT_ADMIN_PIN = "1234";
-
 // LocalStorage Keys
-const STORAGE_KEY = 'newform_menu_items_v2';
 const CART_STORAGE_KEY = 'newform_cart_v1';
-const ADMIN_SESSION_KEY = 'newform_admin_logged_in';
 const THEME_STORAGE_KEY = 'newform_theme_v1';
 
 // Theme Management Functions
@@ -204,9 +202,17 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Admin Security Management
-function checkAdminState() {
-  isAdmin = sessionStorage.getItem(ADMIN_SESSION_KEY) === 'true';
+async function checkAdminState() {
+  const { data: { session } } = await supabase.auth.getSession();
+  isAdmin = !!session;
   updateAdminUI();
+  
+  // Listen for auth changes
+  supabase.auth.onAuthStateChange((event, session) => {
+    isAdmin = !!session;
+    updateAdminUI();
+    renderMenu();
+  });
 }
 
 function updateAdminUI() {
@@ -230,12 +236,11 @@ function updateAdminUI() {
 function openAdminLoginModal() {
   document.getElementById('overlay').classList.add('active');
   document.getElementById('adminLoginModal').classList.add('active');
-  const pinInput = document.getElementById('adminPinInput');
-  if (pinInput) {
-    pinInput.value = '';
-    pinInput.focus();
-  }
-  document.getElementById('pinErrorMsg').style.display = 'none';
+  const emailInput = document.getElementById('adminEmailInput');
+  const passInput = document.getElementById('adminPasswordInput');
+  if (emailInput) emailInput.value = '';
+  if (passInput) passInput.value = '';
+  document.getElementById('authErrorMsg').style.display = 'none';
 }
 
 function closeAdminLoginModal() {
@@ -243,44 +248,55 @@ function closeAdminLoginModal() {
   document.getElementById('adminLoginModal').classList.remove('active');
 }
 
-function handleAdminLogin() {
-  const pinInput = document.getElementById('adminPinInput');
-  const enteredPin = pinInput ? pinInput.value.trim() : '';
+async function handleAdminLogin() {
+  const email = document.getElementById('adminEmailInput').value.trim();
+  const password = document.getElementById('adminPasswordInput').value.trim();
 
-  if (enteredPin === DEFAULT_ADMIN_PIN) {
-    isAdmin = true;
-    sessionStorage.setItem(ADMIN_SESSION_KEY, 'true');
-    updateAdminUI();
-    renderMenu();
+  if (!email || !password) return;
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password
+  });
+
+  if (error) {
+    const errorMsg = document.getElementById('authErrorMsg');
+    errorMsg.textContent = error.message;
+    errorMsg.style.display = 'block';
+  } else {
     closeAdminLoginModal();
     showToast('🔑 Admin Profile Verified & Unlocked!');
-  } else {
-    document.getElementById('pinErrorMsg').style.display = 'block';
   }
 }
 
-function handleAdminLogout() {
+async function handleAdminLogout() {
   if (confirm('Logout from Admin Profile?')) {
-    isAdmin = false;
-    sessionStorage.removeItem(ADMIN_SESSION_KEY);
-    updateAdminUI();
-    renderMenu();
+    await supabase.auth.signOut();
     showToast('Logged out of Admin Profile');
   }
 }
 
-// Load Menu Data from LocalStorage or Default
-function loadMenuData() {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved) {
-    try {
-      menuItems = JSON.parse(saved);
-    } catch(e) {
-      menuItems = [...DEFAULT_MENU];
+// Load Menu Data from Supabase
+async function loadMenuData() {
+  const { data, error } = await supabase.from('menu_items').select('*');
+  
+  if (error || !data || data.length === 0) {
+    // Fallback to default if table is empty or doesn't exist
+    menuItems = [...DEFAULT_MENU];
+    if (!error && (!data || data.length === 0)) {
+       // Optionally seed database
+       seedDatabase();
     }
   } else {
-    menuItems = [...DEFAULT_MENU];
-    saveMenuData();
+    // Normalize: parse pricesJSON into a prices object
+    menuItems = data.map(item => {
+      if (item.pricesJSON && typeof item.pricesJSON === 'string') {
+        try { item.prices = JSON.parse(item.pricesJSON); } catch(e) { /* ignore */ }
+      } else if (item.pricesJSON && typeof item.pricesJSON === 'object') {
+        item.prices = item.pricesJSON;
+      }
+      return item;
+    });
   }
 
   // Set default portions
@@ -289,10 +305,22 @@ function loadMenuData() {
       selectedPortions[item.id] = 'quarter';
     }
   });
+  
+  renderMenu();
 }
 
-function saveMenuData() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(menuItems));
+async function seedDatabase() {
+  console.log('Seeding default menu items to Supabase...');
+  for (const item of DEFAULT_MENU) {
+    const dbItem = {
+      ...item
+    };
+    if (dbItem.prices) {
+      dbItem.pricesJSON = JSON.stringify(dbItem.prices);
+      delete dbItem.prices;
+    }
+    await supabase.from('menu_items').insert([dbItem]);
+  }
 }
 
 function loadCartData() {
@@ -323,7 +351,7 @@ function setupEventListeners() {
   const adminToggleBtnNav = document.getElementById('adminToggleBtnNav');
   const adminToggleBtnMobile = document.getElementById('adminToggleBtnMobile');
   const closeAdminModalBtn = document.getElementById('closeAdminModalBtn');
-  const submitAdminPinBtn = document.getElementById('submitAdminPinBtn');
+  const submitAdminAuthBtn = document.getElementById('submitAdminAuthBtn');
 
   if (adminToggleBtnNav) {
     adminToggleBtnNav.addEventListener('click', () => {
@@ -340,11 +368,11 @@ function setupEventListeners() {
   }
 
   if (closeAdminModalBtn) closeAdminModalBtn.addEventListener('click', closeAdminLoginModal);
-  if (submitAdminPinBtn) submitAdminPinBtn.addEventListener('click', handleAdminLogin);
+  if (submitAdminAuthBtn) submitAdminAuthBtn.addEventListener('click', handleAdminLogin);
 
-  const adminPinInput = document.getElementById('adminPinInput');
-  if (adminPinInput) {
-    adminPinInput.addEventListener('keypress', (e) => {
+  const adminPasswordInput = document.getElementById('adminPasswordInput');
+  if (adminPasswordInput) {
+    adminPasswordInput.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') handleAdminLogin();
     });
   }
@@ -644,7 +672,7 @@ function closeAddItemModal() {
 }
 
 // Handle Form Submission for Adding New Food Item
-function handleAddItemSubmit(e) {
+async function handleAddItemSubmit(e) {
   e.preventDefault();
 
   if (!isAdmin) {
@@ -659,7 +687,7 @@ function handleAddItemSubmit(e) {
   const diet = document.getElementById('formDiet').value;
   const tag = document.getElementById('formTag').value.trim();
   const description = document.getElementById('formDesc').value.trim();
-  const imageSelect = document.getElementById('formImage').value;
+  let imageSelect = document.getElementById('formImage').value; // We can improve this with file upload later
   const portionType = document.getElementById('formPortionType').value;
 
   if (!name) {
@@ -679,21 +707,30 @@ function handleAddItemSubmit(e) {
   };
 
   if (portionType === 'single') {
-    const price = parseFloat(document.getElementById('formSinglePrice').value) || 100;
-    newItem.price = price;
+    newItem.price = parseFloat(document.getElementById('formSinglePrice').value) || 100;
   } else {
     const qPrice = parseFloat(document.getElementById('formQPrice').value) || 100;
     const hPrice = parseFloat(document.getElementById('formHPrice').value) || 200;
     const fPrice = parseFloat(document.getElementById('formFPrice').value) || 400;
-    newItem.prices = { quarter: qPrice, half: hPrice, full: fPrice };
+    newItem.pricesJSON = JSON.stringify({ quarter: qPrice, half: hPrice, full: fPrice });
   }
 
-  menuItems.unshift(newItem);
-  if (newItem.portionType === 'multi') {
-    selectedPortions[newItem.id] = 'quarter';
+  const { data, error } = await supabase.from('menu_items').insert([newItem]).select();
+
+  if (error) {
+    alert('Error saving item: ' + error.message);
+    return;
+  }
+  
+  if (data && data.length > 0) {
+      const savedItem = data[0];
+      if(savedItem.pricesJSON) savedItem.prices = JSON.parse(savedItem.pricesJSON);
+      menuItems.unshift(savedItem);
+      if (savedItem.portionType === 'multi') {
+        selectedPortions[savedItem.id] = 'quarter';
+      }
   }
 
-  saveMenuData();
   renderMenu();
   closeAddItemModal();
   document.getElementById('addItemForm').reset();
@@ -701,14 +738,18 @@ function handleAddItemSubmit(e) {
 }
 
 // Delete item function (Admin Protected)
-window.deleteItem = function(id) {
+window.deleteItem = async function(id) {
   if (!isAdmin) {
     openAdminLoginModal();
     return;
   }
   if (confirm('Delete this dish from the menu?')) {
+    const { error } = await supabase.from('menu_items').delete().eq('id', id);
+    if(error) {
+      alert("Failed to delete: " + error.message);
+      return;
+    }
     menuItems = menuItems.filter(i => i.id !== id);
-    saveMenuData();
     renderMenu();
     showToast('Item deleted from menu');
   }
