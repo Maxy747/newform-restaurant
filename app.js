@@ -172,14 +172,11 @@ function setTheme(theme) {
   localStorage.setItem(THEME_STORAGE_KEY, theme);
   
   const themeIcon = document.getElementById('themeIcon');
-  const themeIconMobile = document.getElementById('themeIconMobile');
   
   if (theme === 'light') {
     if (themeIcon) themeIcon.className = 'fa-solid fa-sun';
-    if (themeIconMobile) themeIconMobile.className = 'fa-solid fa-sun';
   } else {
     if (themeIcon) themeIcon.className = 'fa-solid fa-moon';
-    if (themeIconMobile) themeIconMobile.className = 'fa-solid fa-moon';
   }
 }
 
@@ -376,10 +373,8 @@ function saveCartData() {
 function setupEventListeners() {
   // Theme Toggle Event Listeners
   const themeToggleBtn = document.getElementById('themeToggleBtn');
-  const themeToggleBtnMobile = document.getElementById('themeToggleBtnMobile');
 
   if (themeToggleBtn) themeToggleBtn.addEventListener('click', toggleTheme);
-  if (themeToggleBtnMobile) themeToggleBtnMobile.addEventListener('click', toggleTheme);
 
   // Admin Login Buttons
   const adminToggleBtnFooter = document.getElementById('adminToggleBtnFooter');
@@ -495,11 +490,9 @@ function setupEventListeners() {
 
   // Add Item Modal Buttons (Admin Protected)
   const addItemBtn = document.getElementById('addItemBtn');
-  const addItemBtnMobile = document.getElementById('addItemBtnMobile');
   const closeAddModalBtn = document.getElementById('closeAddModalBtn');
 
   if (addItemBtn) addItemBtn.addEventListener('click', triggerAddItem);
-  if (addItemBtnMobile) addItemBtnMobile.addEventListener('click', triggerAddItem);
   if (closeAddModalBtn) closeAddModalBtn.addEventListener('click', closeAddItemModal);
 
   // Form Submit for Add Item
