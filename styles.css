@@ -954,8 +954,10 @@ body {
   background: var(--bg-glass);
   backdrop-filter: blur(16px);
   border-top: 1px solid var(--glass-border);
-  display: flex;
-  justify-content: space-around;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: center;
+  justify-items: center;
   padding: 10px 0;
   z-index: 150;
 }
@@ -1059,6 +1061,19 @@ footer {
   font-size: 0.7rem;
   letter-spacing: 0.08em;
   cursor: pointer;
+  width: 100%;
+}
+
+.mobile-cart-nav-item {
+  grid-column: 3;
+}
+
+#addItemBtnMobile {
+  grid-column: 4;
+}
+
+#themeToggleBtnMobile {
+  grid-column: 5;
 }
 
 .footer-admin-link:hover {

@@ -384,7 +384,6 @@ function setupEventListeners() {
   // Admin Login Buttons
   const adminToggleBtnFooter = document.getElementById('adminToggleBtnFooter');
   const aboutBtnNav = document.getElementById('aboutBtnNav');
-  const aboutBtnMobile = document.getElementById('aboutBtnMobile');
   const contactBtnNav = document.getElementById('contactBtnNav');
   const closeAboutModalBtn = document.getElementById('closeAboutModalBtn');
   const closeContactModalBtn = document.getElementById('closeContactModalBtn');
@@ -399,7 +398,6 @@ function setupEventListeners() {
   }
 
   if (aboutBtnNav) aboutBtnNav.addEventListener('click', openAboutModal);
-  if (aboutBtnMobile) aboutBtnMobile.addEventListener('click', openAboutModal);
   if (contactBtnNav) contactBtnNav.addEventListener('click', openContactModal);
   if (closeAboutModalBtn) closeAboutModalBtn.addEventListener('click', closeAboutModal);
   if (closeContactModalBtn) closeContactModalBtn.addEventListener('click', closeContactModal);
