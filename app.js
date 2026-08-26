@@ -447,12 +447,31 @@ function setupEventListeners() {
 
   // Drawer / Modals UI
   const cartBtn = document.getElementById('cartBtn');
+  const cartBtnMobile = document.getElementById('cartBtnMobile');
   const closeCartBtn = document.getElementById('closeCartBtn');
   const overlay = document.getElementById('overlay');
 
   if (cartBtn) cartBtn.addEventListener('click', openCart);
+  if (cartBtnMobile) cartBtnMobile.addEventListener('click', openCart);
   if (closeCartBtn) closeCartBtn.addEventListener('click', closeCart);
   if (overlay) overlay.addEventListener('click', closeAllModals);
+
+  // Menu cards are re-rendered, so use one delegated listener for admin actions.
+  const foodGrid = document.getElementById('foodGrid');
+  if (foodGrid) {
+    foodGrid.addEventListener('click', (event) => {
+      const actionButton = event.target.closest('[data-menu-action]');
+      if (!actionButton) return;
+
+      const { menuAction, itemId } = actionButton.dataset;
+      if (!itemId) return;
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (menuAction === 'edit') window.editItem(itemId);
+      if (menuAction === 'remove') window.deleteItem(itemId);
+    });
+  }
 
   // Add Item Modal Buttons (Admin Protected)
   const addItemBtn = document.getElementById('addItemBtn');
@@ -536,18 +555,18 @@ function renderMenu() {
     }
 
     return `
-      <div class="food-card" id="card-${item.id}">
+      <div class="food-card${isAdmin ? ' admin-mode' : ''}" id="card-${item.id}">
         <div class="card-img-container">
           <img src="${item.image || 'assets/hero.png'}" alt="${item.name}" class="card-img" onerror="this.src='assets/hero.png'">
           <div class="diet-icon ${item.diet}"></div>
           ${item.tag ? `<span class="card-badge">${item.tag}</span>` : ''}
           ${isAdmin ? `
-            <div class="card-actions-overlay">
-              <button onclick="editItem('${item.id}')" class="btn-minimal" title="Edit item" style="padding:4px 8px; font-size:0.7rem; background:var(--primary); color:#fff; border:none;">
+            <div class="card-admin-controls" aria-label="Admin item controls">
+              <button type="button" class="admin-card-action admin-edit-item-btn" data-menu-action="edit" data-item-id="${item.id}" title="Edit ${item.name}" aria-label="Edit ${item.name}">
                 <i class="fa-solid fa-pen"></i>
               </button>
-              <button onclick="deleteItem('${item.id}')" class="btn-minimal" title="Delete Item (Admin Only)" style="padding:4px 8px; font-size:0.7rem; background:#e63946; color:#fff; border:none;">
-                <i class="fa-solid fa-trash-can"></i>
+              <button type="button" class="admin-card-action admin-remove-item-btn" data-menu-action="remove" data-item-id="${item.id}" title="Remove ${item.name}" aria-label="Remove ${item.name}">
+                <i class="fa-solid fa-xmark"></i>
               </button>
             </div>
           ` : ''}
