@@ -238,15 +238,12 @@ function updateAdminUI() {
     el.style.display = isAdmin ? 'inline-flex' : 'none';
   });
 
-  const adminToggleTextNav = document.getElementById('adminToggleTextNav');
-  const adminToggleTextMobile = document.getElementById('adminToggleTextMobile');
+  const adminToggleTextFooter = document.getElementById('adminToggleBtnFooter');
 
   if (isAdmin) {
-    if (adminToggleTextNav) adminToggleTextNav.textContent = "LOGOUT ADMIN";
-    if (adminToggleTextMobile) adminToggleTextMobile.textContent = "Logout";
+    if (adminToggleTextFooter) adminToggleTextFooter.innerHTML = '<i class="fa-solid fa-right-from-bracket"></i> LOG OUT ADMIN';
   } else {
-    if (adminToggleTextNav) adminToggleTextNav.textContent = "ADMIN";
-    if (adminToggleTextMobile) adminToggleTextMobile.textContent = "Admin";
+    if (adminToggleTextFooter) adminToggleTextFooter.innerHTML = '<i class="fa-solid fa-lock"></i> STAFF ADMIN';
   }
 }
 
@@ -263,6 +260,26 @@ function openAdminLoginModal() {
 function closeAdminLoginModal() {
   document.getElementById('overlay').classList.remove('active');
   document.getElementById('adminLoginModal').classList.remove('active');
+}
+
+function openAboutModal() {
+  document.getElementById('overlay').classList.add('active');
+  document.getElementById('aboutModal').classList.add('active');
+}
+
+function closeAboutModal() {
+  document.getElementById('aboutModal').classList.remove('active');
+  document.getElementById('overlay').classList.remove('active');
+}
+
+function openContactModal() {
+  document.getElementById('overlay').classList.add('active');
+  document.getElementById('contactModal').classList.add('active');
+}
+
+function closeContactModal() {
+  document.getElementById('contactModal').classList.remove('active');
+  document.getElementById('overlay').classList.remove('active');
 }
 
 async function handleAdminLogin() {
@@ -365,24 +382,27 @@ function setupEventListeners() {
   if (themeToggleBtnMobile) themeToggleBtnMobile.addEventListener('click', toggleTheme);
 
   // Admin Login Buttons
-  const adminToggleBtnNav = document.getElementById('adminToggleBtnNav');
-  const adminToggleBtnMobile = document.getElementById('adminToggleBtnMobile');
+  const adminToggleBtnFooter = document.getElementById('adminToggleBtnFooter');
+  const aboutBtnNav = document.getElementById('aboutBtnNav');
+  const aboutBtnMobile = document.getElementById('aboutBtnMobile');
+  const contactBtnNav = document.getElementById('contactBtnNav');
+  const closeAboutModalBtn = document.getElementById('closeAboutModalBtn');
+  const closeContactModalBtn = document.getElementById('closeContactModalBtn');
   const closeAdminModalBtn = document.getElementById('closeAdminModalBtn');
   const submitAdminAuthBtn = document.getElementById('submitAdminAuthBtn');
 
-  if (adminToggleBtnNav) {
-    adminToggleBtnNav.addEventListener('click', () => {
+  if (adminToggleBtnFooter) {
+    adminToggleBtnFooter.addEventListener('click', () => {
       if (isAdmin) handleAdminLogout();
       else openAdminLoginModal();
     });
   }
 
-  if (adminToggleBtnMobile) {
-    adminToggleBtnMobile.addEventListener('click', () => {
-      if (isAdmin) handleAdminLogout();
-      else openAdminLoginModal();
-    });
-  }
+  if (aboutBtnNav) aboutBtnNav.addEventListener('click', openAboutModal);
+  if (aboutBtnMobile) aboutBtnMobile.addEventListener('click', openAboutModal);
+  if (contactBtnNav) contactBtnNav.addEventListener('click', openContactModal);
+  if (closeAboutModalBtn) closeAboutModalBtn.addEventListener('click', closeAboutModal);
+  if (closeContactModalBtn) closeContactModalBtn.addEventListener('click', closeContactModal);
 
   if (closeAdminModalBtn) closeAdminModalBtn.addEventListener('click', closeAdminLoginModal);
   if (submitAdminAuthBtn) submitAdminAuthBtn.addEventListener('click', handleAdminLogin);
@@ -678,6 +698,8 @@ function closeAllModals() {
   closeCart();
   closeAddItemModal();
   closeAdminLoginModal();
+  closeAboutModal();
+  closeContactModal();
 }
 
 // In-App Manager: Open / Close Add Food Item Modal

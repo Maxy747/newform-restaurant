@@ -163,10 +163,11 @@ body {
 }
 
 .brand-logo-img {
-  width: 46px;
-  height: 46px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
-  object-fit: cover;
+  object-fit: contain;
+  background: transparent;
   box-shadow: 0 0 15px rgba(212, 175, 55, 0.4);
   border: 1px solid var(--gold-primary);
   transition: transform 0.3s ease;
@@ -1004,4 +1005,78 @@ footer {
   color: var(--text-muted);
   font-size: 0.825rem;
   margin-top: 60px;
+}
+
+.footer-admin-link {
+  margin-top: 18px;
+  padding: 6px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.footer-admin-link:hover {
+  color: var(--gold-primary);
+}
+
+.about-contact-body {
+  text-align: center;
+}
+
+.about-contact-body p {
+  margin: 0 0 14px;
+  color: var(--text-muted);
+  line-height: 1.65;
+}
+
+.about-contact-logo {
+  width: 88px;
+  height: 88px;
+  object-fit: contain;
+  margin-bottom: 14px;
+}
+
+.contact-action {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-main);
+  text-align: left;
+  text-decoration: none;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.contact-action:hover {
+  border-color: var(--gold-primary);
+  transform: translateY(-1px);
+}
+
+.contact-action i {
+  width: 22px;
+  color: var(--gold-primary);
+  font-size: 1.25rem;
+  text-align: center;
+}
+
+.contact-action.whatsapp i {
+  color: #25D366;
+}
+
+.contact-action span {
+  display: grid;
+  gap: 2px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.contact-action strong {
+  color: var(--text-main);
 }

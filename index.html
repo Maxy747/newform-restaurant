@@ -21,7 +21,7 @@
   <header class="header">
     <div class="header-container">
       <a href="#" class="brand-logo">
-        <img src="assets/newform_logo.png" alt="NEWFORM Multi Cuisine Restaurant Logo" class="brand-logo-img">
+        <img src="./assets/newform_logo.png" alt="NEWFORM Multi Cuisine Restaurant Logo" class="brand-logo-img">
         <div class="brand-text">NEWFORM</div>
       </a>
 
@@ -29,10 +29,8 @@
       <nav class="nav-links">
         <a href="#" class="nav-link active">HOME</a>
         <a href="#menuSection" class="nav-link">MENU</a>
-        <a href="tel:7593881112" class="nav-link">DELIVERY</a>
-        <button id="adminToggleBtnNav" class="nav-link" style="background:none; border:none; cursor:pointer;">
-          <span id="adminToggleTextNav">ADMIN</span>
-        </button>
+        <button id="contactBtnNav" class="nav-link" style="background:none; border:none; cursor:pointer;">CONTACT</button>
+        <button id="aboutBtnNav" class="nav-link" style="background:none; border:none; cursor:pointer;">ABOUT</button>
       </nav>
 
       <div class="nav-actions">
@@ -167,6 +165,9 @@
     <img src="assets/newform_logo.png" alt="NEWFORM Multi Cuisine Restaurant Logo" style="width:70px; height:70px; margin-bottom:12px; display:inline-block;">
     <p style="font-family:var(--font-heading); font-weight:700; letter-spacing:2px;">NEWFORM MULTI CUISINE RESTAURANT</p>
     <p>Kakkavayal, Kalpetta, Wayanad, Kerala | Contact: 7593881112, 7593881113</p>
+    <button id="adminToggleBtnFooter" class="footer-admin-link" type="button">
+      <i class="fa-solid fa-lock"></i> STAFF ADMIN
+    </button>
     <p style="margin-top:8px; font-size:0.75rem; color:var(--text-dim);">&copy; 2026 NEWFORM Restaurant. Built for Windows &amp; Android.</p>
   </footer>
 
@@ -202,6 +203,32 @@
       <button id="submitAdminAuthBtn" class="btn-minimal btn-primary-minimal" style="width:100%; padding:12px;">
         VERIFY &amp; LOGIN
       </button>
+    </div>
+  </div>
+
+  <!-- About Restaurant Modal -->
+  <div class="modal" id="aboutModal">
+    <div class="modal-header">
+      <h3 style="font-family:var(--font-heading); font-weight:700; letter-spacing:1px;">ABOUT NEWFORM</h3>
+      <button class="cart-icon-btn" id="closeAboutModalBtn" aria-label="Close about"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body about-contact-body">
+      <img src="./assets/newform_logo.png" alt="NEWFORM logo" class="about-contact-logo">
+      <p>NEWFORM Multi Cuisine Restaurant brings together authentic Arabian and Kerala flavours, including Mandhi, Alfaham, and freshly made multi-cuisine favourites.</p>
+      <p><strong>Kakkavayal, Kalpetta, Wayanad, Kerala</strong></p>
+    </div>
+  </div>
+
+  <!-- Contact Modal -->
+  <div class="modal" id="contactModal">
+    <div class="modal-header">
+      <h3 style="font-family:var(--font-heading); font-weight:700; letter-spacing:1px;">CONTACT NEWFORM</h3>
+      <button class="cart-icon-btn" id="closeContactModalBtn" aria-label="Close contact"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body about-contact-body">
+      <p>For orders, delivery, catering, and events, reach our team directly.</p>
+      <a class="contact-action" href="tel:7593881112"><i class="fa-solid fa-phone"></i><span><strong>Call us</strong>7593 881 112</span></a>
+      <a class="contact-action whatsapp" href="https://wa.me/917593881112" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i><span><strong>Message on WhatsApp</strong>+91 75938 81112</span></a>
     </div>
   </div>
 
@@ -373,9 +400,9 @@
       <i class="fa-solid fa-plus" style="color:var(--primary);"></i>
       <span>Add Item</span>
     </button>
-    <button id="adminToggleBtnMobile" class="nav-item">
-      <i class="fa-solid fa-user-shield"></i>
-      <span id="adminToggleTextMobile">Admin</span>
+    <button id="aboutBtnMobile" class="nav-item">
+      <i class="fa-solid fa-circle-info"></i>
+      <span>About</span>
     </button>
     <button id="themeToggleBtnMobile" class="nav-item">
       <i class="fa-solid fa-moon" id="themeIconMobile"></i>
