@@ -538,14 +538,42 @@ body {
   box-shadow: var(--shadow-gold);
 }
 
+.category-scroll-shell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .category-scroll {
   display: flex;
+  flex: 1;
   gap: 8px;
   overflow-x: auto;
   padding-bottom: 4px;
   scrollbar-width: none;
+  scroll-behavior: smooth;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
 }
 .category-scroll::-webkit-scrollbar { display: none; }
+
+.category-scroll-control {
+  display: none;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  place-items: center;
+  border: 1px solid var(--glass-border);
+  border-radius: 50%;
+  background: var(--btn-minimal-bg);
+  color: var(--gold-primary);
+  cursor: pointer;
+}
+
+.category-scroll-control:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
 
 .cat-tab {
   white-space: nowrap;
@@ -567,6 +595,25 @@ body {
   background: var(--btn-minimal-bg);
   color: var(--gold-primary);
   border-color: var(--glass-border);
+}
+
+@media (max-width: 768px) {
+  .category-scroll-shell {
+    gap: 6px;
+  }
+
+  .category-scroll-control {
+    display: inline-grid;
+  }
+
+  .category-scroll {
+    padding-bottom: 6px;
+    scroll-snap-type: x proximity;
+  }
+
+  .cat-tab {
+    scroll-snap-align: start;
+  }
 }
 
 /* TRANSLUCENT GLASS FOOD CARDS */

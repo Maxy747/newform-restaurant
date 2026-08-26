@@ -107,16 +107,24 @@
       </div>
 
       <!-- Horizontal Categories Bar -->
-      <div class="category-scroll">
-        <button class="cat-tab active" data-category="all">All</button>
-        <button class="cat-tab" data-category="mandhi">Mandhi & Rice</button>
-        <button class="cat-tab" data-category="broast_alfaham">Broast & Alfaham</button>
-        <button class="cat-tab" data-category="beef">Beef Specials</button>
-        <button class="cat-tab" data-category="chicken">Chicken</button>
-        <button class="cat-tab" data-category="seafood">Seafood</button>
-        <button class="cat-tab" data-category="mutton">Mutton</button>
-        <button class="cat-tab" data-category="veg">Vegetarian</button>
-        <button class="cat-tab" data-category="kada_egg">Kada & Egg</button>
+      <div class="category-scroll-shell">
+        <button id="categoryScrollPrev" class="category-scroll-control" type="button" aria-label="Show previous menu categories" title="Previous categories">
+          <i class="fa-solid fa-chevron-left"></i>
+        </button>
+        <div class="category-scroll" id="categoryScroll" aria-label="Menu categories">
+          <button class="cat-tab active" data-category="all">All</button>
+          <button class="cat-tab" data-category="mandhi">Mandhi & Rice</button>
+          <button class="cat-tab" data-category="broast_alfaham">Broast & Alfaham</button>
+          <button class="cat-tab" data-category="beef">Beef Specials</button>
+          <button class="cat-tab" data-category="chicken">Chicken</button>
+          <button class="cat-tab" data-category="seafood">Seafood</button>
+          <button class="cat-tab" data-category="mutton">Mutton</button>
+          <button class="cat-tab" data-category="veg">Vegetarian</button>
+          <button class="cat-tab" data-category="kada_egg">Kada & Egg</button>
+        </div>
+        <button id="categoryScrollNext" class="category-scroll-control" type="button" aria-label="Show next menu categories" title="Next categories">
+          <i class="fa-solid fa-chevron-right"></i>
+        </button>
       </div>
     </div>
   </div>

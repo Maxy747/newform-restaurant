@@ -423,6 +423,28 @@ function setupEventListeners() {
     });
   });
 
+  const categoryScroll = document.getElementById('categoryScroll');
+  const categoryScrollPrev = document.getElementById('categoryScrollPrev');
+  const categoryScrollNext = document.getElementById('categoryScrollNext');
+  if (categoryScroll && categoryScrollPrev && categoryScrollNext) {
+    const categoryScrollStep = () => Math.max(180, Math.round(categoryScroll.clientWidth * 0.72));
+    const updateCategoryScrollControls = () => {
+      const maxScrollLeft = categoryScroll.scrollWidth - categoryScroll.clientWidth;
+      categoryScrollPrev.disabled = categoryScroll.scrollLeft <= 1;
+      categoryScrollNext.disabled = categoryScroll.scrollLeft >= maxScrollLeft - 1;
+    };
+
+    categoryScrollPrev.addEventListener('click', () => {
+      categoryScroll.scrollBy({ left: -categoryScrollStep(), behavior: 'smooth' });
+    });
+    categoryScrollNext.addEventListener('click', () => {
+      categoryScroll.scrollBy({ left: categoryScrollStep(), behavior: 'smooth' });
+    });
+    categoryScroll.addEventListener('scroll', updateCategoryScrollControls, { passive: true });
+    window.addEventListener('resize', updateCategoryScrollControls);
+    updateCategoryScrollControls();
+  }
+
   // Diet Filter Buttons
   document.querySelectorAll('.filter-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
