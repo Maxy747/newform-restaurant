@@ -98,7 +98,8 @@ Most non-veg items are available in:
 | **HTML5** | Semantic markup & structure |
 | **Vanilla CSS** | Custom design system, glassmorphism, animations |
 | **JavaScript (ES6+)** | App logic, state management, dynamic rendering |
-| **LocalStorage API** | Cart & menu persistence |
+| **LocalStorage API** | Cart and theme persistence |
+| **Supabase** | Auth, menu data, and menu-image storage |
 | **Service Worker** | PWA offline caching |
 | **GitHub Pages** | Free static site hosting |
 | **WhatsApp API** | Direct order messaging (`wa.me`) |
@@ -144,16 +145,16 @@ newform-restaurant/
 
 ---
 
-## 🔐 Admin Panel
+## 🔐 Admin Panel and Supabase setup
 
-The app includes a **PIN-protected Admin Mode** for restaurant staff:
+The dashboard keeps the existing UI, now backed by Supabase email/password authentication. Admins can add, edit, delete, and upload dish images; customers can only read the menu.
 
-- Click **ADMIN** in the navigation bar
-- Enter PIN: **`1234`** *(default)*
-- Admin capabilities:
-  - ➕ Add new menu items (with name, category, pricing, image, description)
-  - 🗑️ Delete existing menu items
-  - 🔄 Changes persist in LocalStorage across sessions
+1. Create a Supabase project and run [supabase_schema.sql](supabase_schema.sql) in its SQL Editor.
+2. Create the restaurant administrator in **Authentication → Users**, then run the commented promotion query at the end of the SQL file with that email.
+3. Copy `.env.example` to `.env` for local development and set the project URL and anon key. Never put a service-role key in the frontend.
+4. In GitHub, set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` as repository Actions secrets. Enable **Settings → Pages → Source: GitHub Actions**. Pushing to `max` deploys the static `dist` folder.
+
+The Supabase publishable key is intentionally included at build time. Database and storage access are protected by Row Level Security and the `profiles.role = 'admin'` policy, not by hiding the key.
 
 ---
 

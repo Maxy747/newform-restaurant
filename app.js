@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient.js';
+import { isSupabaseConfigured, supabase } from './supabaseClient.js';
 
 // Default Menu Dataset extracted directly from Newform Multi Cuisine Restaurant Menu Cards
 const DEFAULT_MENU = [
@@ -155,6 +155,7 @@ let activeDiet = 'all';
 let searchQuery = '';
 let selectedPortions = {};
 let isAdmin = false;
+let editingItemId = null;
 
 // LocalStorage Keys
 const CART_STORAGE_KEY = 'newform_cart_v1';
@@ -190,10 +191,10 @@ function toggleTheme() {
 }
 
 // Initialize App
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   initTheme();
-  checkAdminState();
-  loadMenuData();
+  await checkAdminState();
+  await loadMenuData();
   loadCartData();
   setupEventListeners();
   renderMenu();
@@ -203,16 +204,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Admin Security Management
 async function checkAdminState() {
+  if (!isSupabaseConfigured) {
+    updateAdminUI();
+    return;
+  }
   const { data: { session } } = await supabase.auth.getSession();
-  isAdmin = !!session;
-  updateAdminUI();
+  await refreshAdminState(session);
   
   // Listen for auth changes
   supabase.auth.onAuthStateChange((event, session) => {
-    isAdmin = !!session;
-    updateAdminUI();
-    renderMenu();
+    // Supabase advises against awaiting inside this callback.
+    setTimeout(() => refreshAdminState(session), 0);
   });
+}
+
+async function refreshAdminState(session) {
+  isAdmin = false;
+  if (session) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', session.user.id)
+      .maybeSingle();
+    isAdmin = !error && data?.role === 'admin';
+  }
+  updateAdminUI();
+  renderMenu();
 }
 
 function updateAdminUI() {
@@ -249,6 +266,10 @@ function closeAdminLoginModal() {
 }
 
 async function handleAdminLogin() {
+  if (!isSupabaseConfigured) {
+    showAuthError('Supabase is not configured. Add the GitHub Pages repository variables first.');
+    return;
+  }
   const email = document.getElementById('adminEmailInput').value.trim();
   const password = document.getElementById('adminPasswordInput').value.trim();
 
@@ -260,9 +281,7 @@ async function handleAdminLogin() {
   });
 
   if (error) {
-    const errorMsg = document.getElementById('authErrorMsg');
-    errorMsg.textContent = error.message;
-    errorMsg.style.display = 'block';
+    showAuthError(error.message);
   } else {
     closeAdminLoginModal();
     showToast('🔑 Admin Profile Verified & Unlocked!');
@@ -276,17 +295,26 @@ async function handleAdminLogout() {
   }
 }
 
+function showAuthError(message) {
+  const errorMsg = document.getElementById('authErrorMsg');
+  errorMsg.textContent = message;
+  errorMsg.style.display = 'block';
+}
+
 // Load Menu Data from Supabase
 async function loadMenuData() {
+  if (!isSupabaseConfigured) {
+    menuItems = [...DEFAULT_MENU];
+    initializePortions();
+    renderMenu();
+    return;
+  }
   const { data, error } = await supabase.from('menu_items').select('*');
   
   if (error || !data || data.length === 0) {
-    // Fallback to default if table is empty or doesn't exist
+    // Keep the public menu usable during first-time database setup.
     menuItems = [...DEFAULT_MENU];
-    if (!error && (!data || data.length === 0)) {
-       // Optionally seed database
-       seedDatabase();
-    }
+    if (error) console.error('Could not load menu from Supabase:', error.message);
   } else {
     // Normalize: parse pricesJSON into a prices object
     menuItems = data.map(item => {
@@ -299,28 +327,17 @@ async function loadMenuData() {
     });
   }
 
-  // Set default portions
+  initializePortions();
+  renderMenu();
+}
+
+function initializePortions() {
   menuItems.forEach(item => {
     if (item.portionType === 'multi') {
       selectedPortions[item.id] = 'quarter';
     }
   });
   
-  renderMenu();
-}
-
-async function seedDatabase() {
-  console.log('Seeding default menu items to Supabase...');
-  for (const item of DEFAULT_MENU) {
-    const dbItem = {
-      ...item
-    };
-    if (dbItem.prices) {
-      dbItem.pricesJSON = JSON.stringify(dbItem.prices);
-      delete dbItem.prices;
-    }
-    await supabase.from('menu_items').insert([dbItem]);
-  }
 }
 
 function loadCartData() {
@@ -474,7 +491,7 @@ function renderMenu() {
     const matchesCat = (activeCategory === 'all') || (item.category === activeCategory);
     const matchesDiet = (activeDiet === 'all') || (item.diet === activeDiet);
     const matchesSearch = item.name.toLowerCase().includes(searchQuery) ||
-                          item.description.toLowerCase().includes(searchQuery);
+                          (item.description || '').toLowerCase().includes(searchQuery);
     return matchesCat && matchesDiet && matchesSearch;
   });
 
@@ -506,6 +523,9 @@ function renderMenu() {
           ${item.tag ? `<span class="card-badge">${item.tag}</span>` : ''}
           ${isAdmin ? `
             <div class="card-actions-overlay">
+              <button onclick="editItem('${item.id}')" class="btn-minimal" title="Edit item" style="padding:4px 8px; font-size:0.7rem; background:var(--primary); color:#fff; border:none;">
+                <i class="fa-solid fa-pen"></i>
+              </button>
               <button onclick="deleteItem('${item.id}')" class="btn-minimal" title="Delete Item (Admin Only)" style="padding:4px 8px; font-size:0.7rem; background:#e63946; color:#fff; border:none;">
                 <i class="fa-solid fa-trash-can"></i>
               </button>
@@ -514,7 +534,7 @@ function renderMenu() {
         </div>
         <div class="card-body">
           <h3 class="food-name">${item.name}</h3>
-          <p class="food-desc">${item.description}</p>
+          <p class="food-desc">${item.description || ''}</p>
           
           ${item.portionType === 'multi' ? `
             <div class="portion-selector">
@@ -662,6 +682,10 @@ function closeAllModals() {
 
 // In-App Manager: Open / Close Add Food Item Modal
 function openAddItemModal() {
+  editingItemId = null;
+  document.getElementById('addItemForm').reset();
+  document.getElementById('itemModalTitle').textContent = 'ADD NEW ITEM';
+  document.getElementById('saveItemButtonText').textContent = 'SAVE DISH TO MENU';
   document.getElementById('overlay').classList.add('active');
   document.getElementById('addItemModal').classList.add('active');
 }
@@ -687,7 +711,8 @@ async function handleAddItemSubmit(e) {
   const diet = document.getElementById('formDiet').value;
   const tag = document.getElementById('formTag').value.trim();
   const description = document.getElementById('formDesc').value.trim();
-  let imageSelect = document.getElementById('formImage').value; // We can improve this with file upload later
+  const imageSelect = document.getElementById('formImage').value;
+  const imageFile = document.getElementById('formImageFile').files[0];
   const portionType = document.getElementById('formPortionType').value;
 
   if (!name) {
@@ -695,14 +720,23 @@ async function handleAddItemSubmit(e) {
     return;
   }
 
-  let newItem = {
-    id: 'custom_' + Date.now(),
+  const currentItem = editingItemId ? menuItems.find(item => item.id === editingItemId) : null;
+  let image = imageSelect || currentItem?.image || 'assets/hero.png';
+  try {
+    if (imageFile) image = await uploadMenuImage(imageFile);
+  } catch (error) {
+    alert(`Image upload failed: ${error.message}`);
+    return;
+  }
+
+  const newItem = {
+    id: editingItemId || crypto.randomUUID(),
     name,
     category,
     diet,
     tag,
     description: description || 'Freshly prepared dish from NEWFORM kitchen.',
-    image: imageSelect || 'assets/hero.png',
+    image,
     portionType
   };
 
@@ -715,27 +749,74 @@ async function handleAddItemSubmit(e) {
     newItem.pricesJSON = JSON.stringify({ quarter: qPrice, half: hPrice, full: fPrice });
   }
 
-  const { data, error } = await supabase.from('menu_items').insert([newItem]).select();
+  const query = editingItemId
+    ? supabase.from('menu_items').update(newItem).eq('id', editingItemId)
+    : supabase.from('menu_items').insert([newItem]);
+  const { data, error } = await query.select().single();
 
   if (error) {
     alert('Error saving item: ' + error.message);
     return;
   }
   
-  if (data && data.length > 0) {
-      const savedItem = data[0];
-      if(savedItem.pricesJSON) savedItem.prices = JSON.parse(savedItem.pricesJSON);
-      menuItems.unshift(savedItem);
-      if (savedItem.portionType === 'multi') {
-        selectedPortions[savedItem.id] = 'quarter';
-      }
+  if (data) {
+      const savedItem = normalizeMenuItem(data);
+      const existingIndex = menuItems.findIndex(item => item.id === savedItem.id);
+      if (existingIndex === -1) menuItems.unshift(savedItem);
+      else menuItems[existingIndex] = savedItem;
+      if (savedItem.portionType === 'multi') selectedPortions[savedItem.id] = 'quarter';
   }
 
   renderMenu();
   closeAddItemModal();
-  document.getElementById('addItemForm').reset();
-  showToast(`Successfully added "${name}" to menu!`);
+  showToast(editingItemId ? `Updated "${name}"` : `Successfully added "${name}" to menu!`);
+  editingItemId = null;
 }
+
+function normalizeMenuItem(item) {
+  if (item.pricesJSON) {
+    item.prices = typeof item.pricesJSON === 'string' ? JSON.parse(item.pricesJSON) : item.pricesJSON;
+  }
+  return item;
+}
+
+async function uploadMenuImage(file) {
+  if (!file.type.startsWith('image/')) throw new Error('Choose an image file.');
+  if (file.size > 5 * 1024 * 1024) throw new Error('Images must be 5 MB or smaller.');
+  const extension = file.name.split('.').pop().toLowerCase();
+  const path = `${crypto.randomUUID()}.${extension}`;
+  const { error } = await supabase.storage.from('menu-images').upload(path, file, {
+    cacheControl: '31536000',
+    upsert: false,
+    contentType: file.type
+  });
+  if (error) throw error;
+  return supabase.storage.from('menu-images').getPublicUrl(path).data.publicUrl;
+}
+
+window.editItem = function(id) {
+  if (!isAdmin) return openAdminLoginModal();
+  const item = menuItems.find(menuItem => menuItem.id === id);
+  if (!item) return;
+  editingItemId = id;
+  document.getElementById('itemModalTitle').textContent = 'EDIT MENU ITEM';
+  document.getElementById('saveItemButtonText').textContent = 'SAVE CHANGES';
+  document.getElementById('formItemName').value = item.name;
+  document.getElementById('formCategory').value = item.category;
+  document.getElementById('formDiet').value = item.diet;
+  document.getElementById('formTag').value = item.tag || '';
+  document.getElementById('formDesc').value = item.description || '';
+  document.getElementById('formPortionType').value = item.portionType;
+  document.getElementById('formImage').value = item.image?.startsWith('assets/') ? item.image : '';
+  document.getElementById('formSinglePrice').value = item.price || '';
+  document.getElementById('formQPrice').value = item.prices?.quarter || '';
+  document.getElementById('formHPrice').value = item.prices?.half || '';
+  document.getElementById('formFPrice').value = item.prices?.full || '';
+  document.getElementById('singlePriceGroup').style.display = item.portionType === 'single' ? 'block' : 'none';
+  document.getElementById('multiPriceGroup').style.display = item.portionType === 'multi' ? 'grid' : 'none';
+  document.getElementById('overlay').classList.add('active');
+  document.getElementById('addItemModal').classList.add('active');
+};
 
 // Delete item function (Admin Protected)
 window.deleteItem = async function(id) {
@@ -744,12 +825,17 @@ window.deleteItem = async function(id) {
     return;
   }
   if (confirm('Delete this dish from the menu?')) {
+    const item = menuItems.find(menuItem => menuItem.id === id);
     const { error } = await supabase.from('menu_items').delete().eq('id', id);
     if(error) {
       alert("Failed to delete: " + error.message);
       return;
     }
     menuItems = menuItems.filter(i => i.id !== id);
+    if (item?.image?.includes('/storage/v1/object/public/menu-images/')) {
+      const objectPath = item.image.split('/menu-images/')[1];
+      if (objectPath) await supabase.storage.from('menu-images').remove([objectPath]);
+    }
     renderMenu();
     showToast('Item deleted from menu');
   }
