@@ -16,7 +16,7 @@
 
 ## 🌐 Live Website
 
-> **👉 [https://juuder.github.io/newform-restaurant/](https://juuder.github.io/newform-restaurant/)**
+> **👉 [https://maxy747.github.io/newform-restaurant/)**
 
 ---
 
