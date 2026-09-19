@@ -510,6 +510,7 @@ function setupEventListeners() {
   }
   startSearchPlaceholderAnimation(searchInput);
   setupCategoryVisibility();
+  setupImageParallax();
 
   // Add Item Modal Buttons (Admin Protected)
   const addItemBtn = document.getElementById('addItemBtn');
@@ -831,6 +832,28 @@ function setupCategoryVisibility() {
     }
     lastScrollY = currentY;
   }, { passive: true });
+}
+
+function setupImageParallax() {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  let frameQueued = false;
+  const updateParallax = () => {
+    frameQueued = false;
+    const viewportCenter = window.innerHeight / 2;
+    const heroDish = document.querySelector('.center-dish-wrapper');
+    if (heroDish) heroDish.style.setProperty('--hero-parallax-y', `${Math.max(-22, Math.min(22, window.scrollY * -0.06))}px`);
+    document.querySelectorAll('.card-img').forEach(image => {
+      const rect = image.getBoundingClientRect();
+      const distance = (viewportCenter - (rect.top + rect.height / 2)) / window.innerHeight;
+      image.style.setProperty('--image-parallax-y', `${Math.max(-14, Math.min(14, distance * 28))}px`);
+    });
+  };
+  const queueUpdate = () => {
+    if (!frameQueued) { frameQueued = true; requestAnimationFrame(updateParallax); }
+  };
+  window.addEventListener('scroll', queueUpdate, { passive: true });
+  window.addEventListener('resize', queueUpdate);
+  queueUpdate();
 }
 
 function calculateCartTotals() {

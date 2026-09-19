@@ -402,6 +402,8 @@ body {
   width: 100%;
   max-width: 380px;
   aspect-ratio: 1 / 1;
+  will-change: transform;
+  transform: translate3d(0, var(--hero-parallax-y, 0px), 0);
 }
 
 .center-dish-img {
@@ -825,11 +827,18 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.4s ease;
+  --image-parallax-y: 0px;
+  transform: translate3d(0, var(--image-parallax-y), 0) scale(1.08);
+  will-change: transform;
+  transition: transform 0.25s ease;
 }
 
 .food-card:hover .card-img {
-  transform: scale(1.06);
+  transform: translate3d(0, var(--image-parallax-y), 0) scale(1.12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .center-dish-wrapper, .card-img { transform: none; transition: none; }
 }
 
 @media (hover: none), (pointer: coarse) {
@@ -839,7 +848,7 @@ body {
     box-shadow: var(--shadow-card);
   }
 
-  .food-card:hover .card-img { transform: none; }
+  .food-card:hover .card-img { transform: translate3d(0, var(--image-parallax-y, 0px), 0) scale(1.08); }
 }
 
 .diet-icon {
