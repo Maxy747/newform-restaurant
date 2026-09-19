@@ -1004,7 +1004,7 @@ async function renderAccount() {
   const content = document.getElementById('accountContent');
   if (!content) return;
   if (!currentSession) {
-    content.innerHTML = `<div class="account-section"><p>Sign in to place orders, save delivery details, and see your order history.</p><input id="accountEmail" class="form-control" type="email" placeholder="Email"><input id="accountPassword" class="form-control" type="password" placeholder="Password"><button id="accountSignIn" class="btn-minimal btn-primary-minimal">SIGN IN</button><button id="accountSignUp" class="btn-minimal">CREATE ACCOUNT</button></div>`;
+    content.innerHTML = `<div class="account-section"><p>Account login is optional for ordering. Sign in to save delivery details and see order history.</p><input id="accountEmail" class="form-control" type="email" placeholder="Email"><input id="accountPassword" class="form-control" type="password" placeholder="Password"><button id="accountSignIn" class="btn-minimal btn-primary-minimal">SIGN IN</button><button id="accountSignUp" class="btn-minimal">CREATE & VERIFY ACCOUNT</button></div>`;
     document.getElementById('accountSignIn').onclick = () => accountSignIn(false);
     document.getElementById('accountSignUp').onclick = () => accountSignIn(true);
     return;
@@ -1020,7 +1020,9 @@ async function accountSignIn(signUp) {
   const email = document.getElementById('accountEmail').value.trim();
   const password = document.getElementById('accountPassword').value;
   if (!email || !password) return showToast('Enter an email and password.');
-  const result = signUp ? await supabase.auth.signUp({ email, password }) : await supabase.auth.signInWithPassword({ email, password });
+  const result = signUp
+    ? await supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}${window.location.pathname}` } })
+    : await supabase.auth.signInWithPassword({ email, password });
   if (result.error) return showToast(result.error.message);
   showToast(signUp && !result.data.session ? 'Check your email to confirm your account.' : 'Signed in successfully.');
   if (result.data.session) { currentSession = result.data.session; await renderAccount(); }
@@ -1034,7 +1036,6 @@ async function saveCustomerProfile() {
 
 async function placeOrder() {
   if (!cart.length) return showToast('Your cart is empty.');
-  if (!currentSession) { closeCart(); openAccountModal(); return showToast('Sign in before placing an order.'); }
   const customer_name = document.getElementById('custName').value.trim();
   const phone = document.getElementById('custPhone').value.trim();
   const delivery_address = document.getElementById('custAddress').value.trim();
@@ -1042,14 +1043,15 @@ async function placeOrder() {
   const payment_method = document.querySelector('input[name="paymentMethod"]:checked')?.value;
   const { subtotal, tax, total } = calculateCartTotals();
   if (payment_method === 'cod' && total < 1000) return showToast('Cash on delivery is available from ₹1,000.');
-  const { data: order, error } = await supabase.from('orders').insert({ user_id: currentSession.user.id, customer_name, phone, delivery_address, items: cart, subtotal, tax, total, payment_method, payment_status: payment_method === 'whatsapp' ? 'not_required' : 'pending', order_status: payment_method === 'razorpay' ? 'awaiting_payment' : 'new' }).select().single();
+  const orderId = crypto.randomUUID();
+  const { error } = await supabase.from('orders').insert({ id: orderId, user_id: currentSession?.user.id || null, customer_name, phone, delivery_address, items: cart, subtotal, tax, total, payment_method, payment_status: payment_method === 'whatsapp' ? 'not_required' : 'pending', order_status: payment_method === 'razorpay' ? 'awaiting_payment' : 'new' });
   if (error) return showToast(`Order could not be saved: ${error.message}`);
-  await supabase.from('profiles').upsert({ id: currentSession.user.id, role: 'staff', full_name: customer_name, phone, default_address: delivery_address });
+  if (currentSession) await supabase.from('profiles').upsert({ id: currentSession.user.id, role: 'staff', full_name: customer_name, phone, default_address: delivery_address });
   if (payment_method === 'whatsapp') {
     const lines = cart.map((item, index) => `${index + 1}. ${item.name}${item.portion ? ` (${item.portion})` : ''} x ${item.quantity} = ₹${item.price * item.quantity}`).join('\n');
-    window.open(`https://wa.me/917593881112?text=${encodeURIComponent(`NEWFORM ORDER #${order.id.slice(0, 8)}\n${lines}\nTotal: ₹${total}\n${customer_name}, ${phone}\n${delivery_address}`)}`, '_blank');
+    window.open(`https://wa.me/917593881112?text=${encodeURIComponent(`NEWFORM ORDER #${orderId.slice(0, 8)}\n${lines}\nTotal: ₹${total}\n${customer_name}, ${phone}\n${delivery_address}`)}`, '_blank');
   }
-  cart = []; saveCartData(); updateCartBadge(); closeCart(); showToast(`Order #${order.id.slice(0, 8)} has been placed.`);
+  cart = []; saveCartData(); updateCartBadge(); closeCart(); showToast(`Order #${orderId.slice(0, 8)} has been placed.`);
 }
 
 async function renderAdminOrders() {

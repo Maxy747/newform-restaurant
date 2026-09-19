@@ -73,7 +73,7 @@ alter table public.profiles add column if not exists default_address text;
 
 create table if not exists public.orders (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete restrict,
+  user_id uuid references auth.users(id) on delete restrict,
   customer_name text not null,
   phone text not null,
   delivery_address text not null,
@@ -96,6 +96,7 @@ create trigger orders_set_updated_at before update on public.orders for each row
 alter table public.orders enable row level security;
 grant select, insert on public.orders to authenticated;
 grant update on public.orders to authenticated;
+grant insert on public.orders to anon;
 grant insert, update on public.profiles to authenticated;
 drop policy if exists "Users can create their own profile" on public.profiles;
 drop policy if exists "Users can update their own customer profile" on public.profiles;
@@ -111,6 +112,12 @@ create policy "Users can read their own orders" on public.orders for select to a
 using (user_id = (select auth.uid()));
 create policy "Users can create their own orders" on public.orders for insert to authenticated
 with check (user_id = (select auth.uid()) and payment_status in ('pending', 'not_required'));
+drop policy if exists "Guests can create restaurant orders" on public.orders;
+create policy "Guests can create restaurant orders" on public.orders for insert to anon
+with check (user_id is null and payment_method in ('whatsapp', 'cod') and payment_status in ('pending', 'not_required'));
 create policy "Admins manage orders" on public.orders for all to authenticated
 using (exists (select 1 from public.profiles where id = (select auth.uid()) and role = 'admin'))
 with check (exists (select 1 from public.profiles where id = (select auth.uid()) and role = 'admin'));
+
+-- Safe to run on an existing project after the original order schema.
+alter table public.orders alter column user_id drop not null;

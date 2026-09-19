@@ -156,6 +156,12 @@ The dashboard keeps the existing UI, now backed by Supabase email/password authe
 
 The Supabase publishable key is intentionally included at build time. Database and storage access are protected by Row Level Security and the `profiles.role = 'admin'` policy, not by hiding the key.
 
+### Customer accounts and optional email verification
+
+Run the latest `supabase_schema.sql` after deploying this version; it enables guest WhatsApp/COD orders while preserving authenticated customers' private order history. Guest orders are insert-only: they cannot read any order data.
+
+For verified customer accounts, enable **Confirm email** in Supabase **Authentication → Providers → Email**, then add `https://maxy747.github.io/newform-restaurant/` to **Authentication → URL Configuration → Redirect URLs**. New accounts will receive a confirmation email before they can sign in. Customers may still place WhatsApp or eligible COD orders without an account.
+
 ---
 
 ## 📱 Install as Mobile App (PWA)
