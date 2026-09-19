@@ -460,7 +460,7 @@ function setupEventListeners() {
     updateCategoryScrollControls();
   }
 
-  // Compact diet filter toggles between vegetarian and non-vegetarian dishes.
+  // Vegetarian is a focused view; the Non-Veg view is the complete restaurant menu.
   const dietFilterToggle = document.getElementById('dietFilterToggle');
   if (dietFilterToggle) {
     dietFilterToggle.addEventListener('click', () => {
@@ -469,7 +469,9 @@ function setupEventListeners() {
       dietFilterToggle.className = `diet-filter-toggle ${activeDiet}`;
       const icon = dietFilterToggle.querySelector('.diet-filter-icons');
       if (label) label.textContent = activeDiet === 'veg' ? 'Veg' : 'Non-Veg';
-      if (icon) icon.innerHTML = activeDiet === 'veg' ? '<i class="fa-solid fa-leaf"></i>' : '<i class="fa-solid fa-drumstick-bite"></i>';
+      if (icon) icon.innerHTML = activeDiet === 'veg'
+        ? '<i class="fa-solid fa-leaf"></i>'
+        : '<i class="fa-solid fa-drumstick-bite"></i><i class="fa-solid fa-leaf"></i>';
       renderMenu();
     });
   }
@@ -580,7 +582,8 @@ function renderMenu() {
   // Filter Items
   const filtered = menuItems.filter(item => {
     const matchesCat = (activeCategory === 'all') || (item.category === activeCategory);
-    const matchesDiet = (activeDiet === 'all') || (item.diet === activeDiet);
+    // Non-Veg is the default full menu view; Veg narrows it to vegetarian dishes only.
+    const matchesDiet = activeDiet !== 'veg' || item.diet === 'veg';
     const matchesSearch = item.name.toLowerCase().includes(searchQuery) ||
                           (item.description || '').toLowerCase().includes(searchQuery);
     return matchesCat && matchesDiet && matchesSearch;
