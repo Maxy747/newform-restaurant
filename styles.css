@@ -486,6 +486,7 @@ body {
   backdrop-filter: blur(20px);
   border-y: 1px solid var(--glass-border);
   padding: 16px 40px;
+  transition: top 0.28s ease, padding 0.28s ease;
 }
 
 .controls-container {

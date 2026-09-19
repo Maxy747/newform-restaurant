@@ -813,8 +813,10 @@ function setupCategoryVisibility() {
     const currentY = window.scrollY;
     if (currentY > 170 && currentY > lastScrollY + 8) categories.classList.add('is-collapsed');
     if (currentY < lastScrollY - 8) categories.classList.remove('is-collapsed');
-    const collapseHeader = currentY > 140 && currentY > lastScrollY + 8;
-    const restoreHeader = currentY < 80 || currentY < lastScrollY - 8;
+    const headerHeight = header?.offsetHeight || 0;
+    const searchReachedHeader = controls && controls.getBoundingClientRect().top <= headerHeight + 2;
+    const collapseHeader = searchReachedHeader && currentY > lastScrollY + 8;
+    const restoreHeader = !searchReachedHeader || currentY < lastScrollY - 8;
     if (collapseHeader) {
       header?.classList.add('is-mobile-collapsed');
       controls?.classList.add('header-collapsed');
