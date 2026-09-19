@@ -616,7 +616,7 @@ function renderMenu() {
           <p class="food-desc">${item.description || ''}</p>
           
           ${item.portionType === 'multi' ? `
-            <div class="portion-selector">
+            <div class="portion-selector" style="--portion-offset:${currentPortion === 'quarter' ? '0px' : currentPortion === 'half' ? 'calc(100% + 4px)' : 'calc(200% + 8px)'}">
               <button class="portion-btn ${currentPortion === 'quarter' ? 'active' : ''}" onclick="selectPortion('${item.id}', 'quarter')">Qtr (₹${item.prices.quarter})</button>
               <button class="portion-btn ${currentPortion === 'half' ? 'active' : ''}" onclick="selectPortion('${item.id}', 'half')">Half (₹${item.prices.half})</button>
               <button class="portion-btn ${currentPortion === 'full' ? 'active' : ''}" onclick="selectPortion('${item.id}', 'full')">Full (₹${item.prices.full})</button>
@@ -640,12 +640,13 @@ function renderMenu() {
 // Portion Selection Handler
 window.selectPortion = function(itemId, portion) {
   selectedPortions[itemId] = portion;
-  renderMenu();
-  const addButton = document.querySelector(`#card-${CSS.escape(itemId)} .add-cart-btn`);
-  if (addButton) {
-    addButton.classList.add('portion-changed');
-    setTimeout(() => addButton.classList.remove('portion-changed'), 320);
-  }
+  const card = document.getElementById(`card-${itemId}`);
+  const item = menuItems.find(menuItem => menuItem.id === itemId);
+  if (!card || !item?.prices) return;
+  card.querySelector('.portion-selector').style.setProperty('--portion-offset', portion === 'quarter' ? '0px' : portion === 'half' ? 'calc(100% + 4px)' : 'calc(200% + 8px)');
+  card.querySelectorAll('.portion-btn').forEach(button => button.classList.toggle('active', button.textContent.toLowerCase().startsWith(portion === 'quarter' ? 'qtr' : portion)));
+  const price = card.querySelector('.price-amount');
+  if (price) price.textContent = `₹${item.prices[portion]}`;
 };
 
 // Add to Cart
