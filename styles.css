@@ -841,6 +841,16 @@ body {
   .center-dish-wrapper, .card-img { transform: none; transition: none; }
 }
 
+/* A lightweight fallback for browsers in power-saving mode or lower-end phones. */
+.low-power-motion .center-dish-wrapper {
+  animation: lowPowerDishFloat 3.8s ease-in-out infinite alternate;
+}
+
+@keyframes lowPowerDishFloat {
+  from { transform: translate3d(0, -4px, 0); }
+  to { transform: translate3d(0, 4px, 0); }
+}
+
 @media (hover: none), (pointer: coarse) {
   .food-card:hover {
     transform: none;

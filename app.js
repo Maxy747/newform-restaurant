@@ -825,19 +825,31 @@ function setupCategoryVisibility() {
 }
 
 function setupImageParallax() {
-  // Card-position calculations are intentionally desktop-only: they can cause
-  // dropped frames on low-power mobile devices while the user is scrolling.
-  if (window.matchMedia('(prefers-reduced-motion: reduce), (pointer: coarse), (max-width: 768px)').matches) return;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const isTouchDevice = window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 768;
+  const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  const isLowPower = Boolean(connection?.saveData) || (navigator.deviceMemory && navigator.deviceMemory <= 4) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4);
+  if (isLowPower) {
+    document.documentElement.classList.add('low-power-motion');
+    return;
+  }
   let frameQueued = false;
+  let lastUpdate = 0;
   const updateParallax = () => {
     frameQueued = false;
+    const now = performance.now();
+    // Cap touch devices to ~20 calculations per second; CSS interpolation keeps it smooth.
+    if (isTouchDevice && now - lastUpdate < 50) return;
+    lastUpdate = now;
     const viewportCenter = window.innerHeight / 2;
     const heroDish = document.querySelector('.center-dish-wrapper');
-    if (heroDish) heroDish.style.setProperty('--hero-parallax-y', `${Math.max(-22, Math.min(22, window.scrollY * -0.06))}px`);
+    const heroRange = isTouchDevice ? 12 : 22;
+    const cardRange = isTouchDevice ? 7 : 14;
+    if (heroDish) heroDish.style.setProperty('--hero-parallax-y', `${Math.max(-heroRange, Math.min(heroRange, window.scrollY * -0.06))}px`);
     document.querySelectorAll('.card-img').forEach(image => {
       const rect = image.getBoundingClientRect();
       const distance = (viewportCenter - (rect.top + rect.height / 2)) / window.innerHeight;
-      image.style.setProperty('--image-parallax-y', `${Math.max(-14, Math.min(14, distance * 28))}px`);
+      image.style.setProperty('--image-parallax-y', `${Math.max(-cardRange, Math.min(cardRange, distance * (isTouchDevice ? 14 : 28)))}px`);
     });
   };
   const queueUpdate = () => {
