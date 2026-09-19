@@ -829,10 +829,7 @@ function setupImageParallax() {
   const isTouchDevice = window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 768;
   const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
   const isLowPower = Boolean(connection?.saveData) || (navigator.deviceMemory && navigator.deviceMemory <= 4) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4);
-  if (isLowPower) {
-    document.documentElement.classList.add('low-power-motion');
-    return;
-  }
+  if (isLowPower) document.documentElement.classList.add('low-power-motion');
   let frameQueued = false;
   let lastUpdate = 0;
   const updateParallax = () => {
@@ -843,9 +840,12 @@ function setupImageParallax() {
     lastUpdate = now;
     const viewportCenter = window.innerHeight / 2;
     const heroDish = document.querySelector('.center-dish-wrapper');
-    const heroRange = isTouchDevice ? 12 : 22;
+    const heroRange = isTouchDevice ? 18 : 22;
     const cardRange = isTouchDevice ? 7 : 14;
     if (heroDish) heroDish.style.setProperty('--hero-parallax-y', `${Math.max(-heroRange, Math.min(heroRange, window.scrollY * -0.06))}px`);
+    // On weaker phones one moving hero image stays visibly dynamic without
+    // measuring every menu card during a scroll.
+    if (isLowPower) return;
     document.querySelectorAll('.card-img').forEach(image => {
       const rect = image.getBoundingClientRect();
       const distance = (viewportCenter - (rect.top + rect.height / 2)) / window.innerHeight;
