@@ -1079,6 +1079,7 @@ html { scroll-behavior: smooth; }
 
 .add-cart-btn:active { transform: scale(0.92); }
 .add-cart-btn.button-added { animation: addToCartPulse 0.42s ease; }
+.add-cart-btn:disabled { opacity: .8; cursor: default; }
 
 @keyframes addToCartPulse {
   0% { transform: scale(1); }

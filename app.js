@@ -676,10 +676,18 @@ window.addToCart = function(itemId, clickEvent) {
   updateCartBadge();
   const button = clickEvent?.currentTarget;
   if (button) {
+    const defaultLabel = button.dataset.defaultLabel || button.textContent.trim();
+    button.dataset.defaultLabel = defaultLabel;
     button.classList.remove('button-added');
     void button.offsetWidth;
     button.classList.add('button-added');
-    setTimeout(() => button.classList.remove('button-added'), 420);
+    button.disabled = true;
+    button.textContent = 'ADDED TO CART';
+    setTimeout(() => {
+      button.classList.remove('button-added');
+      button.disabled = false;
+      button.textContent = defaultLabel;
+    }, 1500);
   }
   showToast(`Added ${item.name} (${portion !== 'single' ? portion.toUpperCase() : ''}) to cart`);
 };
@@ -886,9 +894,6 @@ function setupFeaturedDishOrder() {
   if (orderButton) orderButton.addEventListener('click', event => {
     if (orderButton.disabled) return;
     window.addToCart(featuredItemId, event);
-    orderButton.disabled = true;
-    orderButton.textContent = 'ADDED TO CART';
-    setTimeout(() => { orderButton.disabled = false; orderButton.textContent = 'ORDER NOW'; }, 1500);
   });
   updateFeaturedDish();
 }
