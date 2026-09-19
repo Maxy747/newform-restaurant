@@ -835,7 +835,9 @@ function setupCategoryVisibility() {
 }
 
 function setupImageParallax() {
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  // Card-position calculations are intentionally desktop-only: they can cause
+  // dropped frames on low-power mobile devices while the user is scrolling.
+  if (window.matchMedia('(prefers-reduced-motion: reduce), (pointer: coarse), (max-width: 768px)').matches) return;
   let frameQueued = false;
   const updateParallax = () => {
     frameQueued = false;
