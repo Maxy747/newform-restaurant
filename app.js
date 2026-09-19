@@ -985,12 +985,14 @@ function setupFeaturedDishOrder() {
   const featuredItemId = 'm1';
   const orderButton = document.getElementById('heroOrderNowBtn');
   const portionButtons = document.querySelectorAll('[data-hero-portion]');
+  const portionSelector = document.querySelector('.hero-portion-selector');
   const updateFeaturedDish = () => {
     const portion = selectedPortions[featuredItemId] || 'quarter';
     const item = menuItems.find(menuItem => menuItem.id === featuredItemId);
     const price = item?.prices?.[portion];
     const priceElement = document.getElementById('heroFeaturedPrice');
     if (price && priceElement) animatePrice(priceElement, price, { hero: true });
+    if (portionSelector) portionSelector.style.setProperty('--hero-portion-offset', portion === 'quarter' ? '0%' : portion === 'half' ? '100%' : '200%');
     portionButtons.forEach(button => button.classList.toggle('active', button.dataset.heroPortion === portion));
   };
   portionButtons.forEach(button => button.addEventListener('click', () => {
@@ -1249,13 +1251,28 @@ function showToast(message) {
 
   const toast = document.createElement('div');
   toast.className = 'toast';
-  toast.innerHTML = `<i class="fa-solid fa-circle-check" style="color:#2a9d8f;"></i> ${message}`;
+  toast.setAttribute('role', 'status');
+  const icon = document.createElement('i');
+  icon.className = 'fa-solid fa-circle-check toast-status-icon';
+  const text = document.createElement('span');
+  text.className = 'toast-message';
+  text.textContent = message;
+  const closeButton = document.createElement('button');
+  closeButton.className = 'toast-close';
+  closeButton.type = 'button';
+  closeButton.setAttribute('aria-label', 'Dismiss notification');
+  closeButton.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+  toast.append(icon, text, closeButton);
   container.appendChild(toast);
 
+  const dismiss = () => {
+    clearTimeout(activeToastTimer);
+    toast.classList.add('is-leaving');
+    setTimeout(() => toast.remove(), 260);
+  };
+  closeButton.addEventListener('click', dismiss);
   activeToastTimer = setTimeout(() => {
-    toast.style.opacity = '0';
-    toast.style.transform = 'translateY(-8px)';
-    setTimeout(() => toast.remove(), 300);
+    dismiss();
   }, 3000);
 }
 

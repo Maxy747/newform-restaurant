@@ -515,27 +515,50 @@ html { scroll-behavior: smooth; }
 
 .hero-portion-selector {
   display: flex;
-  gap: 5px;
+  position: relative;
+  width: min(100%, 310px);
   margin: 0 0 12px;
-  padding: 3px;
+  padding: 4px;
   border: 1px solid var(--glass-border);
-  border-radius: var(--radius-sm);
+  border-radius: 10px;
   background: var(--portion-bg);
+  isolation: isolate;
+}
+
+.hero-portion-selector::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc((100% - 8px) / 3);
+  border-radius: 7px;
+  background: var(--btn-minimal-bg);
+  box-shadow: 0 5px 14px rgba(0, 0, 0, .16);
+  transform: translateX(var(--hero-portion-offset));
+  transition: transform 420ms cubic-bezier(.22, 1, .36, 1), background 220ms ease;
 }
 
 .hero-portion-btn {
   border: 0;
-  border-radius: 6px;
-  padding: 6px 9px;
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-height: 35px;
+  border-radius: 7px;
+  padding: 7px 10px;
   background: transparent;
   color: var(--text-muted);
   font-family: var(--font-heading);
-  font-size: .68rem;
+  font-size: .74rem;
   font-weight: 800;
   cursor: pointer;
+  transition: color 180ms ease, transform 180ms ease;
 }
 
-.hero-portion-btn.active { background: var(--btn-minimal-bg); color: var(--gold-primary); }
+.hero-portion-btn.active { color: var(--gold-primary); }
+.hero-portion-btn:active { transform: scale(.96); }
 #heroOrderNowBtn:disabled { opacity: .82; cursor: default; transform: none; }
 
 .hero-about-copy {
@@ -1394,10 +1417,10 @@ html { scroll-behavior: smooth; }
 
 .toast-container {
   position: fixed;
-  top: 50%;
+  bottom: max(22px, env(safe-area-inset-bottom));
   left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 300;
+  transform: translateX(-50%);
+  z-index: 400;
   width: min(90vw, 420px);
   pointer-events: none;
 }
@@ -1406,7 +1429,7 @@ html { scroll-behavior: smooth; }
   background: var(--modal-bg);
   border: 1px solid var(--gold-primary);
   color: var(--text-main);
-  padding: 12px 20px;
+  padding: 12px 12px 12px 16px;
   border-radius: var(--radius-md);
   box-shadow: 0 10px 30px rgba(0,0,0,0.3);
   display: flex;
@@ -1414,17 +1437,39 @@ html { scroll-behavior: smooth; }
   gap: 10px;
   font-size: 0.85rem;
   opacity: 0;
-  transform: translateY(18px);
-  animation: toastSlideIn 0.32s ease forwards;
+  transform: translateY(22px) scale(.98);
+  animation: toastSlideIn .32s cubic-bezier(.22, 1, .36, 1) forwards;
+  pointer-events: auto;
 }
 
-@keyframes toastSlideIn { to { opacity: 1; transform: translateY(0); } }
+.toast-status-icon { color: #2a9d8f; }
+.toast-message { flex: 1; min-width: 0; }
+.toast-close {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background .18s ease, color .18s ease, transform .18s ease;
+}
+.toast-close:hover, .toast-close:focus-visible { background: var(--glass); color: var(--text-main); }
+.toast-close:active { transform: scale(.9); }
+.toast.is-leaving { animation: toastSlideOut .26s ease forwards; }
+
+@keyframes toastSlideIn { to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes toastSlideOut { to { opacity: 0; transform: translateY(14px) scale(.98); } }
 
 .mobile-cart-cta {
   display: none;
 }
 
 @media (max-width: 768px) {
+  .toast-container { bottom: calc(132px + env(safe-area-inset-bottom)); }
   .mobile-cart-cta:not([hidden]) {
     position: fixed;
     right: 14px;
