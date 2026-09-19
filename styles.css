@@ -495,6 +495,9 @@ html { scroll-behavior: smooth; }
   transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1), padding-left 0.42s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+.account-header-btn { font-size: .98rem; }
+.account-header-btn .fa-user-check { color: var(--accent-green); }
+
 .hero-portion-selector {
   display: flex;
   gap: 5px;

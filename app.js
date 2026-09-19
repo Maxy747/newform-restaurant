@@ -242,6 +242,8 @@ function updateAdminUI() {
   });
 
   const adminToggleTextFooter = document.getElementById('adminToggleBtnFooter');
+  const accountIcon = document.getElementById('accountIcon');
+  if (accountIcon) accountIcon.className = currentSession ? 'fa-solid fa-user-check' : 'fa-solid fa-user';
 
   if (isAdmin) {
     if (adminToggleTextFooter) adminToggleTextFooter.innerHTML = '<i class="fa-solid fa-right-from-bracket"></i> LOG OUT ADMIN';
@@ -387,6 +389,7 @@ function setupEventListeners() {
   const aboutBtnNav = document.getElementById('aboutBtnNav');
   const contactBtnNav = document.getElementById('contactBtnNav');
   const contactBtnMobile = document.getElementById('contactBtnMobile');
+  const accountBtn = document.getElementById('accountBtn');
   const accountBtnMobile = document.getElementById('accountBtnMobile');
   const closeAccountModalBtn = document.getElementById('closeAccountModalBtn');
   const ordersBtn = document.getElementById('ordersBtn');
@@ -406,6 +409,7 @@ function setupEventListeners() {
   if (aboutBtnNav) aboutBtnNav.addEventListener('click', openAboutModal);
   if (contactBtnNav) contactBtnNav.addEventListener('click', openContactModal);
   if (contactBtnMobile) contactBtnMobile.addEventListener('click', openContactModal);
+  if (accountBtn) accountBtn.addEventListener('click', openAccountModal);
   if (closeAboutModalBtn) closeAboutModalBtn.addEventListener('click', closeAboutModal);
   if (closeContactModalBtn) closeContactModalBtn.addEventListener('click', closeContactModal);
   if (accountBtnMobile) accountBtnMobile.addEventListener('click', openAccountModal);
@@ -1127,6 +1131,10 @@ function closeOrdersModal() { document.getElementById('overlay').classList.remov
 async function renderAccount() {
   const content = document.getElementById('accountContent');
   if (!content) return;
+  if (!isSupabaseConfigured) {
+    content.innerHTML = '<p>Account service is not configured yet. Please contact the restaurant.</p>';
+    return;
+  }
   if (!currentSession) {
     content.innerHTML = `<div class="account-section"><p>Account login is optional for ordering. Sign in to save delivery details and see order history.</p><input id="accountEmail" class="form-control" type="email" placeholder="Email"><input id="accountPassword" class="form-control" type="password" placeholder="Password"><button id="accountSignIn" class="btn-minimal btn-primary-minimal">SIGN IN</button><button id="accountSignUp" class="btn-minimal">CREATE & VERIFY ACCOUNT</button></div>`;
     document.getElementById('accountSignIn').onclick = () => accountSignIn(false);
@@ -1141,9 +1149,11 @@ async function renderAccount() {
 }
 
 async function accountSignIn(signUp) {
+  if (!isSupabaseConfigured) return showToast('Account service is not configured yet.');
   const email = document.getElementById('accountEmail').value.trim();
   const password = document.getElementById('accountPassword').value;
   if (!email || !password) return showToast('Enter an email and password.');
+  if (signUp && password.length < 6) return showToast('Use a password with at least 6 characters.');
   const result = signUp
     ? await supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}${window.location.pathname}` } })
     : await supabase.auth.signInWithPassword({ email, password });
