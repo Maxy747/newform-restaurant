@@ -799,12 +799,31 @@ function startSearchPlaceholderAnimation(input) {
 
 function setupCategoryVisibility() {
   const categories = document.querySelector('.category-scroll-shell');
+  const header = document.querySelector('.header');
+  const controls = document.querySelector('.controls-wrapper');
+  const compactLogo = document.getElementById('compactBrandLogo');
   if (!categories) return;
   window.addEventListener('scroll', () => {
-    if (window.innerWidth > 768) return;
+    if (window.innerWidth > 768) {
+      header?.classList.remove('is-mobile-collapsed');
+      controls?.classList.remove('header-collapsed');
+      compactLogo?.classList.remove('visible');
+      return;
+    }
     const currentY = window.scrollY;
     if (currentY > 170 && currentY > lastScrollY + 8) categories.classList.add('is-collapsed');
     if (currentY < lastScrollY - 8) categories.classList.remove('is-collapsed');
+    const collapseHeader = currentY > 140 && currentY > lastScrollY + 8;
+    const restoreHeader = currentY < 80 || currentY < lastScrollY - 8;
+    if (collapseHeader) {
+      header?.classList.add('is-mobile-collapsed');
+      controls?.classList.add('header-collapsed');
+      compactLogo?.classList.add('visible');
+    } else if (restoreHeader) {
+      header?.classList.remove('is-mobile-collapsed');
+      controls?.classList.remove('header-collapsed');
+      compactLogo?.classList.remove('visible');
+    }
     lastScrollY = currentY;
   }, { passive: true });
 }

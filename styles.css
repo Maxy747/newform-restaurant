@@ -161,7 +161,10 @@ body {
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--glass-border);
   padding: 14px 40px;
+  transition: transform 0.28s ease;
 }
+
+.compact-brand-logo { display: none; }
 
 .header-container {
   max-width: 1320px;
@@ -678,6 +681,23 @@ body {
 
 @media (max-width: 768px) {
   .header { padding: 10px 14px; }
+  .header.is-mobile-collapsed { transform: translateY(-110%); }
+  .compact-brand-logo {
+    position: fixed;
+    top: 9px;
+    left: 12px;
+    z-index: 101;
+    display: grid;
+    width: 43px;
+    height: 43px;
+    place-items: center;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-16px) scale(.88);
+    transition: opacity .22s ease, transform .28s ease;
+  }
+  .compact-brand-logo.visible { opacity: 1; pointer-events: auto; transform: translateY(0) scale(1); }
+  .compact-brand-logo img { width: 42px; height: 42px; object-fit: contain; border-radius: 50%; border: 1px solid var(--gold-primary); background: var(--bg-glass); }
   .brand-logo-img { width: 42px; height: 42px; }
   .brand-text { font-size: 1.02rem; letter-spacing: 2px; }
   .nav-actions { gap: 10px; }
@@ -686,6 +706,7 @@ body {
   .hero-main-title { font-size: 2.55rem; letter-spacing: 4px; }
   .center-dish-wrapper { max-width: 330px; }
   .controls-wrapper { top: 63px; padding: 10px 12px; }
+  .controls-wrapper.header-collapsed { top: 0; padding-left: 66px; }
   .controls-container { gap: 10px; }
   .search-filter-row { display: block; }
   .search-box { min-width: 0; }
