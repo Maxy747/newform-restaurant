@@ -563,8 +563,6 @@ body {
 .diet-filter-toggle .diet-filter-icons { display: inline-flex; gap: 3px; }
 .diet-filter-toggle.veg { color: #2a9d8f; border-color: #2a9d8f; }
 .diet-filter-toggle.non-veg { color: var(--accent-red); border-color: var(--accent-red); }
-.diet-filter-toggle.all .diet-filter-icons i:first-child { color: #2a9d8f; }
-.diet-filter-toggle.all .diet-filter-icons i:last-child { color: var(--accent-red); }
 
 .filter-btn {
   padding: 8px 18px;

@@ -151,7 +151,7 @@ const DEFAULT_MENU = [
 let menuItems = [];
 let cart = [];
 let activeCategory = 'all';
-let activeDiet = 'all';
+let activeDiet = 'non-veg';
 let searchQuery = '';
 let selectedPortions = {};
 let isAdmin = false;
@@ -455,14 +455,16 @@ function setupEventListeners() {
     updateCategoryScrollControls();
   }
 
-  // Compact diet filter cycles through all, vegetarian, and non-vegetarian dishes.
+  // Compact diet filter toggles between vegetarian and non-vegetarian dishes.
   const dietFilterToggle = document.getElementById('dietFilterToggle');
   if (dietFilterToggle) {
     dietFilterToggle.addEventListener('click', () => {
-      activeDiet = activeDiet === 'all' ? 'veg' : activeDiet === 'veg' ? 'non-veg' : 'all';
+      activeDiet = activeDiet === 'veg' ? 'non-veg' : 'veg';
       const label = document.getElementById('dietFilterLabel');
       dietFilterToggle.className = `diet-filter-toggle ${activeDiet}`;
-      if (label) label.textContent = activeDiet === 'all' ? 'All Menu' : activeDiet === 'veg' ? 'Veg' : 'Non-Veg';
+      const icon = dietFilterToggle.querySelector('.diet-filter-icons');
+      if (label) label.textContent = activeDiet === 'veg' ? 'Veg' : 'Non-Veg';
+      if (icon) icon.innerHTML = activeDiet === 'veg' ? '<i class="fa-solid fa-leaf"></i>' : '<i class="fa-solid fa-drumstick-bite"></i>';
       renderMenu();
     });
   }
