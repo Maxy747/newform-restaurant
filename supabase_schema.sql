@@ -64,3 +64,53 @@ with check (bucket_id = 'menu-images' and exists (select 1 from public.profiles 
 -- insert into public.profiles (id, role)
 -- select id, 'admin' from auth.users where email = 'admin@example.com'
 -- on conflict (id) do update set role = 'admin';
+
+-- Customer accounts and orders. Razorpay payment confirmation must be handled by
+-- a server-side Edge Function/webhook; never mark a browser-created order paid.
+alter table public.profiles add column if not exists full_name text;
+alter table public.profiles add column if not exists phone text;
+alter table public.profiles add column if not exists default_address text;
+
+create table if not exists public.orders (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete restrict,
+  customer_name text not null,
+  phone text not null,
+  delivery_address text not null,
+  items jsonb not null check (jsonb_typeof(items) = 'array' and jsonb_array_length(items) > 0),
+  subtotal numeric(10,2) not null check (subtotal >= 0),
+  tax numeric(10,2) not null check (tax >= 0),
+  total numeric(10,2) not null check (total >= 0),
+  payment_method text not null check (payment_method in ('whatsapp', 'cod', 'razorpay')),
+  payment_status text not null default 'pending' check (payment_status in ('pending', 'paid', 'not_required', 'failed')),
+  order_status text not null default 'new' check (order_status in ('new', 'confirmed', 'preparing', 'out_for_delivery', 'completed', 'cancelled', 'awaiting_payment')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint cod_minimum_total check (payment_method <> 'cod' or total >= 1000)
+);
+create index if not exists orders_user_created_at_idx on public.orders (user_id, created_at desc);
+create index if not exists orders_status_created_at_idx on public.orders (order_status, created_at desc);
+drop trigger if exists orders_set_updated_at on public.orders;
+create trigger orders_set_updated_at before update on public.orders for each row execute procedure public.set_updated_at();
+
+alter table public.orders enable row level security;
+grant select, insert on public.orders to authenticated;
+grant update on public.orders to authenticated;
+grant insert, update on public.profiles to authenticated;
+drop policy if exists "Users can create their own profile" on public.profiles;
+drop policy if exists "Users can update their own customer profile" on public.profiles;
+create policy "Users can create their own profile" on public.profiles for insert to authenticated
+with check (id = (select auth.uid()) and role = 'staff');
+create policy "Users can update their own customer profile" on public.profiles for update to authenticated
+using (id = (select auth.uid()) and role = 'staff')
+with check (id = (select auth.uid()) and role = 'staff');
+drop policy if exists "Users can read their own orders" on public.orders;
+drop policy if exists "Users can create their own orders" on public.orders;
+drop policy if exists "Admins manage orders" on public.orders;
+create policy "Users can read their own orders" on public.orders for select to authenticated
+using (user_id = (select auth.uid()));
+create policy "Users can create their own orders" on public.orders for insert to authenticated
+with check (user_id = (select auth.uid()) and payment_status in ('pending', 'not_required'));
+create policy "Admins manage orders" on public.orders for all to authenticated
+using (exists (select 1 from public.profiles where id = (select auth.uid()) and role = 'admin'))
+with check (exists (select 1 from public.profiles where id = (select auth.uid()) and role = 'admin'));

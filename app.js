@@ -156,6 +156,9 @@ let searchQuery = '';
 let selectedPortions = {};
 let isAdmin = false;
 let editingItemId = null;
+let currentSession = null;
+let activeToastTimer = null;
+let lastScrollY = 0;
 
 // LocalStorage Keys
 const CART_STORAGE_KEY = 'newform_cart_v1';
@@ -216,6 +219,7 @@ async function checkAdminState() {
 }
 
 async function refreshAdminState(session) {
+  currentSession = session;
   isAdmin = false;
   if (session) {
     const { data, error } = await supabase
@@ -227,6 +231,7 @@ async function refreshAdminState(session) {
   }
   updateAdminUI();
   renderMenu();
+  if (document.getElementById('accountModal')?.classList.contains('active')) renderAccount();
 }
 
 function updateAdminUI() {
@@ -380,6 +385,11 @@ function setupEventListeners() {
   const adminToggleBtnFooter = document.getElementById('adminToggleBtnFooter');
   const aboutBtnNav = document.getElementById('aboutBtnNav');
   const contactBtnNav = document.getElementById('contactBtnNav');
+  const contactBtnMobile = document.getElementById('contactBtnMobile');
+  const accountBtnMobile = document.getElementById('accountBtnMobile');
+  const closeAccountModalBtn = document.getElementById('closeAccountModalBtn');
+  const ordersBtn = document.getElementById('ordersBtn');
+  const closeOrdersModalBtn = document.getElementById('closeOrdersModalBtn');
   const closeAboutModalBtn = document.getElementById('closeAboutModalBtn');
   const closeContactModalBtn = document.getElementById('closeContactModalBtn');
   const closeAdminModalBtn = document.getElementById('closeAdminModalBtn');
@@ -394,8 +404,13 @@ function setupEventListeners() {
 
   if (aboutBtnNav) aboutBtnNav.addEventListener('click', openAboutModal);
   if (contactBtnNav) contactBtnNav.addEventListener('click', openContactModal);
+  if (contactBtnMobile) contactBtnMobile.addEventListener('click', openContactModal);
   if (closeAboutModalBtn) closeAboutModalBtn.addEventListener('click', closeAboutModal);
   if (closeContactModalBtn) closeContactModalBtn.addEventListener('click', closeContactModal);
+  if (accountBtnMobile) accountBtnMobile.addEventListener('click', openAccountModal);
+  if (closeAccountModalBtn) closeAccountModalBtn.addEventListener('click', closeAccountModal);
+  if (ordersBtn) ordersBtn.addEventListener('click', openOrdersModal);
+  if (closeOrdersModalBtn) closeOrdersModalBtn.addEventListener('click', closeOrdersModal);
 
   if (closeAdminModalBtn) closeAdminModalBtn.addEventListener('click', closeAdminLoginModal);
   if (submitAdminAuthBtn) submitAdminAuthBtn.addEventListener('click', handleAdminLogin);
@@ -463,11 +478,13 @@ function setupEventListeners() {
   // Drawer / Modals UI
   const cartBtn = document.getElementById('cartBtn');
   const cartBtnMobile = document.getElementById('cartBtnMobile');
+  const mobileCartCta = document.getElementById('mobileCartCta');
   const closeCartBtn = document.getElementById('closeCartBtn');
   const overlay = document.getElementById('overlay');
 
   if (cartBtn) cartBtn.addEventListener('click', openCart);
   if (cartBtnMobile) cartBtnMobile.addEventListener('click', openCart);
+  if (mobileCartCta) mobileCartCta.addEventListener('click', openCart);
   if (closeCartBtn) closeCartBtn.addEventListener('click', closeCart);
   if (overlay) overlay.addEventListener('click', closeAllModals);
 
@@ -487,6 +504,8 @@ function setupEventListeners() {
       if (menuAction === 'remove') window.deleteItem(itemId);
     });
   }
+  startSearchPlaceholderAnimation(searchInput);
+  setupCategoryVisibility();
 
   // Add Item Modal Buttons (Admin Protected)
   const addItemBtn = document.getElementById('addItemBtn');
@@ -518,10 +537,8 @@ function setupEventListeners() {
   }
 
   // WhatsApp Checkout
-  const whatsappCheckoutBtn = document.getElementById('whatsappCheckoutBtn');
-  if (whatsappCheckoutBtn) {
-    whatsappCheckoutBtn.addEventListener('click', processWhatsAppOrder);
-  }
+  const placeOrderBtn = document.getElementById('placeOrderBtn');
+  if (placeOrderBtn) placeOrderBtn.addEventListener('click', placeOrder);
 }
 
 function triggerAddItem() {
@@ -653,7 +670,11 @@ window.addToCart = function(itemId) {
 function updateCartBadge() {
   const totalCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const badge1 = document.getElementById('cartBadge');
+  const mobileCta = document.getElementById('mobileCartCta');
+  const mobileCtaCount = document.getElementById('mobileCartCtaCount');
   if (badge1) badge1.textContent = totalCount;
+  if (mobileCta) mobileCta.hidden = totalCount === 0;
+  if (mobileCtaCount) mobileCtaCount.textContent = totalCount ? `(${totalCount})` : '';
 }
 
 // Render Cart Drawer Contents
@@ -693,13 +714,16 @@ function renderCart() {
     </div>
   `).join('');
 
-  const subtotal = cart.reduce((sum, i) => sum + (i.price * i.quantity), 0);
-  const gst = Math.round(subtotal * 0.05); // 5% GST
-  const total = subtotal + gst;
+  const { subtotal, tax: gst, total } = calculateCartTotals();
 
   if (subtotalEl) subtotalEl.textContent = `₹${subtotal}`;
   if (taxEl) taxEl.textContent = `₹${gst}`;
   if (totalEl) totalEl.textContent = `₹${total}`;
+  const codPayment = document.getElementById('codPayment');
+  if (codPayment) {
+    codPayment.disabled = total < 1000;
+    if (total < 1000 && codPayment.checked) document.querySelector('input[name="paymentMethod"][value="whatsapp"]').checked = true;
+  }
 }
 
 window.updateCartQty = function(index, delta) {
@@ -732,6 +756,40 @@ function closeAllModals() {
   closeAdminLoginModal();
   closeAboutModal();
   closeContactModal();
+  closeAccountModal();
+  closeOrdersModal();
+}
+
+function startSearchPlaceholderAnimation(input) {
+  if (!input) return;
+  const words = ['Mandhi', 'Alfaham', 'Beef Fry', 'Paneer'];
+  let wordIndex = 0, letterIndex = 0, deleting = false;
+  setInterval(() => {
+    if (document.activeElement === input || input.value) return;
+    const word = words[wordIndex];
+    input.placeholder = `Search ${word.slice(0, letterIndex)}${letterIndex < word.length ? '|' : ''}`;
+    if (!deleting && letterIndex === word.length) deleting = true;
+    else if (deleting && letterIndex === 0) { deleting = false; wordIndex = (wordIndex + 1) % words.length; }
+    else letterIndex += deleting ? -1 : 1;
+  }, 150);
+}
+
+function setupCategoryVisibility() {
+  const categories = document.querySelector('.category-scroll-shell');
+  if (!categories) return;
+  window.addEventListener('scroll', () => {
+    if (window.innerWidth > 768) return;
+    const currentY = window.scrollY;
+    if (currentY > 170 && currentY > lastScrollY + 8) categories.classList.add('is-collapsed');
+    if (currentY < lastScrollY - 8) categories.classList.remove('is-collapsed');
+    lastScrollY = currentY;
+  }, { passive: true });
+}
+
+function calculateCartTotals() {
+  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const tax = Math.round(subtotal * 0.05);
+  return { subtotal, tax, total: subtotal + tax };
 }
 
 // In-App Manager: Open / Close Add Food Item Modal
@@ -895,64 +953,88 @@ window.deleteItem = async function(id) {
   }
 };
 
-// WhatsApp Direct Ordering
-function processWhatsAppOrder() {
-  if (cart.length === 0) {
-    alert('Your cart is empty! Add dishes before sending order.');
+function openAccountModal() { document.getElementById('overlay').classList.add('active'); document.getElementById('accountModal').classList.add('active'); renderAccount(); }
+function closeAccountModal() { document.getElementById('overlay').classList.remove('active'); document.getElementById('accountModal').classList.remove('active'); }
+function openOrdersModal() { document.getElementById('overlay').classList.add('active'); document.getElementById('ordersModal').classList.add('active'); renderAdminOrders(); }
+function closeOrdersModal() { document.getElementById('overlay').classList.remove('active'); document.getElementById('ordersModal').classList.remove('active'); }
+
+async function renderAccount() {
+  const content = document.getElementById('accountContent');
+  if (!content) return;
+  if (!currentSession) {
+    content.innerHTML = `<div class="account-section"><p>Sign in to place orders, save delivery details, and see your order history.</p><input id="accountEmail" class="form-control" type="email" placeholder="Email"><input id="accountPassword" class="form-control" type="password" placeholder="Password"><button id="accountSignIn" class="btn-minimal btn-primary-minimal">SIGN IN</button><button id="accountSignUp" class="btn-minimal">CREATE ACCOUNT</button></div>`;
+    document.getElementById('accountSignIn').onclick = () => accountSignIn(false);
+    document.getElementById('accountSignUp').onclick = () => accountSignIn(true);
     return;
   }
-
-  const custName = document.getElementById('custName').value.trim() || 'Valued Customer';
-  const custPhone = document.getElementById('custPhone').value.trim() || 'Not specified';
-  const custAddress = document.getElementById('custAddress').value.trim() || 'Kalpetta area';
-
-  let subtotal = 0;
-  let itemsListText = '';
-
-  cart.forEach((item, idx) => {
-    const itemTotal = item.price * item.quantity;
-    subtotal += itemTotal;
-    itemsListText += `${idx + 1}. *${item.name}* ${item.portion ? `(${item.portion})` : ''} x ${item.quantity} = ₹${itemTotal}\n`;
-  });
-
-  const gst = Math.round(subtotal * 0.05);
-  const grandTotal = subtotal + gst;
-
-  const msg = `*NEWFORM MULTI CUISINE RESTAURANT - NEW ORDER*\n` +
-              `----------------------------------------\n` +
-              `*Customer Details:*\n` +
-              `👤 Name: ${custName}\n` +
-              `📞 Phone: ${custPhone}\n` +
-              `📍 Delivery Address: ${custAddress}\n\n` +
-              `*Order Summary:*\n` +
-              itemsListText +
-              `----------------------------------------\n` +
-              `Subtotal: ₹${subtotal}\n` +
-              `5% GST: ₹${gst}\n` +
-              `*Grand Total: ₹${grandTotal}*\n\n` +
-              `🚚 *Delivery Note:* Free home delivery within Kalpetta city limits for orders above ₹300.\n` +
-              `Please confirm this order. Thank you!`;
-
-  const encodedMsg = encodeURIComponent(msg);
-  const restaurantWhatsAppNumber = '917593881112';
-  const whatsappUrl = `https://wa.me/${restaurantWhatsAppNumber}?text=${encodedMsg}`;
-
-  window.open(whatsappUrl, '_blank');
+  const { data: profile } = await supabase.from('profiles').select('full_name, phone, default_address').eq('id', currentSession.user.id).maybeSingle();
+  const { data: orders } = await supabase.from('orders').select('*').eq('user_id', currentSession.user.id).order('created_at', { ascending: false }).limit(12);
+  content.innerHTML = `<div class="account-section"><p><strong>${currentSession.user.email}</strong></p><input id="profileName" class="form-control" placeholder="Your name" value="${profile?.full_name || ''}"><input id="profilePhone" class="form-control" placeholder="Mobile number" value="${profile?.phone || ''}"><textarea id="profileAddress" class="form-control" rows="2" placeholder="Default delivery address">${profile?.default_address || ''}</textarea><button id="saveProfile" class="btn-minimal">SAVE DETAILS</button><h4>ORDER HISTORY</h4>${orders?.length ? orders.map(order => `<div class="order-history-item"><strong>Order #${order.id.slice(0, 8)}</strong><span class="order-status">${order.order_status.replaceAll('_', ' ')}</span><small>${new Date(order.created_at).toLocaleString()} · ${order.payment_method.toUpperCase()} · ${order.payment_status}</small><strong>₹${order.total}</strong></div>`).join('') : '<p>No orders yet.</p>'}<button id="accountSignOut" class="btn-minimal">SIGN OUT</button></div>`;
+  document.getElementById('saveProfile').onclick = saveCustomerProfile;
+  document.getElementById('accountSignOut').onclick = async () => { await supabase.auth.signOut(); closeAccountModal(); };
 }
+
+async function accountSignIn(signUp) {
+  const email = document.getElementById('accountEmail').value.trim();
+  const password = document.getElementById('accountPassword').value;
+  if (!email || !password) return showToast('Enter an email and password.');
+  const result = signUp ? await supabase.auth.signUp({ email, password }) : await supabase.auth.signInWithPassword({ email, password });
+  if (result.error) return showToast(result.error.message);
+  showToast(signUp && !result.data.session ? 'Check your email to confirm your account.' : 'Signed in successfully.');
+  if (result.data.session) { currentSession = result.data.session; await renderAccount(); }
+}
+
+async function saveCustomerProfile() {
+  const payload = { id: currentSession.user.id, role: 'staff', full_name: document.getElementById('profileName').value.trim(), phone: document.getElementById('profilePhone').value.trim(), default_address: document.getElementById('profileAddress').value.trim() };
+  const { error } = await supabase.from('profiles').upsert(payload);
+  showToast(error ? error.message : 'Delivery details saved.');
+}
+
+async function placeOrder() {
+  if (!cart.length) return showToast('Your cart is empty.');
+  if (!currentSession) { closeCart(); openAccountModal(); return showToast('Sign in before placing an order.'); }
+  const customer_name = document.getElementById('custName').value.trim();
+  const phone = document.getElementById('custPhone').value.trim();
+  const delivery_address = document.getElementById('custAddress').value.trim();
+  if (!customer_name || !phone || !delivery_address) return showToast('Add your name, phone, and delivery address.');
+  const payment_method = document.querySelector('input[name="paymentMethod"]:checked')?.value;
+  const { subtotal, tax, total } = calculateCartTotals();
+  if (payment_method === 'cod' && total < 1000) return showToast('Cash on delivery is available from ₹1,000.');
+  const { data: order, error } = await supabase.from('orders').insert({ user_id: currentSession.user.id, customer_name, phone, delivery_address, items: cart, subtotal, tax, total, payment_method, payment_status: payment_method === 'whatsapp' ? 'not_required' : 'pending', order_status: payment_method === 'razorpay' ? 'awaiting_payment' : 'new' }).select().single();
+  if (error) return showToast(`Order could not be saved: ${error.message}`);
+  await supabase.from('profiles').upsert({ id: currentSession.user.id, role: 'staff', full_name: customer_name, phone, default_address: delivery_address });
+  if (payment_method === 'whatsapp') {
+    const lines = cart.map((item, index) => `${index + 1}. ${item.name}${item.portion ? ` (${item.portion})` : ''} x ${item.quantity} = ₹${item.price * item.quantity}`).join('\n');
+    window.open(`https://wa.me/917593881112?text=${encodeURIComponent(`NEWFORM ORDER #${order.id.slice(0, 8)}\n${lines}\nTotal: ₹${total}\n${customer_name}, ${phone}\n${delivery_address}`)}`, '_blank');
+  }
+  cart = []; saveCartData(); updateCartBadge(); closeCart(); showToast(`Order #${order.id.slice(0, 8)} has been placed.`);
+}
+
+async function renderAdminOrders() {
+  const content = document.getElementById('ordersContent');
+  if (!isAdmin) { content.innerHTML = '<p>Admin access required.</p>'; return; }
+  const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(50);
+  if (error) { content.innerHTML = `<p>${error.message}</p>`; return; }
+  content.innerHTML = data.length ? data.map(order => `<div class="order-history-item"><strong>#${order.id.slice(0, 8)} · ₹${order.total}</strong><small>${order.customer_name} · ${order.phone}<br>${order.delivery_address}<br>${new Date(order.created_at).toLocaleString()} · ${order.payment_method} / ${order.payment_status}</small><select class="form-control" onchange="updateOrderStatus('${order.id}', this.value)">${['new','confirmed','preparing','out_for_delivery','completed','cancelled','awaiting_payment'].map(status => `<option value="${status}" ${order.order_status === status ? 'selected' : ''}>${status.replaceAll('_',' ')}</option>`).join('')}</select></div>`).join('') : '<p>No orders yet.</p>';
+}
+window.updateOrderStatus = async (id, order_status) => { const { error } = await supabase.from('orders').update({ order_status }).eq('id', id); if (error) showToast(error.message); else { showToast('Order status updated.'); renderAdminOrders(); } };
 
 // Toast notification helper
 function showToast(message) {
   const container = document.getElementById('toastContainer');
   if (!container) return;
 
+  clearTimeout(activeToastTimer);
+  container.replaceChildren();
+
   const toast = document.createElement('div');
   toast.className = 'toast';
   toast.innerHTML = `<i class="fa-solid fa-circle-check" style="color:#2a9d8f;"></i> ${message}`;
   container.appendChild(toast);
 
-  setTimeout(() => {
+  activeToastTimer = setTimeout(() => {
     toast.style.opacity = '0';
-    toast.style.transform = 'translateX(100%)';
+    toast.style.transform = 'translateY(-8px)';
     setTimeout(() => toast.remove(), 300);
   }, 3000);
 }

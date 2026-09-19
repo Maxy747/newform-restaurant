@@ -542,7 +542,13 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+  max-height: 54px;
+  opacity: 1;
+  overflow: hidden;
+  transition: max-height 0.24s ease, opacity 0.2s ease, margin 0.24s ease;
 }
+
+.category-scroll-shell.is-collapsed { max-height: 0; opacity: 0; margin-top: -14px; pointer-events: none; }
 
 .category-scroll {
   display: flex;
@@ -651,6 +657,33 @@ body {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 32px;
+}
+
+@media (max-width: 768px) {
+  .header { padding: 10px 14px; }
+  .brand-logo-img { width: 42px; height: 42px; }
+  .brand-text { font-size: 1.02rem; letter-spacing: 2px; }
+  .nav-actions { gap: 10px; }
+  .hero-minimal { padding: 32px 16px 40px; min-height: auto; }
+  .hero-grid { gap: 24px; }
+  .hero-main-title { font-size: 2.55rem; letter-spacing: 4px; }
+  .center-dish-wrapper { max-width: 330px; }
+  .controls-wrapper { top: 63px; padding: 10px 12px; }
+  .controls-container { gap: 10px; }
+  .search-filter-row { display: block; }
+  .search-box { min-width: 0; }
+  .search-input { min-height: 48px; font-size: 0.98rem; }
+  .diet-filters { justify-content: center; width: 100%; margin-top: 10px; }
+  .filter-btn { min-width: 88px; padding: 10px 12px; }
+  .menu-section { margin: 22px auto 32px; padding: 0 10px; }
+  .section-header { padding: 0 4px; margin-bottom: 14px; }
+  .food-grid { grid-template-columns: 1fr; gap: 14px; }
+  .food-card { border-radius: 18px; }
+  .card-img-container { height: clamp(220px, 62vw, 300px); }
+  .card-body { padding: 18px; }
+  .food-name { font-size: 1.28rem; }
+  .food-desc { font-size: 0.9rem; }
+  .add-cart-btn { padding: 11px 22px; font-size: 0.84rem; }
 }
 
 /* Food Card with Translucent Glass Effect */
@@ -1002,7 +1035,7 @@ body {
   backdrop-filter: blur(16px);
   border-top: 1px solid var(--glass-border);
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: center;
   justify-items: center;
   padding: 10px 0;
@@ -1033,12 +1066,12 @@ body {
 
 .toast-container {
   position: fixed;
-  bottom: 90px;
-  right: 24px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   z-index: 300;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  width: min(90vw, 420px);
+  pointer-events: none;
 }
 
 .toast {
@@ -1053,6 +1086,45 @@ body {
   gap: 10px;
   font-size: 0.85rem;
 }
+
+.mobile-cart-cta {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-cart-cta:not([hidden]) {
+    position: fixed;
+    right: 14px;
+    bottom: 78px;
+    z-index: 149;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 18px;
+    border: 0;
+    border-radius: var(--radius-full);
+    background: var(--gold-btn-gradient);
+    color: var(--btn-primary-text);
+    font-family: var(--font-heading);
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: .08em;
+    box-shadow: var(--shadow-gold);
+    cursor: pointer;
+  }
+}
+
+.checkout-methods { display: grid; gap: 8px; }
+.checkout-method { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--glass-border); border-radius: var(--radius-sm); cursor: pointer; font-size: 0.82rem; }
+.checkout-method input { accent-color: var(--gold-primary); }
+.checkout-method i { width: 20px; text-align: center; font-size: 1.05rem; }
+.checkout-method small { color: var(--text-muted); }
+.checkout-method.is-disabled { opacity: .55; cursor: not-allowed; }
+.account-section { display: grid; gap: 12px; }
+.account-section h4 { font-family: var(--font-heading); letter-spacing: .06em; }
+.order-history-item { padding: 12px; border: 1px solid var(--glass-border); border-radius: var(--radius-sm); display: grid; gap: 5px; margin-top: 8px; }
+.order-history-item small { color: var(--text-muted); }
+.order-status { text-transform: capitalize; color: var(--gold-primary); font-weight: 700; }
 
 .info-section {
   max-width: 1320px;
@@ -1112,7 +1184,7 @@ footer {
 }
 
 .mobile-cart-nav-item {
-  grid-column: 2;
+  grid-column: 3;
 }
 
 .footer-admin-link:hover {
