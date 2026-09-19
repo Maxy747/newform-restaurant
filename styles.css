@@ -886,6 +886,7 @@ html { scroll-behavior: smooth; }
 
 @media (prefers-reduced-motion: reduce) {
   .center-dish-wrapper, .card-img { transform: none; transition: none; }
+  .card-badge { animation: none; }
 }
 
 
@@ -944,6 +945,39 @@ html { scroll-behavior: smooth; }
   border-radius: var(--radius-full);
   text-transform: uppercase;
   box-shadow: var(--shadow-gold);
+}
+
+.card-badge.tag-bestseller {
+  background: linear-gradient(135deg, #f7bf38, #e68a12);
+  color: #231703;
+  box-shadow: 0 0 10px rgba(247, 191, 56, .55), 0 0 20px rgba(247, 191, 56, .22);
+  animation: tag-breathe-gold 2.8s ease-in-out infinite;
+}
+
+.card-badge.tag-popular {
+  background: linear-gradient(135deg, #56d5df, #2376a9);
+  color: #f7ffff;
+  box-shadow: 0 0 10px rgba(86, 213, 223, .5), 0 0 20px rgba(50, 137, 195, .2);
+  animation: tag-breathe-blue 3.1s ease-in-out infinite;
+}
+
+.card-badge.tag-spicy {
+  background: linear-gradient(135deg, #ff7652, #cf2e2e);
+  color: #fff8f4;
+  box-shadow: 0 0 10px rgba(255, 91, 62, .56), 0 0 20px rgba(220, 51, 40, .22);
+  animation: tag-breathe-red 2.6s ease-in-out infinite;
+}
+
+@keyframes tag-breathe-gold {
+  50% { box-shadow: 0 0 15px rgba(247, 191, 56, .75), 0 0 28px rgba(247, 191, 56, .35); transform: translateY(-1px); }
+}
+
+@keyframes tag-breathe-blue {
+  50% { box-shadow: 0 0 15px rgba(86, 213, 223, .7), 0 0 28px rgba(50, 137, 195, .34); transform: translateY(-1px); }
+}
+
+@keyframes tag-breathe-red {
+  50% { box-shadow: 0 0 15px rgba(255, 91, 62, .75), 0 0 28px rgba(220, 51, 40, .35); transform: translateY(-1px); }
 }
 
 .food-card.admin-mode .card-badge {

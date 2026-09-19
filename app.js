@@ -564,6 +564,14 @@ function triggerAddItem() {
 }
 
 // Render Menu Cards
+function getTagTone(tag) {
+  const normalizedTag = String(tag || '').trim().toLowerCase();
+  if (normalizedTag === 'bestseller') return 'tag-bestseller';
+  if (normalizedTag === 'popular') return 'tag-popular';
+  if (normalizedTag === 'spicy') return 'tag-spicy';
+  return '';
+}
+
 function renderMenu() {
   const container = document.getElementById('foodGrid');
   const countEl = document.getElementById('itemCount');
@@ -605,7 +613,7 @@ function renderMenu() {
         <div class="card-img-container">
           <img src="${item.image || 'assets/hero.png'}" alt="${item.name}" class="card-img" onerror="this.src='assets/hero.png'">
           <div class="diet-icon ${item.diet}"></div>
-          ${item.tag ? `<span class="card-badge">${item.tag}</span>` : ''}
+          ${item.tag ? `<span class="card-badge ${getTagTone(item.tag)}">${item.tag}</span>` : ''}
           ${isAdmin ? `
             <div class="card-admin-controls" aria-label="Admin item controls">
               <button type="button" class="admin-card-action admin-edit-item-btn" data-menu-action="edit" data-item-id="${item.id}" title="Edit ${item.name}" aria-label="Edit ${item.name}">
