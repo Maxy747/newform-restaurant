@@ -106,11 +106,10 @@
           <input type="text" id="searchInput" class="search-input" placeholder="Search Mandhi">
         </div>
 
-        <div class="diet-filters">
-          <button class="filter-btn active" data-diet="all">All</button>
-          <button class="filter-btn veg" data-diet="veg"><i class="fa-solid fa-leaf"></i> Veg</button>
-          <button class="filter-btn non-veg" data-diet="non-veg"><i class="fa-solid fa-drumstick-bite"></i> Non-Veg</button>
-        </div>
+        <button id="dietFilterToggle" class="diet-filter-toggle all" type="button" aria-label="Filter menu by dietary type">
+          <span class="diet-filter-icons"><i class="fa-solid fa-leaf"></i><i class="fa-solid fa-drumstick-bite"></i></span>
+          <span id="dietFilterLabel">All Menu</span>
+        </button>
       </div>
 
       <!-- Horizontal Categories Bar -->

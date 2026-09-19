@@ -540,6 +540,30 @@ body {
   gap: 8px;
 }
 
+.diet-filter-toggle {
+  flex: 0 0 auto;
+  min-width: 106px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 12px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-full);
+  background: var(--input-bg);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: .78rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.diet-filter-toggle .diet-filter-icons { display: inline-flex; gap: 3px; }
+.diet-filter-toggle.veg { color: #2a9d8f; border-color: #2a9d8f; }
+.diet-filter-toggle.non-veg { color: var(--accent-red); border-color: var(--accent-red); }
+.diet-filter-toggle.all .diet-filter-icons i:first-child { color: #2a9d8f; }
+.diet-filter-toggle.all .diet-filter-icons i:last-child { color: var(--accent-red); }
+
 .filter-btn {
   padding: 8px 18px;
   border-radius: var(--radius-full);
@@ -709,11 +733,10 @@ body {
   .controls-wrapper { top: 63px; padding: 10px 12px; }
   .controls-wrapper.header-collapsed { top: 0; padding-left: 66px; }
   .controls-container { gap: 10px; }
-  .search-filter-row { display: block; }
+  .search-filter-row { display: flex; flex-wrap: nowrap; align-items: stretch; }
   .search-box { min-width: 0; }
   .search-input { min-height: 48px; font-size: 0.98rem; }
-  .diet-filters { justify-content: center; width: 100%; margin-top: 10px; }
-  .filter-btn { min-width: 88px; padding: 10px 12px; }
+  .diet-filter-toggle { min-width: 98px; font-size: .72rem; padding: 10px 9px; }
   .menu-section { margin: 22px auto 32px; padding: 0 10px; }
   .section-header { padding: 0 4px; margin-bottom: 14px; }
   .food-grid { grid-template-columns: 1fr; gap: 14px; }

@@ -455,16 +455,17 @@ function setupEventListeners() {
     updateCategoryScrollControls();
   }
 
-  // Diet Filter Buttons
-  document.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-      const target = e.currentTarget;
-      target.classList.add('active');
-      activeDiet = target.dataset.diet;
+  // Compact diet filter cycles through all, vegetarian, and non-vegetarian dishes.
+  const dietFilterToggle = document.getElementById('dietFilterToggle');
+  if (dietFilterToggle) {
+    dietFilterToggle.addEventListener('click', () => {
+      activeDiet = activeDiet === 'all' ? 'veg' : activeDiet === 'veg' ? 'non-veg' : 'all';
+      const label = document.getElementById('dietFilterLabel');
+      dietFilterToggle.className = `diet-filter-toggle ${activeDiet}`;
+      if (label) label.textContent = activeDiet === 'all' ? 'All Menu' : activeDiet === 'veg' ? 'Veg' : 'Non-Veg';
       renderMenu();
     });
-  });
+  }
 
   // Search Input
   const searchInput = document.getElementById('searchInput');
