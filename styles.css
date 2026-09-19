@@ -161,7 +161,8 @@ body {
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--glass-border);
   padding: 14px 40px;
-  transition: transform 0.28s ease;
+  will-change: transform;
+  transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .compact-brand-logo { display: none; }
@@ -486,7 +487,8 @@ body {
   backdrop-filter: blur(20px);
   border-y: 1px solid var(--glass-border);
   padding: 16px 40px;
-  transition: top 0.28s ease, padding 0.28s ease;
+  will-change: transform, padding-left;
+  transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1), padding-left 0.42s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .controls-container {
@@ -706,7 +708,7 @@ body {
 
 @media (max-width: 768px) {
   .header { padding: 10px 14px; }
-  .header.is-mobile-collapsed { transform: translateY(-110%); }
+  .header.is-mobile-collapsed { transform: translate3d(0, -110%, 0); }
   .compact-brand-logo {
     position: fixed;
     top: 9px;
@@ -718,10 +720,11 @@ body {
     place-items: center;
     opacity: 0;
     pointer-events: none;
-    transform: translateY(-16px) scale(.88);
-    transition: opacity .22s ease, transform .28s ease;
+    transform: translate3d(0, -16px, 0) scale(.88);
+    will-change: transform, opacity;
+    transition: opacity .25s ease, transform .42s cubic-bezier(0.22, 1, 0.36, 1);
   }
-  .compact-brand-logo.visible { opacity: 1; pointer-events: auto; transform: translateY(0) scale(1); }
+  .compact-brand-logo.visible { opacity: 1; pointer-events: auto; transform: translate3d(0, 0, 0) scale(1); }
   .compact-brand-logo img { width: 42px; height: 42px; object-fit: contain; border-radius: 50%; border: 1px solid var(--gold-primary); background: var(--bg-glass); }
   .brand-logo-img { width: 42px; height: 42px; }
   .brand-text { font-size: 1.02rem; letter-spacing: 2px; }
@@ -731,7 +734,7 @@ body {
   .hero-main-title { font-size: 2.55rem; letter-spacing: 4px; }
   .center-dish-wrapper { max-width: 330px; }
   .controls-wrapper { top: 63px; padding: 10px 12px; }
-  .controls-wrapper.header-collapsed { top: 0; padding-left: 66px; }
+  .controls-wrapper.header-collapsed { transform: translate3d(0, -63px, 0); padding-left: 66px; }
   .controls-container { gap: 10px; }
   .search-filter-row { display: flex; flex-wrap: nowrap; align-items: stretch; }
   .search-box { min-width: 0; }
