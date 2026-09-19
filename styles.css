@@ -701,6 +701,22 @@ body {
   .food-name { font-size: 1.28rem; }
   .food-desc { font-size: 0.9rem; }
   .add-cart-btn { padding: 11px 22px; font-size: 0.84rem; }
+  .info-section {
+    margin: 32px auto;
+    padding: 0 12px;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .info-card {
+    width: 100%;
+    min-width: 0;
+    padding: 16px;
+    gap: 14px;
+    border-radius: 18px;
+  }
+  .info-icon { width: 44px; height: 44px; font-size: 1.2rem; }
+  .info-text { min-width: 0; }
+  .info-text p { line-height: 1.5; }
 }
 
 /* Food Card with Translucent Glass Effect */
