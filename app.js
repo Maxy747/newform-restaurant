@@ -631,6 +631,11 @@ function renderMenu() {
 window.selectPortion = function(itemId, portion) {
   selectedPortions[itemId] = portion;
   renderMenu();
+  const addButton = document.querySelector(`#card-${CSS.escape(itemId)} .add-cart-btn`);
+  if (addButton) {
+    addButton.classList.add('portion-changed');
+    setTimeout(() => addButton.classList.remove('portion-changed'), 320);
+  }
 };
 
 // Add to Cart
