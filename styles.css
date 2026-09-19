@@ -165,6 +165,8 @@ body {
   transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+html { scroll-behavior: smooth; }
+
 .compact-brand-logo { display: none; }
 
 .header-container {
@@ -725,6 +727,7 @@ body {
   max-width: 1320px;
   margin: 40px auto;
   padding: 0 40px;
+  scroll-margin-top: 154px;
 }
 
 .section-header {
@@ -793,6 +796,7 @@ body {
   .search-input { min-height: 48px; font-size: 0.98rem; }
   .diet-filter-toggle { min-width: 98px; font-size: .72rem; padding: 10px 9px; }
   .menu-section { margin: 22px auto 32px; padding: 0 10px; }
+  .menu-section { scroll-margin-top: 126px; }
   .section-header { padding: 0 4px; margin-bottom: 14px; }
   .food-grid { grid-template-columns: 1fr; gap: 14px; }
   .food-card { border-radius: 18px; }
