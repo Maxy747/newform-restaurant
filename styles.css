@@ -726,6 +726,16 @@ body {
   transform: scale(1.06);
 }
 
+@media (hover: none), (pointer: coarse) {
+  .food-card:hover {
+    transform: none;
+    border-color: var(--glass-border);
+    box-shadow: var(--shadow-card);
+  }
+
+  .food-card:hover .card-img { transform: none; }
+}
+
 .diet-icon {
   position: absolute;
   top: 14px;
