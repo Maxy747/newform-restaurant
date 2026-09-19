@@ -1156,7 +1156,7 @@ body {
   backdrop-filter: blur(16px);
   border-top: 1px solid var(--glass-border);
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: center;
   justify-items: center;
   padding: 10px 0;
@@ -1307,10 +1307,6 @@ footer {
   letter-spacing: 0.08em;
   cursor: pointer;
   width: 100%;
-}
-
-.mobile-cart-nav-item {
-  grid-column: 3;
 }
 
 .footer-admin-link:hover {
