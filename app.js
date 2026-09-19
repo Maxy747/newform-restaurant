@@ -650,6 +650,41 @@ function renderMenu() {
 }
 
 // Portion Selection Handler
+function animatePrice(element, nextPrice, { hero = false } = {}) {
+  if (!element || !Number.isFinite(Number(nextPrice))) return;
+
+  const previousPrice = Number(element.dataset.price || String(element.textContent).replace(/[^\d.]/g, '')) || 0;
+  const targetPrice = Number(nextPrice);
+  const duration = 360;
+  const start = performance.now();
+
+  cancelAnimationFrame(element._priceAnimationFrame);
+  element.classList.remove('price-rolling');
+  // Restart the small emphasis animation even if the user switches portions quickly.
+  void element.offsetWidth;
+  element.classList.add('price-rolling');
+
+  const render = (value) => {
+    const whole = Math.round(value).toLocaleString('en-IN');
+    element.innerHTML = hero ? `₹${whole}<sup>.00</sup>` : `₹${whole}`;
+  };
+
+  const tick = (now) => {
+    const progress = Math.min((now - start) / duration, 1);
+    // Ease out: the digits move quickly at first and settle cleanly at the price.
+    const eased = 1 - Math.pow(1 - progress, 3);
+    render(previousPrice + (targetPrice - previousPrice) * eased);
+    if (progress < 1) {
+      element._priceAnimationFrame = requestAnimationFrame(tick);
+    } else {
+      element.dataset.price = String(targetPrice);
+      element.classList.remove('price-rolling');
+    }
+  };
+
+  element._priceAnimationFrame = requestAnimationFrame(tick);
+}
+
 window.selectPortion = function(itemId, portion) {
   selectedPortions[itemId] = portion;
   const card = document.getElementById(`card-${itemId}`);
@@ -657,8 +692,7 @@ window.selectPortion = function(itemId, portion) {
   if (!card || !item?.prices) return;
   card.querySelector('.portion-selector').style.setProperty('--portion-offset', portion === 'quarter' ? '0px' : portion === 'half' ? 'calc(100% + 4px)' : 'calc(200% + 8px)');
   card.querySelectorAll('.portion-btn').forEach(button => button.classList.toggle('active', button.textContent.toLowerCase().startsWith(portion === 'quarter' ? 'qtr' : portion)));
-  const price = card.querySelector('.price-amount');
-  if (price) price.textContent = `₹${item.prices[portion]}`;
+  animatePrice(card.querySelector('.price-amount'), item.prices[portion]);
 };
 
 // Add to Cart
@@ -948,7 +982,7 @@ function setupFeaturedDishOrder() {
     const item = menuItems.find(menuItem => menuItem.id === featuredItemId);
     const price = item?.prices?.[portion];
     const priceElement = document.getElementById('heroFeaturedPrice');
-    if (price && priceElement) priceElement.innerHTML = `₹${price}<sup>.00</sup>`;
+    if (price && priceElement) animatePrice(priceElement, price, { hero: true });
     portionButtons.forEach(button => button.classList.toggle('active', button.dataset.heroPortion === portion));
   };
   portionButtons.forEach(button => button.addEventListener('click', () => {
