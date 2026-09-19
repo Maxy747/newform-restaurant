@@ -491,6 +491,32 @@ body {
   transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1), padding-left 0.42s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+.hero-about-copy {
+  max-width: 430px;
+  margin: -8px 0 16px;
+  color: var(--text-muted);
+  font-size: 0.94rem;
+  line-height: 1.65;
+}
+
+.hero-cuisine-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 0 0 22px;
+}
+
+.hero-cuisine-tags span {
+  padding: 5px 8px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-full);
+  color: var(--gold-primary);
+  font-family: var(--font-heading);
+  font-size: .62rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+
 .controls-container {
   max-width: 1320px;
   margin: 0 auto;
@@ -730,6 +756,7 @@ body {
   .hero-minimal { padding: 32px 16px 40px; min-height: auto; }
   .hero-grid { gap: 24px; }
   .hero-main-title { font-size: 2.55rem; letter-spacing: 4px; }
+  .hero-about-copy { font-size: .88rem; margin-top: -10px; }
   .center-dish-wrapper { max-width: 330px; }
   .controls-wrapper { top: 63px; padding: 10px 12px; }
   .controls-wrapper.header-collapsed { transform: translate3d(0, -63px, 0); padding-left: 66px; }
