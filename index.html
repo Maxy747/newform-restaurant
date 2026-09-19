@@ -93,8 +93,13 @@
       <div class="hero-right-col">
         <span class="current-dish-label">THE NEWFORM TABLE</span>
         <p class="current-dish-desc">From aromatic Mandhi and grilled Alfaham to Wayanad-style favourites, there is something on the menu for every appetite.</p>
-        <div class="current-dish-price">₹240<sup>.00</sup></div>
-        <button onclick="addToCart('m1')" class="btn-minimal btn-primary-minimal">
+        <div class="hero-portion-selector" aria-label="Choose Chicken Mandhi portion">
+          <button class="hero-portion-btn active" type="button" data-hero-portion="quarter">Qtr</button>
+          <button class="hero-portion-btn" type="button" data-hero-portion="half">Half</button>
+          <button class="hero-portion-btn" type="button" data-hero-portion="full">Full</button>
+        </div>
+        <div class="current-dish-price" id="heroFeaturedPrice">₹240<sup>.00</sup></div>
+        <button id="heroOrderNowBtn" type="button" class="btn-minimal btn-primary-minimal">
           ORDER NOW
         </button>
       </div>

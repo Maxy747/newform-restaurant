@@ -510,6 +510,7 @@ function setupEventListeners() {
   startSearchPlaceholderAnimation(searchInput);
   setupCategoryVisibility();
   setupImageParallax();
+  setupFeaturedDishOrder();
 
   // Add Item Modal Buttons (Admin Protected)
   const addItemBtn = document.getElementById('addItemBtn');
@@ -864,6 +865,32 @@ function calculateCartTotals() {
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const tax = Math.round(subtotal * 0.05);
   return { subtotal, tax, total: subtotal + tax };
+}
+
+function setupFeaturedDishOrder() {
+  const featuredItemId = 'm1';
+  const orderButton = document.getElementById('heroOrderNowBtn');
+  const portionButtons = document.querySelectorAll('[data-hero-portion]');
+  const updateFeaturedDish = () => {
+    const portion = selectedPortions[featuredItemId] || 'quarter';
+    const item = menuItems.find(menuItem => menuItem.id === featuredItemId);
+    const price = item?.prices?.[portion];
+    const priceElement = document.getElementById('heroFeaturedPrice');
+    if (price && priceElement) priceElement.innerHTML = `₹${price}<sup>.00</sup>`;
+    portionButtons.forEach(button => button.classList.toggle('active', button.dataset.heroPortion === portion));
+  };
+  portionButtons.forEach(button => button.addEventListener('click', () => {
+    selectedPortions[featuredItemId] = button.dataset.heroPortion;
+    updateFeaturedDish();
+  }));
+  if (orderButton) orderButton.addEventListener('click', event => {
+    if (orderButton.disabled) return;
+    window.addToCart(featuredItemId, event);
+    orderButton.disabled = true;
+    orderButton.textContent = 'ADDED TO CART';
+    setTimeout(() => { orderButton.disabled = false; orderButton.textContent = 'ORDER NOW'; }, 1500);
+  });
+  updateFeaturedDish();
 }
 
 // In-App Manager: Open / Close Add Food Item Modal

@@ -493,6 +493,31 @@ body {
   transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1), padding-left 0.42s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+.hero-portion-selector {
+  display: flex;
+  gap: 5px;
+  margin: 0 0 12px;
+  padding: 3px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  background: var(--portion-bg);
+}
+
+.hero-portion-btn {
+  border: 0;
+  border-radius: 6px;
+  padding: 6px 9px;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-heading);
+  font-size: .68rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.hero-portion-btn.active { background: var(--btn-minimal-bg); color: var(--gold-primary); }
+#heroOrderNowBtn:disabled { opacity: .82; cursor: default; transform: none; }
+
 .hero-about-copy {
   max-width: 430px;
   margin: -8px 0 16px;
