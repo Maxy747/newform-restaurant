@@ -1081,6 +1081,33 @@ html { scroll-behavior: smooth; }
 .add-cart-btn.button-added { animation: addToCartPulse 0.42s ease; }
 .add-cart-btn:disabled { opacity: .8; cursor: default; }
 
+.card-qty-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-full);
+  background: var(--portion-bg);
+  color: var(--text-main);
+  font-family: var(--font-heading);
+  font-size: .82rem;
+  font-weight: 800;
+}
+
+.card-qty-control button {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--btn-minimal-bg);
+  color: var(--gold-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.card-qty-control span { min-width: 18px; text-align: center; }
+
 @keyframes addToCartPulse {
   0% { transform: scale(1); }
   40% { transform: scale(0.9); }

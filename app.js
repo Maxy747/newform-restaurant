@@ -588,6 +588,8 @@ function renderMenu() {
     if (item.portionType === 'multi' && item.prices) {
       currentPrice = item.prices[currentPortion] || item.prices.quarter;
     }
+    const currentCartId = `${item.id}_${item.portionType === 'multi' ? currentPortion : 'single'}`;
+    const cartEntry = cart.find(entry => entry.cartId === currentCartId);
 
     return `
       <div class="food-card${isAdmin ? ' admin-mode' : ''}" id="card-${item.id}">
@@ -622,9 +624,15 @@ function renderMenu() {
             <div class="price-display">
               <span class="price-amount">₹${currentPrice}</span>
             </div>
-            <button class="add-cart-btn" onclick="addToCart('${item.id}', event)">
-              + ADD
-            </button>
+            ${cartEntry ? `
+              <div class="card-qty-control" aria-label="Quantity for ${item.name}">
+                <button type="button" onclick="updateCartItemQty('${currentCartId}', -1)" aria-label="Remove one ${item.name}">−</button>
+                <span>${cartEntry.quantity}</span>
+                <button type="button" onclick="updateCartItemQty('${currentCartId}', 1)" aria-label="Add one ${item.name}">+</button>
+              </div>
+            ` : `
+              <button class="add-cart-btn" onclick="addToCart('${item.id}', event)">+ ADD</button>
+            `}
           </div>
         </div>
       </div>
@@ -688,6 +696,7 @@ window.addToCart = function(itemId, clickEvent) {
       button.disabled = false;
       button.textContent = defaultLabel;
     }, 1500);
+    setTimeout(renderMenu, 650);
   }
   showToast(`Added ${item.name} (${portion !== 'single' ? portion.toUpperCase() : ''}) to cart`);
 };
@@ -762,6 +771,17 @@ window.updateCartQty = function(index, delta) {
   saveCartData();
   updateCartBadge();
   renderCart();
+};
+
+window.updateCartItemQty = function(cartId, delta) {
+  const index = cart.findIndex(item => item.cartId === cartId);
+  if (index < 0) return;
+  cart[index].quantity += delta;
+  if (cart[index].quantity <= 0) cart.splice(index, 1);
+  saveCartData();
+  updateCartBadge();
+  renderMenu();
+  if (document.getElementById('cartDrawer')?.classList.contains('active')) renderCart();
 };
 
 // Open/Close Cart Drawer
