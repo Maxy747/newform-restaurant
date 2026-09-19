@@ -617,7 +617,7 @@ function renderMenu() {
             <div class="price-display">
               <span class="price-amount">₹${currentPrice}</span>
             </div>
-            <button class="add-cart-btn" onclick="addToCart('${item.id}')">
+            <button class="add-cart-btn" onclick="addToCart('${item.id}', event)">
               + ADD
             </button>
           </div>
@@ -634,7 +634,7 @@ window.selectPortion = function(itemId, portion) {
 };
 
 // Add to Cart
-window.addToCart = function(itemId) {
+window.addToCart = function(itemId, clickEvent) {
   const item = menuItems.find(i => i.id === itemId);
   if (!item) return;
 
@@ -663,6 +663,13 @@ window.addToCart = function(itemId) {
 
   saveCartData();
   updateCartBadge();
+  const button = clickEvent?.currentTarget;
+  if (button) {
+    button.classList.remove('button-added');
+    void button.offsetWidth;
+    button.classList.add('button-added');
+    setTimeout(() => button.classList.remove('button-added'), 420);
+  }
   showToast(`Added ${item.name} (${portion !== 'single' ? portion.toUpperCase() : ''}) to cart`);
 };
 

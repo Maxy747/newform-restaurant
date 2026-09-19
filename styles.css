@@ -907,6 +907,16 @@ body {
   box-shadow: var(--shadow-hover);
 }
 
+.add-cart-btn:active { transform: scale(0.92); }
+.add-cart-btn.button-added { animation: addToCartPulse 0.42s ease; }
+
+@keyframes addToCartPulse {
+  0% { transform: scale(1); }
+  40% { transform: scale(0.9); }
+  72% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+
 /* Modals & Cart Drawer */
 .overlay {
   position: fixed;
@@ -981,13 +991,13 @@ body {
 
 @media (max-width: 768px) {
   .cart-drawer {
-    top: auto;
+    top: 0;
     width: 100%;
     max-width: none;
-    height: min(92dvh, 760px);
+    height: 100dvh;
     border-left: 0;
     border-top: 1px solid var(--glass-border);
-    border-radius: 24px 24px 0 0;
+    border-radius: 0;
     transform: translateY(100%);
   }
 
@@ -1135,7 +1145,12 @@ body {
   align-items: center;
   gap: 10px;
   font-size: 0.85rem;
+  opacity: 0;
+  transform: translateY(18px);
+  animation: toastSlideIn 0.32s ease forwards;
 }
+
+@keyframes toastSlideIn { to { opacity: 1; transform: translateY(0); } }
 
 .mobile-cart-cta {
   display: none;
