@@ -487,6 +487,7 @@ function setupEventListeners() {
   if (mobileCartCta) mobileCartCta.addEventListener('click', openCart);
   if (closeCartBtn) closeCartBtn.addEventListener('click', closeCart);
   if (overlay) overlay.addEventListener('click', closeAllModals);
+  setupCartDismissOnScroll();
 
   // Menu cards are re-rendered, so use one delegated listener for admin actions.
   const foodGrid = document.getElementById('foodGrid');
@@ -539,6 +540,15 @@ function setupEventListeners() {
   // WhatsApp Checkout
   const placeOrderBtn = document.getElementById('placeOrderBtn');
   if (placeOrderBtn) placeOrderBtn.addEventListener('click', placeOrder);
+}
+
+function setupCartDismissOnScroll() {
+  const drawer = document.getElementById('cartDrawer');
+  if (!drawer) return;
+  const isAtBottom = () => drawer.scrollTop + drawer.clientHeight >= drawer.scrollHeight - 3;
+  drawer.addEventListener('scroll', () => {
+    if (drawer.classList.contains('active') && drawer.scrollHeight > drawer.clientHeight + 8 && isAtBottom()) closeCart();
+  }, { passive: true });
 }
 
 function triggerAddItem() {
