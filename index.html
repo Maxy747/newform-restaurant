@@ -263,7 +263,11 @@
         <img src="assets/newform_logo.png" alt="Logo" style="width:28px; height:28px;">
         <h3 style="font-family:var(--font-heading); font-weight:700; letter-spacing:1px;">YOUR CART</h3>
       </div>
-      <button class="cart-icon-btn" id="closeCartBtn"><i class="fa-solid fa-xmark"></i></button>
+      <div class="cart-header-actions">
+        <button id="undoClearCartBtn" class="cart-text-action" type="button" hidden>UNDO</button>
+        <button id="clearCartBtn" class="cart-text-action clear" type="button">CLEAR</button>
+        <button class="cart-icon-btn" id="closeCartBtn"><i class="fa-solid fa-xmark"></i></button>
+      </div>
     </div>
 
     <div class="drawer-body" id="cartBody">

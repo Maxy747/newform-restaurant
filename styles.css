@@ -1161,6 +1161,21 @@ html { scroll-behavior: smooth; }
   justify-content: space-between;
 }
 
+.cart-header-actions { display: flex; align-items: center; gap: 6px; }
+.cart-text-action {
+  border: 0;
+  background: transparent;
+  color: var(--gold-primary);
+  font-family: var(--font-heading);
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+  cursor: pointer;
+  padding: 6px;
+}
+.cart-text-action.clear { color: var(--accent-red); }
+.cart-text-action:disabled { opacity: .35; cursor: default; }
+
 .drawer-body {
   flex: 1;
   overflow-y: auto;

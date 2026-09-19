@@ -159,6 +159,7 @@ let editingItemId = null;
 let currentSession = null;
 let activeToastTimer = null;
 let lastScrollY = 0;
+let lastClearedCart = null;
 
 // LocalStorage Keys
 const CART_STORAGE_KEY = 'newform_cart_v1';
@@ -483,12 +484,16 @@ function setupEventListeners() {
   const cartBtnMobile = document.getElementById('cartBtnMobile');
   const mobileCartCta = document.getElementById('mobileCartCta');
   const closeCartBtn = document.getElementById('closeCartBtn');
+  const clearCartBtn = document.getElementById('clearCartBtn');
+  const undoClearCartBtn = document.getElementById('undoClearCartBtn');
   const overlay = document.getElementById('overlay');
 
   if (cartBtn) cartBtn.addEventListener('click', openCart);
   if (cartBtnMobile) cartBtnMobile.addEventListener('click', openCart);
   if (mobileCartCta) mobileCartCta.addEventListener('click', openCart);
   if (closeCartBtn) closeCartBtn.addEventListener('click', closeCart);
+  if (clearCartBtn) clearCartBtn.addEventListener('click', clearCart);
+  if (undoClearCartBtn) undoClearCartBtn.addEventListener('click', undoClearCart);
   if (overlay) overlay.addEventListener('click', closeAllModals);
 
   // Menu cards are re-rendered, so use one delegated listener for admin actions.
@@ -681,7 +686,9 @@ window.addToCart = function(itemId, clickEvent) {
   }
 
   saveCartData();
+  lastClearedCart = null;
   updateCartBadge();
+  updateClearCartControls();
   const button = clickEvent?.currentTarget;
   if (button) {
     const defaultLabel = button.dataset.defaultLabel || button.textContent.trim();
@@ -712,6 +719,37 @@ function updateCartBadge() {
   if (mobileCtaCount) mobileCtaCount.textContent = totalCount ? `(${totalCount})` : '';
 }
 
+function updateClearCartControls() {
+  const clearButton = document.getElementById('clearCartBtn');
+  const undoButton = document.getElementById('undoClearCartBtn');
+  if (clearButton) clearButton.disabled = cart.length === 0;
+  if (undoButton) undoButton.hidden = !lastClearedCart?.length;
+}
+
+function clearCart() {
+  if (!cart.length) return;
+  lastClearedCart = cart.map(item => ({ ...item }));
+  cart = [];
+  saveCartData();
+  updateCartBadge();
+  updateClearCartControls();
+  renderCart();
+  renderMenu();
+  showToast('Cart cleared. Tap Undo to restore it.');
+}
+
+function undoClearCart() {
+  if (!lastClearedCart?.length) return;
+  cart = lastClearedCart.map(item => ({ ...item }));
+  lastClearedCart = null;
+  saveCartData();
+  updateCartBadge();
+  updateClearCartControls();
+  renderCart();
+  renderMenu();
+  showToast('Cart restored.');
+}
+
 // Render Cart Drawer Contents
 function renderCart() {
   const cartBody = document.getElementById('cartBody');
@@ -720,6 +758,7 @@ function renderCart() {
   const totalEl = document.getElementById('cartTotal');
 
   if (!cartBody) return;
+  updateClearCartControls();
 
   if (cart.length === 0) {
     cartBody.innerHTML = `
@@ -769,7 +808,9 @@ window.updateCartQty = function(index, delta) {
     }
   }
   saveCartData();
+  lastClearedCart = null;
   updateCartBadge();
+  updateClearCartControls();
   renderCart();
 };
 
@@ -779,7 +820,9 @@ window.updateCartItemQty = function(cartId, delta) {
   cart[index].quantity += delta;
   if (cart[index].quantity <= 0) cart.splice(index, 1);
   saveCartData();
+  lastClearedCart = null;
   updateCartBadge();
+  updateClearCartControls();
   renderMenu();
   if (document.getElementById('cartDrawer')?.classList.contains('active')) renderCart();
 };
@@ -865,20 +908,17 @@ function setupImageParallax() {
     frameQueued = false;
     const now = performance.now();
     // Cap touch devices to ~20 calculations per second; CSS interpolation keeps it smooth.
-    if (isTouchDevice && now - lastUpdate < 50) return;
+    if (isTouchDevice && now - lastUpdate < (isLowPower ? 80 : 50)) return;
     lastUpdate = now;
     const viewportCenter = window.innerHeight / 2;
     const heroDish = document.querySelector('.center-dish-wrapper');
     const heroRange = isTouchDevice ? 18 : 22;
-    const cardRange = isTouchDevice ? 7 : 14;
+    const cardRange = isTouchDevice ? 12 : 14;
     if (heroDish) heroDish.style.setProperty('--hero-parallax-y', `${Math.max(-heroRange, Math.min(heroRange, window.scrollY * -0.06))}px`);
-    // On weaker phones one moving hero image stays visibly dynamic without
-    // measuring every menu card during a scroll.
-    if (isLowPower) return;
     document.querySelectorAll('.card-img').forEach(image => {
       const rect = image.getBoundingClientRect();
       const distance = (viewportCenter - (rect.top + rect.height / 2)) / window.innerHeight;
-      image.style.setProperty('--image-parallax-y', `${Math.max(-cardRange, Math.min(cardRange, distance * (isTouchDevice ? 14 : 28)))}px`);
+      image.style.setProperty('--image-parallax-y', `${Math.max(-cardRange, Math.min(cardRange, distance * (isTouchDevice ? 24 : 28)))}px`);
     });
   };
   const queueUpdate = () => {
