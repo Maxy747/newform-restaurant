@@ -6,8 +6,8 @@
 
 ### Authentic Arabian & Kerala Multi-Cuisine | Kakkavayal, Kalpetta, Wayanad
 
-[![Live Site](https://img.shields.io/badge/🌐_Live_Site-Visit_Now-2a9d8f?style=for-the-badge)](https://juuder.github.io/newform-restaurant/)
-[![PWA Ready](https://img.shields.io/badge/PWA-Ready-52796f?style=for-the-badge&logo=pwa)](https://juuder.github.io/newform-restaurant/)
+[![Live Site](https://img.shields.io/badge/🌐_Live_Site-Visit_Now-2a9d8f?style=for-the-badge)](https://maxy747.github.io/newform-restaurant/)
+[![PWA Ready](https://img.shields.io/badge/PWA-Ready-52796f?style=for-the-badge&logo=pwa)](https://maxy747.github.io/newform-restaurant/)
 [![WhatsApp Orders](https://img.shields.io/badge/WhatsApp-Order_Now-25D366?style=for-the-badge&logo=whatsapp)](https://wa.me/917593881112)
 
 </div>
@@ -22,9 +22,9 @@
 
 ## 🏠 About NEWFORM Restaurant
 
-**NEWFORM Multi Cuisine Restaurant** is a beloved dining destination located in **Kakkavayal, Kalpetta, Wayanad, Kerala**. Known for its authentic blend of **Arabian and Kerala cuisine**, NEWFORM has become a landmark for food lovers across Wayanad.
+**NEWFORM Multi Cuisine Restaurant** is a beloved dining destination located in **Kakkavayal, Kalpetta, Wayanad, Kerala**. Known for its authentic blend of **Arabian and Kerala cuisine**, NEWFORM has [...]
 
-We specialize in slow-cooked **Yemeni-style Mandhi**, charcoal-grilled **Alfaham**, traditional **Kerala Beef Ularthiyathu**, and a wide range of multicuisine delights — all prepared fresh with premium spices and authentic recipes.
+We specialize in slow-cooked **Yemeni-style Mandhi**, charcoal-grilled **Alfaham**, traditional **Kerala Beef Ularthiyathu**, and a wide range of multicuisine delights — all prepared fresh with prem[...]
 
 ### 📍 Location
 **Kakkavayal, Kalpetta, Wayanad, Kerala, India**
@@ -152,7 +152,7 @@ The dashboard keeps the existing UI, now backed by Supabase email/password authe
 1. Create a Supabase project and run [supabase_schema.sql](supabase_schema.sql) in its SQL Editor.
 2. Create the restaurant administrator in **Authentication → Users**, then run the commented promotion query at the end of the SQL file with that email.
 3. Copy `.env.example` to `.env` for local development and set the project URL and anon key. Never put a service-role key in the frontend.
-4. In GitHub, set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` as repository Actions secrets. Enable **Settings → Pages → Source: GitHub Actions**. Pushing to `max` deploys the static `dist` folder.
+4. In GitHub, set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` as repository Actions secrets. Enable **Settings → Pages → Source: GitHub Actions**. Pushing to `max` deploys the static `[...] 
 
 The Supabase publishable key is intentionally included at build time. Database and storage access are protected by Row Level Security and the `profiles.role = 'admin'` policy, not by hiding the key.
 
@@ -160,7 +160,7 @@ The Supabase publishable key is intentionally included at build time. Database a
 
 ## 📱 Install as Mobile App (PWA)
 
-1. Open the [live site](https://juuder.github.io/newform-restaurant/) on your phone
+1. Open the [live site](https://maxy747.github.io/newform-restaurant/) on your phone
 2. Tap the **browser menu** (⋮)
 3. Select **"Add to Home Screen"** or **"Install App"**
 4. The app will install like a native app — works offline too!
@@ -181,6 +181,7 @@ This project is built exclusively for **NEWFORM Multi Cuisine Restaurant**, Kalp
 
 *Kakkavayal, Kalpetta, Wayanad, Kerala*
 
-[🌐 Visit Live Site](https://juuder.github.io/newform-restaurant/) • [📞 Call to Order](tel:7593881112) • [💬 WhatsApp Order](https://wa.me/917593881112)
+[🌐 Visit Live Site](https://maxy747.github.io/newform-restaurant/) • [📞 Call to Order](tel:7593881112) • [💬 WhatsApp Order](https://wa.me/917593881112)
 
 </div>
+
