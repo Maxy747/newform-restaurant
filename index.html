@@ -292,24 +292,36 @@
         <span id="cartTotal">₹0</span>
       </div>
 
-      <div style="margin-top:16px;">
+      <div style="margin-top:16px;" id="checkoutDetails">
+        <label for="orderType">ORDER TYPE</label>
+        <select id="orderType" class="form-control"><option value="delivery">Delivery</option><option value="takeaway">Takeaway</option><option value="dine_in">Dine in</option></select>
+        <section id="deliverySummary" class="delivery-summary" hidden>
+          <h4 id="deliverySummaryTitle">DELIVERING TO</h4>
+          <p id="deliverySummaryText"></p>
+          <button type="button" id="changeAddressBtn" class="btn-minimal">CHANGE ADDRESS</button>
+        </section>
+        <div id="deliveryFields">
         <div class="form-group" style="margin-bottom:10px;">
           <label style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Name</label>
-          <input type="text" id="custName" class="form-control" placeholder="Enter your name">
+          <input type="text" id="custName" class="form-control" placeholder="Enter your name" autocomplete="name" maxlength="100" aria-label="Your name">
         </div>
         <div class="form-group" style="margin-bottom:10px;">
           <label style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Phone</label>
-          <input type="tel" id="custPhone" class="form-control" placeholder="Enter mobile number">
+          <input type="tel" id="custPhone" class="form-control" placeholder="Enter mobile number" autocomplete="tel" maxlength="20" aria-label="Mobile number">
         </div>
-        <div class="form-group" style="margin-bottom:14px;">
+        <div class="form-group" id="deliveryAddressField" style="margin-bottom:14px;">
           <label style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Delivery Address</label>
-          <textarea id="custAddress" class="form-control" rows="2" placeholder="House/Hotel name, Landmark, Kalpetta area"></textarea>
+          <textarea id="custAddress" class="form-control" rows="2" placeholder="House/Hotel name, Landmark, Kalpetta area" autocomplete="street-address" maxlength="500" aria-label="Delivery address"></textarea>
         </div>
+        <button type="button" id="saveDeliveryBtn" class="btn-minimal" hidden>SAVE DETAILS</button>
+        </div>
+        <div id="tableNumberField" hidden><label for="tableNumber">TABLE NUMBER</label><input id="tableNumber" class="form-control" maxlength="20" placeholder="e.g. 4"></div>
         <div class="checkout-methods" aria-label="Payment method">
-          <label class="checkout-method"><input type="radio" name="paymentMethod" value="whatsapp" checked><i class="fa-brands fa-whatsapp"></i><span>WhatsApp</span></label>
-          <label class="checkout-method"><input type="radio" name="paymentMethod" value="cod" id="codPayment"><i class="fa-solid fa-money-bill-wave"></i><span>Cash on delivery<br><small>₹1,000 minimum</small></span></label>
-          <label class="checkout-method is-disabled" title="Available after Razorpay setup"><input type="radio" name="paymentMethod" value="razorpay" disabled><i class="fa-solid fa-credit-card"></i><span>Razorpay<br><small>Setup pending</small></span></label>
+          <label class="checkout-method"><input type="radio" name="paymentMethod" value="whatsapp" checked><i class="fa-brands fa-whatsapp"></i><span>WhatsApp<small>Send order</small></span></label>
+          <label class="checkout-method"><input type="radio" name="paymentMethod" value="cod" id="codPayment"><i class="fa-solid fa-money-bill-wave"></i><span id="cashMethodText">Cash on delivery<small>₹1,000 minimum</small></span></label>
+          <label class="checkout-method is-disabled" id="razorpayMethod"><input type="radio" name="paymentMethod" value="razorpay" id="razorpayPayment" disabled><i class="fa-solid fa-credit-card"></i><span>Razorpay<small id="razorpayHint">Setup pending</small></span></label>
         </div>
+        <p class="checkout-note">Login is optional. Final prices are confirmed by the restaurant’s secure checkout.</p>
         <button id="placeOrderBtn" class="btn-minimal btn-primary-minimal" style="width:100%; padding:14px; margin-top:12px;">
           <i class="fa-solid fa-bag-shopping"></i> PLACE ORDER
         </button>
@@ -325,6 +337,10 @@
   <div class="modal" id="ordersModal">
     <div class="modal-header"><h3><i class="fa-solid fa-receipt"></i> LIVE ORDERS</h3><button class="cart-icon-btn" id="closeOrdersModalBtn" aria-label="Close orders"><i class="fa-solid fa-xmark"></i></button></div>
     <div class="modal-body" id="ordersContent"></div>
+  </div>
+  <div class="modal" id="trackingModal" role="dialog" aria-modal="true" aria-label="Order tracking">
+    <div class="modal-header"><h3>YOUR ORDER</h3><button class="cart-icon-btn" id="closeTrackingBtn" aria-label="Close order tracking"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body" id="trackingContent"></div>
   </div>
 
   <!-- Add New Food Item Manager Modal (ADMIN ONLY) -->
@@ -372,6 +388,7 @@
           <div>
             <label style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Special Tag</label>
             <input type="text" id="formTag" class="form-control" placeholder="e.g. NEW, Bestseller">
+            <label><input type="checkbox" id="formAvailable" checked> Available to order</label>
           </div>
 
           <div>

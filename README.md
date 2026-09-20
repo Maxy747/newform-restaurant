@@ -147,6 +147,8 @@ newform-restaurant/
 
 ## 🔐 Admin Panel and Supabase setup
 
+**Order-management upgrade:** See [ORDER_MANAGEMENT.md](ORDER_MANAGEMENT.md) for the new secure checkout, staff/kitchen/delivery dashboard, tracking, support tickets, Razorpay deployment and role configuration. Apply the OMS migration after the baseline SQL; do not rerun the baseline on an upgraded database.
+
 The dashboard keeps the existing UI, now backed by Supabase email/password authentication. Admins can add, edit, delete, and upload dish images; customers can only read the menu.
 
 1. Create a Supabase project and run [supabase_schema.sql](supabase_schema.sql) in its SQL Editor.
@@ -158,7 +160,7 @@ The Supabase publishable key is intentionally included at build time. Database a
 
 ### Customer accounts and optional email verification
 
-Run the latest `supabase_schema.sql` after deploying this version; it enables guest WhatsApp/COD orders while preserving authenticated customers' private order history. Guest orders are insert-only: they cannot read any order data.
+The OMS upgrade creates guest orders through a server-validated Edge API. Guests track only orders for which they hold a random private tracking key; signed-in users retain private order history. Do not rerun the baseline SQL after upgrading.
 
 For verified customer accounts, enable **Confirm email** in Supabase **Authentication → Providers → Email**, then add `https://maxy747.github.io/newform-restaurant/` to **Authentication → URL Configuration → Redirect URLs**. New accounts will receive a confirmation email before they can sign in. Customers may still place WhatsApp or eligible COD orders without an account.
 

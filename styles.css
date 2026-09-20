@@ -1271,6 +1271,11 @@ html { scroll-behavior: smooth; }
 }
 
 .cart-item-details { min-width: 0; flex: 1; }
+.cart-qty-control { display: flex; align-items: center; gap: 2px; padding: 4px; flex-shrink: 0; background: var(--portion-bg); color: var(--text-main); border: 1px solid var(--glass-border); border-radius: 12px; }
+.cart-qty-control button { display: grid; place-items: center; width: 36px; min-height: 44px; border: 0; border-radius: 8px; background: var(--btn-minimal-bg); color: var(--text-main); font: 700 1.3rem var(--font-body); cursor: pointer; touch-action: manipulation; }
+.cart-item .cart-qty-control button { min-height: 44px; }
+.cart-qty-control button:hover { background: var(--glass-border); }
+.cart-qty-control span { min-width: 24px; text-align: center; font-weight: 700; }
 
 .drawer-footer {
   padding: 24px;
@@ -1492,13 +1497,68 @@ html { scroll-behavior: smooth; }
   }
 }
 
-.checkout-methods { display: grid; gap: 8px; }
-.checkout-method { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--glass-border); border-radius: var(--radius-sm); cursor: pointer; font-size: 0.82rem; }
+.checkout-methods { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; margin-top: 14px; }
+.checkout-method { position: relative; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; gap: 8px; min-width: 0; padding: 12px 5px; border: 1px solid var(--glass-border); border-radius: var(--radius-sm); cursor: pointer; font-size: clamp(.72rem,2.8vw,.82rem); text-align: center; line-height: 1.35; overflow-wrap: anywhere; color: var(--text-main); }
+.checkout-method:has(input:checked) { border-color: var(--gold-primary); background: var(--portion-bg); }
+.checkout-method span { width: 100%; }
+.checkout-method small { display: block; margin-top: 4px; font-size: .69rem; }
+.checkout-method input { position: absolute; top: 9px; left: 7px; margin: 0; }
+.checkout-method i { margin: 2px 0; }
 .checkout-method input { accent-color: var(--gold-primary); }
 .checkout-method i { width: 20px; text-align: center; font-size: 1.05rem; }
 .checkout-method small { color: var(--text-muted); }
 .checkout-method.is-disabled { opacity: .55; cursor: not-allowed; }
 .account-section { display: grid; gap: 12px; }
+[hidden] { display: none !important; }
+.delivery-summary { margin: 14px 0; padding: 16px; border: 1px solid var(--glass-border); border-radius: 14px; background: var(--bg-surface-elevated); }
+.delivery-summary h4 { font-size: .76rem; letter-spacing: .08em; color: var(--text-muted); }
+.delivery-summary p { white-space: pre-line; overflow-wrap: anywhere; line-height: 1.65; margin: 8px 0 14px; }
+#checkoutDetails > label, #deliveryFields label, #tableNumberField label { display: block; margin: 12px 0 6px; font-size: .75rem; font-weight: 700; }
+#deliveryFields { margin-top: 14px; }
+.checkout-note { font-size: .73rem; color: var(--text-muted); line-height: 1.5; margin-top: 12px; }
+.oms-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; }
+.oms-actions > button { min-height: 44px; }
+.oms-card-heading { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.oms-items { list-style: none; padding: 0; margin: 12px 0; display: grid; gap: 10px; }
+.oms-items li { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
+.oms-items strong { flex-shrink: 0; }
+.oms-items span { overflow-wrap: anywhere; }
+.oms-badge { display: inline-block; width: fit-content; border-radius: 20px; padding: 5px 10px; background: var(--portion-bg); color: var(--text-main); font-size: .78rem; font-weight: 700; text-transform: capitalize; }
+.oms-badge.ready,.oms-badge.completed { color: #278d67; }
+.oms-badge.cancelled,.danger { color: #eb6a6a; }
+.oms-badge.preparing { color: #ba8734; }
+.order-progress { list-style: none; padding: 0; display: grid; gap: 10px; margin: 18px 0; }
+.order-progress li { color: var(--text-muted); border-left: 3px solid var(--glass-border); padding: 5px 12px; }
+.order-progress .done { border-color: #278d67; }
+.order-progress .current { border-color: var(--gold-primary); color: var(--text-main); font-weight: 800; }
+.order-audit { padding-left: 20px; font-size: .8rem; line-height: 1.8; }
+#orderSupport { margin-top: 24px; }
+#orderSupport form { display: grid; gap: 10px; margin: 12px 0; }
+#orderSupport summary { cursor: pointer; padding: 12px 0; font-weight: 700; }
+.ticket { border: 1px solid var(--glass-border); border-radius: 12px; margin: 12px 0; padding: 14px; overflow-wrap: anywhere; }
+.ticket > .oms-badge { display: block; margin: 8px 0; }
+.ticket-message { white-space: pre-wrap; border-left: 2px solid var(--glass-border); padding-left: 10px; margin: 10px 0; }
+.ticket-message small { color: var(--text-muted); }
+#ordersModal { max-width: 1180px; }
+.oms-filters { display: grid; grid-template-columns: repeat(auto-fit,minmax(140px,1fr)); gap: 10px; margin: 16px 0; }
+.oms-filters label { font-size: .75rem; }
+.oms-filters .form-control { margin-top: 5px; }
+.oms-stats { display: grid; grid-template-columns: repeat(auto-fit,minmax(100px,1fr)); gap: 8px; margin: 12px 0; }
+.oms-stats > div { border: 1px solid var(--glass-border); border-radius: 12px; padding: 12px; }
+.oms-stats strong { display: block; font-size: 1.25rem; }
+#dashboardOrders { display: grid; gap: 12px; }
+.kitchen-board { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; }
+.kitchen-board section { min-width: 0; }
+.kitchen-board h4 { margin: 10px 0; }
+.kitchen-board article { margin-bottom: 12px; }
+.order-history-item { overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+  #ordersModal,#trackingModal { width: calc(100% - 16px); max-height: 94dvh; }
+  #ordersModal .modal-body,#trackingModal .modal-body { padding: 16px; }
+  .kitchen-board { grid-template-columns: 1fr; }
+  .cart-item { gap: 8px; }
+  .cart-qty-control button { width: 32px; }
+}
 .account-section h4 { font-family: var(--font-heading); letter-spacing: .06em; }
 .order-history-item { padding: 12px; border: 1px solid var(--glass-border); border-radius: var(--radius-sm); display: grid; gap: 5px; margin-top: 8px; }
 .order-history-item small { color: var(--text-muted); }

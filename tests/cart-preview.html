@@ -1,0 +1,19 @@
+<!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Local cart layout test</title></head><body><script type="module">
+// Local-only visual fixture; not a production entry point and no network writes.
+import markup from '../index.html?raw';
+import '../styles.css';
+import {createOrdering} from '../orders.js';
+const parsed=new DOMParser().parseFromString(markup,'text/html');
+parsed.querySelectorAll('script').forEach(s=>s.remove());
+document.body.innerHTML=parsed.body.innerHTML;
+document.documentElement.dataset.theme='dark';
+let saved={full_name:'Test Customer',phone:'9999999999',default_address:'Sample House, Sample Road\nKalpetta, Wayanad'};
+const profileQuery={select(){return this;},eq(){return this;},maybeSingle:async()=>({data:saved}),update(fields){saved=fields;return this;},then(resolve){resolve({data:saved});}};
+const client={from:()=>profileQuery,functions:{invoke:async()=>({data:{role:'customer',payments:false,testMode:true}})},channel:()=>({on(){return this;},subscribe(){return this;}})};
+const ordering=createOrdering({supabase:client,isSupabaseConfigured:true,getSession:()=>({user:{id:'test'}}),getCart:()=>[],totals:()=>({total:1260}),toast:message=>document.getElementById('toastContainer').textContent=message,onPlaced(){},closeAll(){}});
+ordering.init();await ordering.sessionChanged();
+document.getElementById('cartDrawer').classList.add('active');
+document.getElementById('overlay').classList.add('active');
+document.getElementById('cartBody').innerHTML='<div class="cart-item"><div class="cart-item-details"><strong>Chicken Mandhi</strong><p>Quarter · ₹240 each</p></div><div class="cart-qty-control"><button aria-label="Reduce quantity">−</button><span>5</span><button aria-label="Increase quantity">+</button></div></div>';
+document.getElementById('cartSubtotal').textContent='₹1200';document.getElementById('cartTax').textContent='₹60';document.getElementById('cartTotal').textContent='₹1260';
+</script></body></html>

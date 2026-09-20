@@ -1,4 +1,6 @@
 import { isSupabaseConfigured, supabase } from './supabaseClient.js';
+import { createOrdering } from './orders.js';
+import { escapeHTML } from './oms-policy.js';
 
 // Default Menu Dataset extracted directly from Newform Multi Cuisine Restaurant Menu Cards
 const DEFAULT_MENU = [
@@ -160,6 +162,14 @@ let currentSession = null;
 let activeToastTimer = null;
 let lastScrollY = 0;
 let lastClearedCart = null;
+const ordering = createOrdering({
+  getSession: () => currentSession,
+  getCart: () => cart,
+  totals: () => calculateCartTotals(),
+  toast: message => showToast(message),
+  closeAll: () => closeAllModals(),
+  onPlaced: () => { cart = []; lastClearedCart = null; saveCartData(); updateCartBadge(); renderMenu(); closeCart(); }
+});
 
 // LocalStorage Keys
 const CART_STORAGE_KEY = 'newform_cart_v1';
@@ -198,6 +208,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadMenuData();
   loadCartData();
   setupEventListeners();
+  ordering.init();
   renderMenu();
   updateCartBadge();
   registerServiceWorker();
@@ -232,7 +243,7 @@ async function refreshAdminState(session) {
   }
   updateAdminUI();
   renderMenu();
-  if (document.getElementById('accountModal')?.classList.contains('active')) renderAccount();
+  await ordering.sessionChanged();
 }
 
 function updateAdminUI() {
@@ -305,8 +316,10 @@ async function handleAdminLogin() {
   if (error) {
     showAuthError(error.message);
   } else {
+    await refreshAdminState(data.session);
+    if (ordering.getRole() === 'customer') { showAuthError('This account has no restaurant staff permissions. Use Your Account for customer orders.'); return; }
     closeAdminLoginModal();
-    showToast('🔑 Admin Profile Verified & Unlocked!');
+    showToast('Restaurant access verified.');
   }
 }
 
@@ -586,7 +599,7 @@ function renderMenu() {
     const matchesDiet = activeDiet !== 'veg' || item.diet === 'veg';
     const matchesSearch = item.name.toLowerCase().includes(searchQuery) ||
                           (item.description || '').toLowerCase().includes(searchQuery);
-    return matchesCat && matchesDiet && matchesSearch;
+    return matchesCat && matchesDiet && matchesSearch && (isAdmin || item.available !== false);
   });
 
   if (countEl) countEl.textContent = `${filtered.length} DISHES`;
@@ -631,6 +644,7 @@ function renderMenu() {
         <div class="card-body">
           <h3 class="food-name">${item.name}</h3>
           <p class="food-desc">${item.description || ''}</p>
+          ${item.available === false ? '<small class="danger">Currently unavailable</small>' : ''}
           
           ${item.portionType === 'multi' ? `
             <div class="portion-selector" style="--portion-offset:${currentPortion === 'quarter' ? '0px' : currentPortion === 'half' ? 'calc(100% + 4px)' : 'calc(200% + 8px)'}">
@@ -710,6 +724,7 @@ window.selectPortion = function(itemId, portion) {
 window.addToCart = function(itemId, clickEvent) {
   const item = menuItems.find(i => i.id === itemId);
   if (!item) return;
+  if (item.available === false) return showToast('This dish is currently unavailable.');
 
   const portion = item.portionType === 'multi' ? (selectedPortions[itemId] || 'quarter') : 'single';
   let price = item.price;
@@ -825,14 +840,14 @@ function renderCart() {
   cartBody.innerHTML = cart.map((item, idx) => `
     <div class="cart-item">
       <div class="cart-item-details">
-        <div style="font-family:var(--font-heading); font-weight:700; font-size:0.95rem;">${item.name}</div>
-        <div style="font-size:0.75rem; color:var(--text-muted);">${item.portion ? `Portion: ${item.portion} | ` : ''}₹${item.price} each</div>
+        <div style="font-family:var(--font-heading); font-weight:700; font-size:0.95rem;">${escapeHTML(item.name)}</div>
+        <div style="font-size:0.75rem; color:var(--text-muted);">${item.portion ? `Portion: ${escapeHTML(item.portion)} | ` : ''}₹${Number(item.price)} each</div>
         <div style="font-weight:700; color:var(--primary); font-size:0.9rem;">₹${item.price * item.quantity}</div>
       </div>
-      <div style="display:flex; align-items:center; gap:8px; background:var(--bg-primary); padding:4px 8px; border-radius:4px;">
-        <button onclick="updateCartQty(${idx}, -1)" style="background:none; border:none; cursor:pointer; font-weight:bold;">-</button>
+      <div class="cart-qty-control" aria-label="Quantity">
+        <button onclick="updateCartQty(${idx}, -1)" aria-label="Reduce quantity">−</button>
         <span>${item.quantity}</span>
-        <button onclick="updateCartQty(${idx}, 1)" style="background:none; border:none; cursor:pointer; font-weight:bold;">+</button>
+        <button onclick="updateCartQty(${idx}, 1)" aria-label="Increase quantity">+</button>
       </div>
     </div>
   `).join('');
@@ -842,11 +857,7 @@ function renderCart() {
   if (subtotalEl) subtotalEl.textContent = `₹${subtotal}`;
   if (taxEl) taxEl.textContent = `₹${gst}`;
   if (totalEl) totalEl.textContent = `₹${total}`;
-  const codPayment = document.getElementById('codPayment');
-  if (codPayment) {
-    codPayment.disabled = total < 1000;
-    if (total < 1000 && codPayment.checked) document.querySelector('input[name="paymentMethod"][value="whatsapp"]').checked = true;
-  }
+  ordering.updateCheckout();
 }
 
 window.updateCartQty = function(index, delta) {
@@ -879,6 +890,7 @@ window.updateCartItemQty = function(cartId, delta) {
 // Open/Close Cart Drawer
 function openCart() {
   renderCart();
+  ordering.updateCheckout();
   document.getElementById('overlay').classList.add('active');
   document.getElementById('cartDrawer').classList.add('active');
 }
@@ -896,6 +908,7 @@ function closeAllModals() {
   closeContactModal();
   closeAccountModal();
   closeOrdersModal();
+  ordering.closeTracking();
 }
 
 function startSearchPlaceholderAnimation(input) {
@@ -1066,7 +1079,8 @@ async function handleAddItemSubmit(e) {
     tag,
     description: description || 'Freshly prepared dish from NEWFORM kitchen.',
     image,
-    portionType
+    portionType,
+    available: document.getElementById('formAvailable').checked
   };
 
   if (portionType === 'single') {
@@ -1134,6 +1148,7 @@ window.editItem = function(id) {
   document.getElementById('formCategory').value = item.category;
   document.getElementById('formDiet').value = item.diet;
   document.getElementById('formTag').value = item.tag || '';
+  document.getElementById('formAvailable').checked = item.available !== false;
   document.getElementById('formDesc').value = item.description || '';
   document.getElementById('formPortionType').value = item.portionType;
   document.getElementById('formImage').value = item.image?.startsWith('assets/') ? item.image : '';
@@ -1175,74 +1190,9 @@ function closeAccountModal() { document.getElementById('overlay').classList.remo
 function openOrdersModal() { document.getElementById('overlay').classList.add('active'); document.getElementById('ordersModal').classList.add('active'); renderAdminOrders(); }
 function closeOrdersModal() { document.getElementById('overlay').classList.remove('active'); document.getElementById('ordersModal').classList.remove('active'); }
 
-async function renderAccount() {
-  const content = document.getElementById('accountContent');
-  if (!content) return;
-  if (!isSupabaseConfigured) {
-    content.innerHTML = '<p>Account service is not configured yet. Please contact the restaurant.</p>';
-    return;
-  }
-  if (!currentSession) {
-    content.innerHTML = `<div class="account-section"><p>Account login is optional for ordering. Sign in to save delivery details and see order history.</p><input id="accountEmail" class="form-control" type="email" placeholder="Email"><input id="accountPassword" class="form-control" type="password" placeholder="Password"><button id="accountSignIn" class="btn-minimal btn-primary-minimal">SIGN IN</button><button id="accountSignUp" class="btn-minimal">CREATE & VERIFY ACCOUNT</button></div>`;
-    document.getElementById('accountSignIn').onclick = () => accountSignIn(false);
-    document.getElementById('accountSignUp').onclick = () => accountSignIn(true);
-    return;
-  }
-  const { data: profile } = await supabase.from('profiles').select('full_name, phone, default_address').eq('id', currentSession.user.id).maybeSingle();
-  const { data: orders } = await supabase.from('orders').select('*').eq('user_id', currentSession.user.id).order('created_at', { ascending: false }).limit(12);
-  content.innerHTML = `<div class="account-section"><p><strong>${currentSession.user.email}</strong></p><input id="profileName" class="form-control" placeholder="Your name" value="${profile?.full_name || ''}"><input id="profilePhone" class="form-control" placeholder="Mobile number" value="${profile?.phone || ''}"><textarea id="profileAddress" class="form-control" rows="2" placeholder="Default delivery address">${profile?.default_address || ''}</textarea><button id="saveProfile" class="btn-minimal">SAVE DETAILS</button><h4>ORDER HISTORY</h4>${orders?.length ? orders.map(order => `<div class="order-history-item"><strong>Order #${order.id.slice(0, 8)}</strong><span class="order-status">${order.order_status.replaceAll('_', ' ')}</span><small>${new Date(order.created_at).toLocaleString()} · ${order.payment_method.toUpperCase()} · ${order.payment_status}</small><strong>₹${order.total}</strong></div>`).join('') : '<p>No orders yet.</p>'}<button id="accountSignOut" class="btn-minimal">SIGN OUT</button></div>`;
-  document.getElementById('saveProfile').onclick = saveCustomerProfile;
-  document.getElementById('accountSignOut').onclick = async () => { await supabase.auth.signOut(); closeAccountModal(); };
-}
-
-async function accountSignIn(signUp) {
-  if (!isSupabaseConfigured) return showToast('Account service is not configured yet.');
-  const email = document.getElementById('accountEmail').value.trim();
-  const password = document.getElementById('accountPassword').value;
-  if (!email || !password) return showToast('Enter an email and password.');
-  if (signUp && password.length < 6) return showToast('Use a password with at least 6 characters.');
-  const result = signUp
-    ? await supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}${window.location.pathname}` } })
-    : await supabase.auth.signInWithPassword({ email, password });
-  if (result.error) return showToast(result.error.message);
-  showToast(signUp && !result.data.session ? 'Check your email to confirm your account.' : 'Signed in successfully.');
-  if (result.data.session) { currentSession = result.data.session; await renderAccount(); }
-}
-
-async function saveCustomerProfile() {
-  const payload = { id: currentSession.user.id, role: 'staff', full_name: document.getElementById('profileName').value.trim(), phone: document.getElementById('profilePhone').value.trim(), default_address: document.getElementById('profileAddress').value.trim() };
-  const { error } = await supabase.from('profiles').upsert(payload);
-  showToast(error ? error.message : 'Delivery details saved.');
-}
-
-async function placeOrder() {
-  if (!cart.length) return showToast('Your cart is empty.');
-  const customer_name = document.getElementById('custName').value.trim();
-  const phone = document.getElementById('custPhone').value.trim();
-  const delivery_address = document.getElementById('custAddress').value.trim();
-  if (!customer_name || !phone || !delivery_address) return showToast('Add your name, phone, and delivery address.');
-  const payment_method = document.querySelector('input[name="paymentMethod"]:checked')?.value;
-  const { subtotal, tax, total } = calculateCartTotals();
-  if (payment_method === 'cod' && total < 1000) return showToast('Cash on delivery is available from ₹1,000.');
-  const orderId = crypto.randomUUID();
-  const { error } = await supabase.from('orders').insert({ id: orderId, user_id: currentSession?.user.id || null, customer_name, phone, delivery_address, items: cart, subtotal, tax, total, payment_method, payment_status: payment_method === 'whatsapp' ? 'not_required' : 'pending', order_status: payment_method === 'razorpay' ? 'awaiting_payment' : 'new' });
-  if (error) return showToast(`Order could not be saved: ${error.message}`);
-  if (currentSession) await supabase.from('profiles').upsert({ id: currentSession.user.id, role: 'staff', full_name: customer_name, phone, default_address: delivery_address });
-  if (payment_method === 'whatsapp') {
-    const lines = cart.map((item, index) => `${index + 1}. ${item.name}${item.portion ? ` (${item.portion})` : ''} x ${item.quantity} = ₹${item.price * item.quantity}`).join('\n');
-    window.open(`https://wa.me/917593881112?text=${encodeURIComponent(`NEWFORM ORDER #${orderId.slice(0, 8)}\n${lines}\nTotal: ₹${total}\n${customer_name}, ${phone}\n${delivery_address}`)}`, '_blank');
-  }
-  cart = []; saveCartData(); updateCartBadge(); closeCart(); showToast(`Order #${orderId.slice(0, 8)} has been placed.`);
-}
-
-async function renderAdminOrders() {
-  const content = document.getElementById('ordersContent');
-  if (!isAdmin) { content.innerHTML = '<p>Admin access required.</p>'; return; }
-  const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(50);
-  if (error) { content.innerHTML = `<p>${error.message}</p>`; return; }
-  content.innerHTML = data.length ? data.map(order => `<div class="order-history-item"><strong>#${order.id.slice(0, 8)} · ₹${order.total}</strong><small>${order.customer_name} · ${order.phone}<br>${order.delivery_address}<br>${new Date(order.created_at).toLocaleString()} · ${order.payment_method} / ${order.payment_status}</small><select class="form-control" onchange="updateOrderStatus('${order.id}', this.value)">${['new','confirmed','preparing','out_for_delivery','completed','cancelled','awaiting_payment'].map(status => `<option value="${status}" ${order.order_status === status ? 'selected' : ''}>${status.replaceAll('_',' ')}</option>`).join('')}</select></div>`).join('') : '<p>No orders yet.</p>';
-}
-window.updateOrderStatus = async (id, order_status) => { const { error } = await supabase.from('orders').update({ order_status }).eq('id', id); if (error) showToast(error.message); else { showToast('Order status updated.'); renderAdminOrders(); } };
+function renderAccount() { return ordering.renderAccount().catch(error => showToast(error.message)); }
+function placeOrder() { return ordering.placeOrder(); }
+function renderAdminOrders() { return ordering.renderDashboard().catch(error => showToast(error.message)); }
 
 // Toast notification helper
 function showToast(message) {

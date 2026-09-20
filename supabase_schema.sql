@@ -1,4 +1,6 @@
 -- Run this once in Supabase SQL Editor before deploying the static site.
+-- BASELINE ONLY: after the OMS migration is installed, DO NOT rerun this file.
+-- Apply supabase/migrations/20260920114250_restaurant_order_management.sql next.
 -- Create the first Auth user in Authentication > Users, then promote it using
 -- the UPDATE statement at the bottom of this file.
 
