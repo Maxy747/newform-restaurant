@@ -693,6 +693,37 @@ function setupDescriptionScroll(container) {
   }));
   container.querySelectorAll('.food-desc').forEach(description => {
     measure(description);
+    const returnToStart = () => {
+      const text = description.querySelector('.food-desc-text');
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        description.scrollTo({ top: 0, behavior: 'instant' });
+        return;
+      }
+      const from = getComputedStyle(text).transform;
+      description._returnAnimation?.cancel();
+      const scrolling = text.getAnimations().find(animation => animation.animationName === 'description-scroll');
+      if (!scrolling) return;
+      description.classList.add('description-returning');
+      const returning = text.animate(
+        [{ transform: from }, { transform: 'translateY(0)' }],
+        { duration: 450, easing: 'cubic-bezier(.22,1,.36,1)', fill: 'forwards' }
+      );
+      description._returnAnimation = returning;
+      returning.onfinish = () => {
+        scrolling.currentTime = 0;
+        returning.cancel();
+        description._returnAnimation = null;
+        // The loop starts with a reading pause; CSS still pauses off-screen text.
+        description.classList.remove('description-returning');
+      };
+    };
+    description.addEventListener('click', returnToStart);
+    description.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        returnToStart();
+      }
+    });
     resizeObserver.observe(description);
     visibilityObserver.observe(description);
   });

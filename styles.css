@@ -1077,8 +1077,8 @@ html { scroll-behavior: smooth; }
   animation-play-state: paused;
 }
 .food-desc.has-overflow.description-visible .food-desc-text { animation-play-state: running; }
-.food-desc.has-overflow:hover .food-desc-text,
-.food-desc.has-overflow:focus .food-desc-text { animation-play-state: paused; }
+.food-desc.has-overflow.description-returning .food-desc-text { animation-play-state: paused; }
+.food-desc.has-overflow { cursor: pointer; }
 .food-desc:focus-visible { outline: 2px solid var(--text-muted); outline-offset: 2px; }
 @keyframes description-scroll {
   0%, 18% { transform: translateY(0); }
