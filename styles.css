@@ -1616,6 +1616,9 @@ html { scroll-behavior: smooth; }
 }
 
 .info-card {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
   background: var(--card-bg);
   backdrop-filter: blur(20px);
   border: 1px solid var(--glass-border);
@@ -1626,6 +1629,9 @@ html { scroll-behavior: smooth; }
   gap: 16px;
   box-shadow: var(--shadow-card);
 }
+
+.info-card:focus-visible { outline: 2px solid var(--text-muted); outline-offset: 4px; }
+.info-card:active { border-color: var(--text-muted); }
 
 .info-icon {
   width: 48px;

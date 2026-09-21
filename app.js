@@ -204,6 +204,7 @@ function toggleTheme() {
 // Initialize App
 document.addEventListener('DOMContentLoaded', async () => {
   initTheme();
+  setupInfoCardMotion();
   await checkAdminState();
   await loadMenuData();
   loadCartData();
@@ -215,6 +216,30 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // Admin Security Management
+function setupInfoCardMotion() {
+  document.querySelectorAll('.info-card').forEach(card => {
+    let pop;
+    const activate = () => {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      const from = getComputedStyle(card).transform;
+      pop?.cancel();
+      pop = card.animate([
+        { transform: from, offset: 0 },
+        { transform: 'translateY(-6px) scale(1.025)', offset: .38 },
+        { transform: 'translateY(-6px) scale(1.025)', offset: .6 },
+        { transform: 'translateY(0) scale(1)', offset: 1 }
+      ], { duration: 700, easing: 'cubic-bezier(.22,1,.36,1)' });
+    };
+    card.addEventListener('click', activate);
+    card.addEventListener('keydown', event => {
+      if ((event.key === 'Enter' || event.key === ' ') && !event.repeat) {
+        event.preventDefault();
+        activate();
+      }
+    });
+  });
+}
+
 async function checkAdminState() {
   if (!isSupabaseConfigured) {
     updateAdminUI();
