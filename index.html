@@ -85,7 +85,7 @@
       <!-- Center Column: Large Circular Dish Platter & Floating Elements -->
       <div class="hero-center-col">
         <div class="center-dish-wrapper">
-          <img src="assets/mandhi.png" alt="Chicken Mandhi Platter" class="center-dish-img">
+          <img src="assets/mandhi.png" alt="Chicken Mandhi Platter" class="center-dish-img" role="button" tabindex="0" aria-label="Preview Chicken Mandhi Platter">
           <!-- Floating garnish splashes -->
           <div class="garnish-leaf garnish-1">🥒</div>
           <div class="garnish-leaf garnish-2">🌿</div>
@@ -472,6 +472,12 @@
   </button>
 
   <!-- Toast Container -->
+  <dialog id="foodPhotoPreview" class="food-photo-preview" aria-labelledby="foodPhotoCaption">
+    <button type="button" class="photo-preview-close" aria-label="Close photo preview">&times;</button>
+    <img id="foodPhotoImage" alt="">
+    <p id="foodPhotoCaption"></p>
+  </dialog>
+
   <div class="toast-container" id="toastContainer"></div>
 
   <!-- JavaScript -->

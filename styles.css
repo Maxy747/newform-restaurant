@@ -1233,6 +1233,31 @@ html { scroll-behavior: smooth; }
   .food-card .card-admin-controls { top: 7px; right: 7px; gap: 4px; }
 }
 
+.card-img, .center-dish-img { cursor: zoom-in; }
+.card-img:focus-visible, .center-dish-img:focus-visible { outline: 3px solid var(--gold-primary); outline-offset: -4px; }
+.food-photo-preview {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(92vw, 720px);
+  max-width: 92vw;
+  max-height: 90dvh;
+  padding: 12px;
+  border: 1px solid var(--glass-border);
+  border-radius: 22px;
+  background: var(--card-bg);
+  color: var(--text-title);
+  box-shadow: 0 24px 80px #0008;
+  overflow: auto;
+}
+.food-photo-preview[open] { animation: photo-preview-in .32s cubic-bezier(.22,1,.36,1); }
+.food-photo-preview::backdrop { background: rgb(0 0 0 / .78); }
+.food-photo-preview img { display: block; width: 100%; height: auto; max-height: 72dvh; object-fit: contain; border-radius: 14px; }
+.food-photo-preview p { margin: 12px 40px 4px 8px; font-weight: 700; }
+.photo-preview-close { position: absolute; right: 20px; top: 20px; width: 44px; height: 44px; border: 1px solid #ffffff70; border-radius: 50%; background: #151719e6; color: white; font-size: 30px; cursor: pointer; z-index: 1; }
+@keyframes photo-preview-in { from { opacity: 0; transform: translateY(20px) scale(.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@media (prefers-reduced-motion: reduce) { .food-photo-preview[open] { animation: none; } }
+
 /* Modals & Cart Drawer */
 .overlay {
   position: fixed;

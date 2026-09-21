@@ -205,6 +205,7 @@ function toggleTheme() {
 document.addEventListener('DOMContentLoaded', async () => {
   initTheme();
   setupInfoCardMotion();
+  setupFoodPhotoPreview();
   await checkAdminState();
   await loadMenuData();
   loadCartData();
@@ -216,6 +217,54 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // Admin Security Management
+function setupFoodPhotoPreview() {
+  const dialog = document.getElementById('foodPhotoPreview');
+  const image = document.getElementById('foodPhotoImage');
+  const caption = document.getElementById('foodPhotoCaption');
+  let opener;
+  let previousOverflow;
+  let closing = false;
+  const close = async () => {
+    if (!dialog.open || closing) return;
+    closing = true;
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      await dialog.animate([
+        { opacity: 1, transform: 'translateY(0) scale(1)' },
+        { opacity: 0, transform: 'translateY(12px) scale(.94)' }
+      ], { duration: 180, easing: 'ease-in', fill: 'forwards' }).finished;
+    }
+    dialog.close();
+    dialog.getAnimations().forEach(animation => animation.cancel());
+    document.documentElement.style.overflow = previousOverflow;
+    opener?.focus({ preventScroll: true });
+    image.removeAttribute('src');
+    closing = false;
+  };
+  const open = target => {
+    if (dialog.open) return;
+    opener = target;
+    image.src = target.currentSrc || target.src;
+    image.alt = target.alt;
+    caption.textContent = target.alt;
+    previousOverflow = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = 'hidden';
+    dialog.showModal();
+  };
+  document.addEventListener('click', event => {
+    const target = event.target.closest('.card-img, .center-dish-img');
+    if (target) open(target);
+  });
+  document.addEventListener('keydown', event => {
+    if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('.card-img, .center-dish-img')) {
+      event.preventDefault();
+      open(event.target);
+    }
+  });
+  dialog.querySelector('.photo-preview-close').addEventListener('click', close);
+  dialog.addEventListener('cancel', event => { event.preventDefault(); close(); });
+  dialog.addEventListener('click', event => { if (event.target === dialog) close(); });
+}
+
 function setupInfoCardMotion() {
   document.querySelectorAll('.info-card').forEach(card => {
     let pop;
@@ -654,7 +703,7 @@ function renderMenu() {
     return `
       <div class="food-card${isAdmin ? ' admin-mode' : ''}" id="card-${item.id}">
         <div class="card-img-container">
-          <img src="${item.image || 'assets/hero.png'}" alt="${item.name}" class="card-img" onerror="this.src='assets/hero.png'">
+          <img src="${item.image || 'assets/hero.png'}" alt="${item.name}" class="card-img" role="button" tabindex="0" aria-label="Preview ${item.name}" onerror="this.src='assets/hero.png'">
           <div class="diet-icon ${item.diet}"></div>
           ${item.tag ? `<span class="card-badge ${getTagTone(item.tag)}">${item.tag}</span>` : ''}
           ${isAdmin ? `
