@@ -588,6 +588,8 @@ function getTagTone(tag) {
 }
 
 function renderMenu() {
+  setupDescriptionScroll.resizeObserver?.disconnect();
+  setupDescriptionScroll.visibilityObserver?.disconnect();
   const container = document.getElementById('foodGrid');
   const countEl = document.getElementById('itemCount');
   if (!container) return;
@@ -643,7 +645,7 @@ function renderMenu() {
         </div>
         <div class="card-body">
           <h3 class="food-name">${item.name}</h3>
-          <p class="food-desc">${item.description || ''}</p>
+          <p class="food-desc"><span class="food-desc-text">${item.description || ''}</span></p>
           ${item.available === false ? '<small class="danger">Currently unavailable</small>' : ''}
           
           ${item.portionType === 'multi' ? `
@@ -672,6 +674,30 @@ function renderMenu() {
       </div>
     `;
   }).join('');
+  setupDescriptionScroll(container);
+}
+
+// Measure only on layout changes; CSS handles motion without scroll-frame work.
+function setupDescriptionScroll(container) {
+  const measure = (description) => {
+    const text = description.querySelector('.food-desc-text');
+    const overflow = Math.max(0, text.scrollHeight - description.clientHeight);
+    description.classList.toggle('has-overflow', overflow > 2);
+    description.style.setProperty('--description-travel', `${-overflow}px`);
+    description.style.setProperty('--description-duration', `${Math.max(10, overflow / 9 + 6)}s`);
+    description.tabIndex = overflow > 2 ? 0 : -1;
+  };
+  const resizeObserver = new ResizeObserver(entries => entries.forEach(({ target }) => measure(target)));
+  const visibilityObserver = new IntersectionObserver(entries => entries.forEach(({ target, isIntersecting }) => {
+    target.classList.toggle('description-visible', isIntersecting);
+  }));
+  container.querySelectorAll('.food-desc').forEach(description => {
+    measure(description);
+    resizeObserver.observe(description);
+    visibilityObserver.observe(description);
+  });
+  setupDescriptionScroll.resizeObserver = resizeObserver;
+  setupDescriptionScroll.visibilityObserver = visibilityObserver;
 }
 
 // Portion Selection Handler

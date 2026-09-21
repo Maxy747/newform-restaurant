@@ -1064,11 +1064,30 @@ html { scroll-behavior: smooth; }
   font-size: 0.825rem;
   color: var(--text-muted);
   margin-bottom: 16px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  display: block;
+  line-height: 1.4;
+  height: 2.8em;
   overflow: hidden;
-  flex: 1;
+  flex: 0 0 auto;
+}
+
+.food-desc-text { display: block; }
+.food-desc.has-overflow .food-desc-text {
+  animation: description-scroll var(--description-duration, 12s) linear infinite;
+  animation-play-state: paused;
+}
+.food-desc.has-overflow.description-visible .food-desc-text { animation-play-state: running; }
+.food-desc.has-overflow:hover .food-desc-text,
+.food-desc.has-overflow:focus .food-desc-text { animation-play-state: paused; }
+.food-desc:focus-visible { outline: 2px solid var(--text-muted); outline-offset: 2px; }
+@keyframes description-scroll {
+  0%, 18% { transform: translateY(0); }
+  65%, 83% { transform: translateY(var(--description-travel)); }
+  100% { transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .food-desc.has-overflow { overflow-y: auto; }
+  .food-desc.has-overflow .food-desc-text { animation: none; }
 }
 
 .portion-selector {
