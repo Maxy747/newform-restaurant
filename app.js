@@ -648,9 +648,9 @@ function renderMenu() {
           
           ${item.portionType === 'multi' ? `
             <div class="portion-selector" style="--portion-offset:${currentPortion === 'quarter' ? '0px' : currentPortion === 'half' ? 'calc(100% + 4px)' : 'calc(200% + 8px)'}">
-              <button class="portion-btn ${currentPortion === 'quarter' ? 'active' : ''}" onclick="selectPortion('${item.id}', 'quarter')">Qtr (₹${item.prices.quarter})</button>
-              <button class="portion-btn ${currentPortion === 'half' ? 'active' : ''}" onclick="selectPortion('${item.id}', 'half')">Half (₹${item.prices.half})</button>
-              <button class="portion-btn ${currentPortion === 'full' ? 'active' : ''}" onclick="selectPortion('${item.id}', 'full')">Full (₹${item.prices.full})</button>
+              <button class="portion-btn ${currentPortion === 'quarter' ? 'active' : ''}" aria-label="Quarter, ₹${item.prices.quarter}" onclick="selectPortion('${item.id}', 'quarter')">Qtr<span class="portion-price"> (₹${item.prices.quarter})</span></button>
+              <button class="portion-btn ${currentPortion === 'half' ? 'active' : ''}" aria-label="Half, ₹${item.prices.half}" onclick="selectPortion('${item.id}', 'half')">Half<span class="portion-price"> (₹${item.prices.half})</span></button>
+              <button class="portion-btn ${currentPortion === 'full' ? 'active' : ''}" aria-label="Full, ₹${item.prices.full}" onclick="selectPortion('${item.id}', 'full')">Full<span class="portion-price"> (₹${item.prices.full})</span></button>
             </div>
           ` : ''}
 

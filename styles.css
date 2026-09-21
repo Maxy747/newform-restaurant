@@ -1191,6 +1191,29 @@ html { scroll-behavior: smooth; }
 }
 
 
+/* Compact, aligned mobile menu. Keep desktop card sizing unchanged. */
+@media (max-width: 768px) {
+  .food-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; align-items: stretch; }
+  .food-card { min-width: 0; border-radius: 14px; }
+  .food-card:hover { transform: none; }
+  .card-img-container { height: clamp(100px,31vw,160px); }
+  .card-body { padding: 10px; }
+  .food-name { font-size: .94rem; line-height: 1.3; min-height: 2.6em; margin-bottom: 5px; overflow-wrap: anywhere; }
+  .food-desc { font-size: .72rem; line-height: 1.4; height: 2.8em; flex: 0 0 auto; margin-bottom: 10px; }
+  .food-card .portion-selector { margin-top: auto; margin-bottom: 10px; }
+  .food-card .portion-btn { min-height: 34px; padding: 4px 1px; font-size: .7rem; }
+  .food-card .portion-price { display: none; }
+  .card-footer { display: grid; grid-template-columns: minmax(0,1fr); gap: 7px; padding-top: 9px; }
+  .price-amount { font-size: 1.08rem; line-height: 1.2; }
+  .food-card .add-cart-btn { width: 100%; min-height: 38px; padding: 8px; font-size: .75rem; }
+  .food-card .card-qty-control { width: 100%; min-height: 38px; justify-content: space-between; padding: 3px; }
+  .food-card .card-qty-control button { width: 30px; height: 30px; }
+  .food-card .diet-icon { top: 8px; left: 8px; width: 17px; height: 17px; }
+  .food-card .card-badge { top: 8px; right: 6px; max-width: calc(100% - 34px); padding: 3px 6px; font-size: .53rem; letter-spacing: .3px; text-align: center; }
+  .food-card.admin-mode .card-badge { top: auto; bottom: 8px; right: 8px; }
+  .food-card .card-admin-controls { top: 7px; right: 7px; gap: 4px; }
+}
+
 /* Modals & Cart Drawer */
 .overlay {
   position: fixed;
