@@ -198,7 +198,6 @@ function toggleTheme() {
   const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
   const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
   setTheme(newTheme);
-  showToast(newTheme === 'light' ? '☀️ Minimalist Light Theme Activated' : '🌙 Monochrome White & Obsidian Theme Activated');
 }
 
 // Initialize App

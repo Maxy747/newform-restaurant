@@ -246,8 +246,8 @@ html { scroll-behavior: smooth; }
 
 /* Theme Toggle Button */
 .theme-toggle-btn {
-  background: var(--btn-minimal-bg);
-  border: 1.5px solid var(--gold-primary);
+  background: transparent;
+  border: none;
   color: var(--gold-primary);
   width: 40px;
   height: 40px;
@@ -261,11 +261,14 @@ html { scroll-behavior: smooth; }
 }
 
 .theme-toggle-btn:hover {
-  background: var(--gold-btn-gradient);
-  color: var(--btn-primary-text);
-  transform: rotate(20deg) scale(1.08);
+  background: transparent;
+  color: var(--gold-primary);
+  transform: scale(1.08);
   box-shadow: var(--shadow-gold);
 }
+
+.theme-toggle-btn:hover { box-shadow: none; }
+.theme-toggle-btn:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 
 /* Minimalist Theme Buttons */
 .btn-minimal {
