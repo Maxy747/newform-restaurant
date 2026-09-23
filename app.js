@@ -349,13 +349,7 @@ function updateAdminUI() {
 }
 
 function openAdminLoginModal() {
-  document.getElementById('overlay').classList.add('active');
-  document.getElementById('adminLoginModal').classList.add('active');
-  const emailInput = document.getElementById('adminEmailInput');
-  const passInput = document.getElementById('adminPasswordInput');
-  if (emailInput) emailInput.value = '';
-  if (passInput) passInput.value = '';
-  document.getElementById('authErrorMsg').style.display = 'none';
+  openAccountModal();
 }
 
 function closeAdminLoginModal() {
