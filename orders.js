@@ -107,8 +107,8 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   if(!isSupabaseConfigured){content.textContent='Account service is not configured yet.';return;}
   const user=getSession()?.user;
   if(!user) {
-   content.innerHTML=`<div class="account-section"><p>Login is optional. Create an account to save your details and order history.</p><label>Email<input id="accountEmail" class="form-control" type="email" autocomplete="email" placeholder="Email"></label><label>Password<input id="accountPassword" class="form-control" type="password" autocomplete="current-password" placeholder="Password"></label><button id="accountSignIn" class="btn-minimal btn-primary-minimal">SIGN IN</button><button id="accountSignUp" class="btn-minimal">CREATE & VERIFY ACCOUNT</button><button id="resendConfirmation" class="btn-minimal">RESEND VERIFICATION EMAIL</button><p id="authStatus" role="status"></p><h4>ORDERS ON THIS DEVICE</h4><div id="guestHistory"></div></div>`;
-   $('accountSignIn').onclick=run(()=>authenticate(false));$('accountSignUp').onclick=run(()=>authenticate(true));
+   content.innerHTML=`<div class="account-section"><p>Login is optional. Create an account to save your details and order history.</p><label>Email<input id="accountEmail" class="form-control" type="email" autocomplete="email" placeholder="Email"></label><label>Password<input id="accountPassword" class="form-control" type="password" autocomplete="current-password" placeholder="Password"></label><button id="accountSignIn" class="btn-minimal btn-primary-minimal">Sign in</button><button id="accountSignUp" class="btn-minimal">Create account</button><button id="resendConfirmation" class="btn-minimal">RESEND VERIFICATION EMAIL</button><p id="authStatus" role="status"></p><h4>ORDERS ON THIS DEVICE</h4><div id="guestHistory"></div></div>`;
+   $('accountSignIn').onclick=run(()=>authenticate(false));$('accountSignUp').onclick=renderRegistration;
    $('resendConfirmation').onclick=run(async()=>{
     const email=$('accountEmail').value.trim();if(!$('accountEmail').checkValidity()||!email)throw new Error('Enter a valid email.');
     const {error}=await supabase.auth.resend({type:'signup',email,options:{emailRedirectTo:location.origin+location.pathname}});
@@ -123,6 +123,31 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   $('historyPrev').onclick=run(async()=>{historyPage=Math.max(0,historyPage-1);await refreshHistory();});
   $('historyNext').onclick=run(async()=>{historyPage++;await refreshHistory();});
   renderGuestHistory();await refreshHistory();
+ }
+ function renderRegistration() {
+  const email=$('accountEmail')?.value || '';
+  $('accountContent').innerHTML=`<form id="registrationForm" class="account-section registration-screen">
+   <button type="button" id="backToSignIn" class="btn-minimal">← Back to sign in</button>
+   <h3>Create account</h3><p>Save your delivery details and order history. We’ll send an email to verify your account.</p>
+   <label>Email<input id="accountEmail" class="form-control" type="email" autocomplete="email" placeholder="Email" required value="${e(email)}"></label>
+   <label>Password<input id="accountPassword" class="form-control" type="password" autocomplete="new-password" placeholder="At least 6 characters" minlength="6" required></label>
+   <label>Confirm password<input id="confirmAccountPassword" class="form-control" type="password" autocomplete="new-password" placeholder="Confirm password" minlength="6" required></label>
+   <button type="submit" class="btn-minimal btn-primary-minimal">Create account</button><p id="authStatus" role="status"></p>
+   </form>`;
+  $('backToSignIn').onclick=()=>renderAccount();
+  $('registrationForm').onsubmit=async event=>{
+   event.preventDefault();
+   const submit=event.currentTarget.querySelector('[type="submit"]');
+   if(submit.disabled)return;
+   submit.disabled=true;
+   try {
+    if($('accountPassword').value!==$('confirmAccountPassword').value)throw new Error('Passwords do not match.');
+    await authenticate(true);
+   } catch(error) { if($('authStatus'))$('authStatus').textContent=error.message;toast(error.message); }
+   finally {submit.disabled=false;}
+  };
+  $('accountContent').scrollTop=0;
+  $('accountEmail').focus({preventScroll:true});
  }
  async function authenticate(signUp) {
   const email=$('accountEmail').value.trim(),password=$('accountPassword').value;
