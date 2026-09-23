@@ -47,6 +47,12 @@ on conflict(user_id) do update set role=excluded.role;
 
 Supported employee roles: `staff`, `kitchen`, `delivery`, `admin`. Kitchen can confirm/start/ready orders and cannot read contact/address details. Delivery sees delivery orders ready/in transit/completed and can dispatch/complete them or record cash collected. Staff/admin handle support and analytics. Menu editing still uses the existing `profiles.role='admin'` permission.
 
+## Menu categories
+
+Apply `supabase/migrations/20260923061317_menu_categories.sql` after the baseline/OMS migration. Admins see **Edit categories** below the category bar. They can add, rename, remove (archive), and restore tabs. Category IDs stay stable when renamed, so dish assignments are preserved. Removing a tab never deletes its dishes: they remain visible in All and can be reassigned through the existing dish editor. All is a built-in filter, not a deletable category. Category writes are enforced by database RLS using the existing admin profile role. Public users have read-only access. Category changes appear on subsequent page loads.
+
+`tests/categories-preview.html` is a local-only in-memory UI fixture (not a production build entry); database authorization is covered in `tests/oms.test.js`.
+
 ## Razorpay activation (credentials still required)
 
 Set these **Supabase Edge secrets**, never Vite variables or committed files:

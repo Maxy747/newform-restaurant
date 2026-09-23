@@ -44,6 +44,22 @@ test('PostgreSQL migration and order/payment/RLS lifecycle',async t=>{
  insert into public.menu_items(id,name,category,diet,"portionType",price) values('single','Paneer','veg','veg','single',220);
  insert into public.menu_items(id,name,category,diet,"portionType","pricesJSON") values('multi','Mandhi','mandhi','non-veg','multi','{"quarter":240,"half":420,"full":740}');`);
  await db.exec(await readFile(new URL('../supabase/migrations/20260920114250_restaurant_order_management.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../supabase/migrations/20260923061317_menu_categories.sql',import.meta.url),'utf8'));
+ await t.test('categories are publicly readable but only admins can add, rename, archive and restore',async()=>{
+  await db.exec('set role anon');
+  assert.ok((await db.query('select * from public.menu_categories')).rows.length >= 8);
+  await assert.rejects(db.exec("insert into public.menu_categories(id,name) values('bad','Bad')"),/permission denied/);
+  await db.exec(`reset role; set role authenticated; set request.jwt.claim.sub='${user}'`);
+  await assert.rejects(db.exec("insert into public.menu_categories(id,name) values('bad','Bad')"),/row-level security/);
+  assert.equal((await db.query("update public.menu_categories set name='Forged' where id='mandhi' returning id")).rows.length,0);
+  await db.exec(`set request.jwt.claim.sub='${admin}'`);
+  await db.exec("insert into public.menu_categories(id,name) values('dessert','Desserts'); update public.menu_categories set name='Rice',archived=true where id='mandhi'");
+  assert.equal((await db.query("select category from public.menu_items where id='multi'")).rows[0].category,'mandhi');
+  await db.exec("update public.menu_categories set archived=false where id='mandhi'");
+  await assert.rejects(db.exec("update public.menu_categories set name=' ' where id='mandhi'"),/check constraint/);
+  await assert.rejects(db.exec("delete from public.menu_categories where id='mandhi'"),/permission denied/);
+  await db.exec('reset role');
+ });
  await db.exec(`insert into public.restaurant_roles(user_id,role) values('${kitchen}','kitchen'),('${delivery}','delivery');`);
  const q=async(sql,args=[]) => (await db.query(sql,args)).rows;
  const create=async({who=user,method='whatsapp',items=[{id:'multi',portion:'quarter',quantity:2,price:1}],kind='delivery',request=crypto.randomUUID(),hash='a'.repeat(64)}={})=>{

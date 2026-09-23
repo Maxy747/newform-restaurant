@@ -1,6 +1,7 @@
 import { isSupabaseConfigured, supabase } from './supabaseClient.js';
 import { createOrdering } from './orders.js';
 import { escapeHTML } from './oms-policy.js';
+import { createCategories } from './categories.js';
 
 // Default Menu Dataset extracted directly from Newform Multi Cuisine Restaurant Menu Cards
 const DEFAULT_MENU = [
@@ -172,6 +173,13 @@ const ordering = createOrdering({
 });
 
 // LocalStorage Keys
+const categories = createCategories({
+  client: isSupabaseConfigured ? supabase : null,
+  isAdmin: () => isAdmin,
+  onSelect: category => { activeCategory = category; renderMenu(true); },
+  notify: message => showToast(message)
+});
+
 const CART_STORAGE_KEY = 'newform_cart_v1';
 const THEME_STORAGE_KEY = 'newform_theme_v1';
 
@@ -203,10 +211,12 @@ function toggleTheme() {
 // Initialize App
 document.addEventListener('DOMContentLoaded', async () => {
   initTheme();
+  categories.init();
   setupInfoCardMotion();
   setupFoodPhotoPreview();
   await checkAdminState();
   await loadMenuData();
+  await categories.load();
   loadCartData();
   setupEventListeners();
   ordering.init();
@@ -320,6 +330,7 @@ async function refreshAdminState(session) {
 }
 
 function updateAdminUI() {
+  categories.adminChanged();
   const adminElements = document.querySelectorAll('.admin-only-element');
   adminElements.forEach(el => {
     el.style.display = isAdmin ? 'inline-flex' : 'none';
@@ -419,7 +430,7 @@ async function loadMenuData() {
   }
   const { data, error } = await supabase.from('menu_items').select('*');
   
-  if (error || !data || data.length === 0) {
+  if (error || !data) {
     // Keep the public menu usable during first-time database setup.
     menuItems = [...DEFAULT_MENU];
     if (error) console.error('Could not load menu from Supabase:', error.message);
@@ -514,15 +525,6 @@ function setupEventListeners() {
   }
 
   // Category Scroll Tabs
-  document.querySelectorAll('.cat-tab').forEach(tab => {
-    tab.addEventListener('click', (e) => {
-      document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
-      const target = e.currentTarget;
-      target.classList.add('active');
-      activeCategory = target.dataset.category;
-      renderMenu();
-    });
-  });
 
   const categoryScroll = document.getElementById('categoryScroll');
   const categoryScrollPrev = document.getElementById('categoryScrollPrev');
@@ -660,7 +662,7 @@ function getTagTone(tag) {
   return '';
 }
 
-function renderMenu() {
+function renderMenu(animate = false) {
   setupDescriptionScroll.resizeObserver?.disconnect();
   setupDescriptionScroll.visibilityObserver?.disconnect();
   const container = document.getElementById('foodGrid');
@@ -748,6 +750,12 @@ function renderMenu() {
     `;
   }).join('');
   setupDescriptionScroll(container);
+  if (animate && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    [...container.querySelectorAll('.food-card')].slice(0,12).forEach((card,index) => {
+      card.animate([{opacity:0,transform:'translateY(14px) scale(.98)'},{opacity:1,transform:'translateY(0) scale(1)'}],
+        {duration:350,delay:Math.min(index,5)*35,easing:'cubic-bezier(.22,1,.36,1)',fill:'backwards'});
+    });
+  }
 }
 
 // Measure only on layout changes; CSS handles motion without scroll-frame work.
@@ -1156,6 +1164,8 @@ function setupFeaturedDishOrder() {
 function openAddItemModal() {
   editingItemId = null;
   document.getElementById('addItemForm').reset();
+  const categorySelect = document.getElementById('formCategory');
+  if (activeCategory !== 'all') categorySelect.value = activeCategory;
   document.getElementById('itemModalTitle').textContent = 'ADD NEW ITEM';
   document.getElementById('saveItemButtonText').textContent = 'SAVE DISH TO MENU';
   document.getElementById('overlay').classList.add('active');
@@ -1180,6 +1190,7 @@ async function handleAddItemSubmit(e) {
 
   const name = document.getElementById('formItemName').value.trim();
   const category = document.getElementById('formCategory').value;
+  if (!category) { showToast('Add a category before creating a dish.'); return; }
   const diet = document.getElementById('formDiet').value;
   const tag = document.getElementById('formTag').value.trim();
   const description = document.getElementById('formDesc').value.trim();

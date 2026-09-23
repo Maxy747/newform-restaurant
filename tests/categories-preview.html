@@ -1,0 +1,8 @@
+<!doctype html><html lang="en" data-theme="dark"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="../styles.css"><title>Category editor test fixture</title>
+<body><main style="padding:20px"><h1>Category editor test fixture</h1><div class="category-scroll-shell"><div class="category-scroll" id="categoryScroll"><button class="cat-tab active" data-category="all">All</button><button class="cat-tab" data-category="mandhi">Mandhi &amp; Rice</button><button class="cat-tab" data-category="veg">Vegetarian</button></div></div><label>Dish category<select id="formCategory"></select></label><p id="status"></p></main>
+<script type="module">
+import {createCategories} from '../categories.js';
+let rows=[{id:'mandhi',name:'Mandhi & Rice',sort_order:0,archived:false},{id:'veg',name:'Vegetarian',sort_order:1,archived:false}];
+const client={from(){let change,id,insert=false;const query={select(){return query},order(){return query},update(value){change=value;return query},insert(value){change=value;insert=true;return query},eq(key,value){id=value;return query},single(){const row=insert?{archived:false,...change}:Object.assign(rows.find(r=>r.id===id),change);if(insert)rows.push(row);return Promise.resolve({data:row,error:null})},then(resolve){return Promise.resolve({data:structuredClone(rows),error:null}).then(resolve)}};return query}};
+const categories=createCategories({client,isAdmin:()=>true,onSelect:id=>document.getElementById('status').textContent='Selected: '+id,notify:message=>document.getElementById('status').textContent=message});categories.init();await categories.load();
+</script></body></html>

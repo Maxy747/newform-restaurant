@@ -695,6 +695,8 @@ html { scroll-behavior: smooth; }
 .category-scroll-shell.is-collapsed { max-height: 0; opacity: 0; margin-top: -14px; pointer-events: none; }
 
 .category-scroll {
+  position: relative;
+  isolation: isolate;
   display: flex;
   flex: 1;
   gap: 8px;
@@ -726,6 +728,8 @@ html { scroll-behavior: smooth; }
 }
 
 .cat-tab {
+  position: relative;
+  z-index: 1;
   white-space: nowrap;
   padding: 8px 18px;
   border-radius: var(--radius-full);
@@ -741,7 +745,7 @@ html { scroll-behavior: smooth; }
   transition: var(--transition);
 }
 
-.cat-tab.active, .cat-tab:hover {
+.cat-tab:hover {
   background: var(--btn-minimal-bg);
   color: var(--gold-primary);
   border-color: var(--glass-border);
@@ -765,6 +769,20 @@ html { scroll-behavior: smooth; }
     scroll-snap-align: start;
   }
 }
+
+.category-highlight { position:absolute; top:0; left:0; pointer-events:none; border:1px solid var(--glass-border); background:var(--btn-minimal-bg); border-radius:var(--radius-full); transition:transform .38s cubic-bezier(.22,1,.36,1),width .38s cubic-bezier(.22,1,.36,1); }
+.cat-tab.active { background:transparent; border-color:transparent; color:var(--gold-primary); }
+.category-manage { margin-top:10px; }
+.category-manage[hidden] { display:none; }
+.category-editor { position:fixed; inset:0; margin:auto; width:min(94vw,700px); max-height:85dvh; overflow:auto; padding:22px; border:1px solid var(--glass-border); border-radius:20px; color:var(--text-title); background:var(--drawer-bg); }
+.category-editor::backdrop { background:#000b; }
+.category-editor-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+.category-editor p { margin:14px 0; color:var(--text-muted); font-size:.85rem; }
+.category-editor form { display:flex; align-items:end; flex-wrap:wrap; gap:8px; padding:12px 0; border-bottom:1px solid var(--glass-border); }
+.category-editor label { flex:1 1 180px; font-size:.8rem; }
+.category-editor input { display:block; width:100%; margin-top:6px; padding:10px; color:var(--text-title); background:var(--input-bg,var(--card-bg)); border:1px solid var(--glass-border); border-radius:8px; }
+.category-editor .btn-minimal { padding:10px 12px; }
+@media (prefers-reduced-motion:reduce) { .category-highlight { transition:none; } }
 
 /* TRANSLUCENT GLASS FOOD CARDS */
 .menu-section {
