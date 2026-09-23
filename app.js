@@ -231,6 +231,7 @@ function setupFoodPhotoPreview() {
   const dialog = document.getElementById('foodPhotoPreview');
   const image = document.getElementById('foodPhotoImage');
   const caption = document.getElementById('foodPhotoCaption');
+  const details = document.getElementById('cartItemPreviewDetails');
   let opener;
   let previousOverflow;
   let closing = false;
@@ -252,20 +253,32 @@ function setupFoodPhotoPreview() {
   };
   const open = target => {
     if (dialog.open) return;
+    const entry = target.hasAttribute('data-cart-detail') ? cart[Number(target.dataset.cartDetail)] : null;
+    const dish = entry && menuItems.find(item => item.id === entry.id);
     opener = target;
-    image.src = target.currentSrc || target.src;
-    image.alt = target.alt;
-    caption.textContent = target.alt;
+    image.hidden = !!entry && !dish?.image;
+    if (!image.hidden) image.src = entry ? dish.image : target.currentSrc || target.src;
+    image.alt = entry ? entry.name : target.alt;
+    caption.textContent = image.alt;
+    details.hidden = !entry;
+    dialog.classList.toggle('cart-detail-preview', !!entry);
+    if (entry) {
+      details.innerHTML = `<p>${escapeHTML(dish?.description || 'No description available for this dish.')}</p>
+        <dl><dt>Portion</dt><dd>${escapeHTML(entry.portion === 'single' ? 'Regular' : entry.portion || 'Regular')}</dd>
+        <dt>Quantity</dt><dd>${Number(entry.quantity)}</dd><dt>Price each</dt><dd>₹${Number(entry.price)}</dd>
+        <dt>Item subtotal</dt><dd>₹${Number(entry.price) * Number(entry.quantity)}</dd></dl>
+        <p class="cart-detail-note">Tax is shown separately in the cart total.${!dish ? ' This dish is no longer listed on the menu.' : dish.available === false ? ' This dish is currently unavailable.' : ''}</p>`;
+    }
     previousOverflow = document.documentElement.style.overflow;
     document.documentElement.style.overflow = 'hidden';
     dialog.showModal();
   };
   document.addEventListener('click', event => {
-    const target = event.target.closest('.card-img, .center-dish-img');
+    const target = event.target.closest('.card-img, .center-dish-img, [data-cart-detail]');
     if (target) open(target);
   });
   document.addEventListener('keydown', event => {
-    if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('.card-img, .center-dish-img')) {
+    if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('.card-img, .center-dish-img, [data-cart-detail]')) {
       event.preventDefault();
       open(event.target);
     }
@@ -974,10 +987,11 @@ function renderCart() {
 
   cartBody.innerHTML = cart.map((item, idx) => `
     <div class="cart-item">
-      <div class="cart-item-details">
+      <div class="cart-item-details" role="button" tabindex="0" data-cart-detail="${idx}" aria-label="View details for ${escapeHTML(item.name)}">
         <div style="font-family:var(--font-heading); font-weight:700; font-size:0.95rem;">${escapeHTML(item.name)}</div>
         <div style="font-size:0.75rem; color:var(--text-muted);">${item.portion ? `Portion: ${escapeHTML(item.portion)} | ` : ''}₹${Number(item.price)} each</div>
         <div style="font-weight:700; color:var(--primary); font-size:0.9rem;">₹${item.price * item.quantity}</div>
+        <small class="cart-detail-hint">View details ›</small>
       </div>
       <div class="cart-qty-control" aria-label="Quantity">
         <button onclick="updateCartQty(${idx}, -1)" aria-label="Reduce quantity">−</button>
