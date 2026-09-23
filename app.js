@@ -2,6 +2,7 @@ import { isSupabaseConfigured, supabase } from './supabaseClient.js';
 import { createOrdering } from './orders.js';
 import { escapeHTML } from './oms-policy.js';
 import { createCategories } from './categories.js';
+import { featuredDish, featuredPrice } from './featured-dish.js';
 
 // Default Menu Dataset extracted directly from Newform Multi Cuisine Restaurant Menu Cards
 const DEFAULT_MENU = [
@@ -663,6 +664,7 @@ function getTagTone(tag) {
 }
 
 function renderMenu(animate = false) {
+  updateFeaturedDish();
   setupDescriptionScroll.resizeObserver?.disconnect();
   setupDescriptionScroll.visibilityObserver?.disconnect();
   const container = document.getElementById('foodGrid');
@@ -850,6 +852,7 @@ function animatePrice(element, nextPrice, { hero = false } = {}) {
 
 window.selectPortion = function(itemId, portion) {
   selectedPortions[itemId] = portion;
+  updateFeaturedDish();
   const card = document.getElementById(`card-${itemId}`);
   const item = menuItems.find(menuItem => menuItem.id === itemId);
   if (!card || !item?.prices) return;
@@ -1136,28 +1139,49 @@ function calculateCartTotals() {
 }
 
 function setupFeaturedDishOrder() {
-  const featuredItemId = 'm1';
   const orderButton = document.getElementById('heroOrderNowBtn');
   const portionButtons = document.querySelectorAll('[data-hero-portion]');
-  const portionSelector = document.querySelector('.hero-portion-selector');
-  const updateFeaturedDish = () => {
-    const portion = selectedPortions[featuredItemId] || 'quarter';
-    const item = menuItems.find(menuItem => menuItem.id === featuredItemId);
-    const price = item?.prices?.[portion];
-    const priceElement = document.getElementById('heroFeaturedPrice');
-    if (price && priceElement) animatePrice(priceElement, price, { hero: true });
-    if (portionSelector) portionSelector.style.setProperty('--hero-portion-offset', portion === 'quarter' ? '0%' : portion === 'half' ? '100%' : '200%');
-    portionButtons.forEach(button => button.classList.toggle('active', button.dataset.heroPortion === portion));
-  };
   portionButtons.forEach(button => button.addEventListener('click', () => {
-    selectedPortions[featuredItemId] = button.dataset.heroPortion;
-    updateFeaturedDish();
+    const item = featuredDish(menuItems);
+    if (!item) return;
+    selectedPortions[item.id] = button.dataset.heroPortion;
+    renderMenu();
   }));
   if (orderButton) orderButton.addEventListener('click', event => {
     if (orderButton.disabled) return;
-    window.addToCart(featuredItemId, event);
+    const item = featuredDish(menuItems);
+    if (item) window.addToCart(item.id, event);
   });
   updateFeaturedDish();
+}
+
+function updateFeaturedDish() {
+  const item = featuredDish(menuItems);
+  const portion = item ? selectedPortions[item.id] || 'quarter' : 'quarter';
+  const price = featuredPrice(item, portion);
+  const priceElement = document.getElementById('heroFeaturedPrice');
+  const selector = document.querySelector('.hero-portion-selector');
+  const button = document.getElementById('heroOrderNowBtn');
+  if (!priceElement || !selector || !button) return;
+  selector.hidden = !item || item.portionType !== 'multi';
+  selector.style.display = selector.hidden ? 'none' : '';
+  selector.style.setProperty('--hero-portion-offset', portion === 'quarter' ? '0%' : portion === 'half' ? '100%' : '200%');
+  selector.setAttribute('aria-label', `Choose ${item?.name || 'featured dish'} portion`);
+  selector.querySelectorAll('button').forEach(el => {
+    el.classList.toggle('active', el.dataset.heroPortion === portion);
+    el.setAttribute('aria-pressed', String(el.dataset.heroPortion === portion));
+    el.disabled = featuredPrice(item,el.dataset.heroPortion) === null;
+  });
+  button.disabled = price === null;
+  if (price === null) { cancelAnimationFrame(priceElement._priceAnimationFrame); priceElement.textContent = 'Unavailable'; }
+  else animatePrice(priceElement, price, {hero:true});
+  if (item) {
+    const image = document.querySelector('.center-dish-img');
+    image.src = item.image || 'assets/mandhi.png';
+    image.alt = item.name;
+    image.setAttribute('aria-label', `Preview ${item.name}`);
+    document.querySelector('.current-dish-label').textContent = item.name;
+  }
 }
 
 // In-App Manager: Open / Close Add Food Item Modal
