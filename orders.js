@@ -107,13 +107,8 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   if(!isSupabaseConfigured){content.textContent='Account service is not configured yet.';return;}
   const user=getSession()?.user;
   if(!user) {
-   content.innerHTML=`<div class="account-section"><p>Login is optional. Create an account to save your details and order history.</p><label>Email<input id="accountEmail" class="form-control" type="email" autocomplete="email" placeholder="Email"></label><label>Password<input id="accountPassword" class="form-control" type="password" autocomplete="current-password" placeholder="Password"></label><button id="accountSignIn" class="btn-minimal btn-primary-minimal">Sign in</button><button id="accountSignUp" class="btn-minimal">Create account</button><button id="resendConfirmation" class="btn-minimal">RESEND VERIFICATION EMAIL</button><p id="authStatus" role="status"></p><h4>ORDERS ON THIS DEVICE</h4><div id="guestHistory"></div></div>`;
+   content.innerHTML=`<div class="account-section"><p>Login is optional. Create an account to save your details and order history.</p><label>Email<input id="accountEmail" class="form-control" type="email" autocomplete="email" placeholder="Email"></label><label>Password<input id="accountPassword" class="form-control" type="password" autocomplete="current-password" placeholder="Password"></label><button id="accountSignIn" class="btn-minimal btn-primary-minimal">Sign in</button><button id="accountSignUp" class="btn-minimal">Create account</button><p id="authStatus" role="status"></p><h4>ORDERS ON THIS DEVICE</h4><div id="guestHistory"></div></div>`;
    $('accountSignIn').onclick=run(()=>authenticate(false));$('accountSignUp').onclick=renderRegistration;
-   $('resendConfirmation').onclick=run(async()=>{
-    const email=$('accountEmail').value.trim();if(!$('accountEmail').checkValidity()||!email)throw new Error('Enter a valid email.');
-    const {error}=await supabase.auth.resend({type:'signup',email,options:{emailRedirectTo:location.origin+location.pathname}});
-    if(error)throw error; $('authStatus').textContent='If the account needs verification, a new email has been requested. Check your inbox and spam folder.';
-   });
    renderGuestHistory();return;
   }
   content.innerHTML=`<div class="account-section"><strong>${e(user.email)}</strong><label>Name<input id="profileName" class="form-control" autocomplete="name" maxlength="100" value="${e(profile?.full_name)}"></label><label>Phone<input id="profilePhone" type="tel" class="form-control" autocomplete="tel" maxlength="20" value="${e(profile?.phone)}"></label><label>Default address<textarea id="profileAddress" class="form-control" autocomplete="street-address" maxlength="500">${e(profile?.default_address)}</textarea></label><button id="saveProfile" class="btn-minimal">SAVE DETAILS</button>${staff()?'<button id="accountDashboard" class="btn-minimal">RESTAURANT DASHBOARD</button>':''}<h4>ORDER HISTORY</h4><div id="accountHistory" aria-live="polite"></div><div class="oms-actions"><button id="historyPrev" class="btn-minimal">PREVIOUS</button><button id="historyNext" class="btn-minimal">NEXT</button></div><h4>GUEST ORDERS ON THIS DEVICE</h4><div id="guestHistory"></div><button id="accountSignOut" class="btn-minimal">SIGN OUT</button></div>`;
@@ -132,9 +127,15 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
    <label>Email<input id="accountEmail" class="form-control" type="email" autocomplete="email" placeholder="Email" required value="${e(email)}"></label>
    <label>Password<input id="accountPassword" class="form-control" type="password" autocomplete="new-password" placeholder="At least 6 characters" minlength="6" required></label>
    <label>Confirm password<input id="confirmAccountPassword" class="form-control" type="password" autocomplete="new-password" placeholder="Confirm password" minlength="6" required></label>
-   <button type="submit" class="btn-minimal btn-primary-minimal">Create account</button><p id="authStatus" role="status"></p>
+   <button type="submit" class="btn-minimal btn-primary-minimal">Create account</button>
+   <button type="button" id="resendConfirmation" class="btn-minimal">Resend verification email</button><p id="authStatus" role="status"></p>
    </form>`;
   $('backToSignIn').onclick=()=>renderAccount();
+  $('resendConfirmation').onclick=run(async()=>{
+   const email=$('accountEmail').value.trim();if(!$('accountEmail').checkValidity()||!email)throw new Error('Enter a valid email.');
+   const {error}=await supabase.auth.resend({type:'signup',email,options:{emailRedirectTo:location.origin+location.pathname}});
+   if(error)throw error; $('authStatus').textContent='If the account needs verification, a new email has been requested. Check your inbox and spam folder.';
+  });
   $('registrationForm').onsubmit=async event=>{
    event.preventDefault();
    const submit=event.currentTarget.querySelector('[type="submit"]');
