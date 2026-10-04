@@ -612,6 +612,7 @@ function setupEventListeners() {
 
       if (menuAction === 'edit') window.editItem(itemId);
       if (menuAction === 'remove') window.deleteItem(itemId);
+      if (menuAction === 'stock') toggleStock(itemId, actionButton);
     });
   }
   startSearchPlaceholderAnimation(searchInput);
@@ -685,7 +686,7 @@ function renderMenu(animate = false) {
     const matchesDiet = activeDiet !== 'veg' || item.diet === 'veg';
     const matchesSearch = item.name.toLowerCase().includes(searchQuery) ||
                           (item.description || '').toLowerCase().includes(searchQuery);
-    return matchesCat && matchesDiet && matchesSearch && (isAdmin || item.available !== false);
+    return matchesCat && matchesDiet && matchesSearch;
   });
 
   if (countEl) countEl.textContent = `${filtered.length} DISHES`;
@@ -730,7 +731,8 @@ function renderMenu(animate = false) {
         <div class="card-body">
           <h3 class="food-name">${item.name}</h3>
           <p class="food-desc"><span class="food-desc-text">${item.description || ''}</span></p>
-          ${item.available === false ? '<small class="danger">Currently unavailable</small>' : ''}
+          ${item.available === false ? '<small class="danger">Out of stock</small>' : ''}
+          ${isAdmin ? `<button type="button" class="btn-minimal" data-menu-action="stock" data-item-id="${item.id}" aria-pressed="${item.available !== false}">${item.available === false ? 'OUT OF STOCK · RESTOCK' : 'IN STOCK · DISABLE'}</button>` : ''}
           
           ${item.portionType === 'multi' ? `
             <div class="portion-selector" style="--portion-offset:${currentPortion === 'quarter' ? '0px' : currentPortion === 'half' ? 'calc(100% + 4px)' : 'calc(200% + 8px)'}">
@@ -744,7 +746,7 @@ function renderMenu(animate = false) {
             <div class="price-display">
               <span class="price-amount">₹${currentPrice}</span>
             </div>
-            ${cartEntry ? `
+            ${item.available === false ? '<button class="add-cart-btn" disabled>OUT OF STOCK</button>' : cartEntry ? `
               <div class="card-qty-control" aria-label="Quantity for ${item.name}">
                 <button type="button" onclick="updateCartItemQty('${currentCartId}', -1)" aria-label="Remove one ${item.name}">−</button>
                 <span>${cartEntry.quantity}</span>
@@ -1287,6 +1289,21 @@ async function handleAddItemSubmit(e) {
   closeAddItemModal();
   showToast(editingItemId ? `Updated "${name}"` : `Successfully added "${name}" to menu!`);
   editingItemId = null;
+}
+
+async function toggleStock(id, button) {
+  if (!isAdmin) return;
+  const item = menuItems.find(row => row.id === id);
+  if (!item || button.disabled) return;
+  button.disabled = true;
+  try {
+    const {data, error} = await supabase.from('menu_items').update({available: item.available === false}).eq('id', id).select().single();
+    if (error) throw error;
+    Object.assign(item, normalizeMenuItem(data));
+    renderMenu();
+    showToast(item.available ? `${item.name} is back in stock` : `${item.name} marked out of stock`);
+  } catch (error) { showToast(`Stock update failed: ${error.message}`); }
+  finally { button.disabled = false; }
 }
 
 function normalizeMenuItem(item) {

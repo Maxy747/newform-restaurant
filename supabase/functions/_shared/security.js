@@ -31,6 +31,6 @@ export function canViewOrder(order,userId,role,guestAuthorized=false) {
 }
 export function publicOrder(order,role='customer') {
   const {request_id,user_id,...safe}=order;
-  if (role==='kitchen') { delete safe.phone; delete safe.delivery_address; delete safe.customer_name; }
+  if (role==='kitchen') { delete safe.phone; delete safe.delivery_address; delete safe.customer_name; delete safe.delivery_latitude; delete safe.delivery_longitude; }
   return safe;
 }

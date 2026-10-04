@@ -166,7 +166,7 @@
       <div class="info-icon"><i class="fa-solid fa-truck-fast"></i></div>
       <div class="info-text">
         <h3 style="font-family:var(--font-heading); font-weight:700;">FREE DELIVERY</h3>
-        <p style="font-size:0.85rem; color:var(--text-muted);">Free delivery within Kalpetta city limits for orders above ₹300.</p>
+        <p style="font-size:0.85rem; color:var(--text-muted);">Free delivery within 5 km by road. Beyond 5 km, ₹15 per additional km, charged proportionally.</p>
       </div>
     </div>
 
@@ -292,6 +292,20 @@
       <div style="margin-top:16px;" id="checkoutDetails">
         <label for="orderType">ORDER TYPE</label>
         <select id="orderType" class="form-control"><option value="delivery">Delivery</option><option value="takeaway">Takeaway</option><option value="dine_in">Dine in</option></select>
+        <section id="deliveryLocation" class="delivery-summary">
+          <h4>DELIVERY LOCATION</h4>
+          <p>Free for the first 5 km by road, then ₹15/km (charged proportionally).</p>
+          <button type="button" id="useDeliveryLocation" class="btn-minimal">USE MY LOCATION</button>
+          <p class="checkout-note">Your coordinates are sent to HeiGIT/OpenRouteService to calculate the driving route. Use your location only when you are at the delivery address.</p>
+          <details><summary>Deliver somewhere else / enter map coordinates</summary>
+            <label for="deliveryLat">Latitude</label><input id="deliveryLat" type="number" step="any" min="-90" max="90" class="form-control" placeholder="e.g. 11.6137653">
+            <label for="deliveryLng">Longitude</label><input id="deliveryLng" type="number" step="any" min="-180" max="180" class="form-control" placeholder="e.g. 76.0828979">
+            <p class="checkout-note">Copy coordinates from the destination pin in Maps, not the map's centre.</p>
+          </details>
+          <button type="button" id="calculateDelivery" class="btn-minimal">CALCULATE DELIVERY</button>
+          <p id="deliveryQuoteStatus" role="status">Choose your delivery location to see the final total.</p>
+          <small>Routing © openrouteservice / HeiGIT · Map data © OpenStreetMap contributors</small>
+        </section>
         <section id="deliverySummary" class="delivery-summary" hidden>
           <h4 id="deliverySummaryTitle">DELIVERING TO</h4>
           <p id="deliverySummaryText"></p>

@@ -132,5 +132,23 @@ test('PostgreSQL migration and order/payment/RLS lifecycle',async t=>{
   const a=(await q("select public.oms_analytics(now()-interval '1 day',now()+interval '1 day') a"))[0].a;
   assert.ok(a.orders>0);assert.ok(a.top_items.length>0);await db.exec('reset role');
  });
+ await t.test('delivery quotes are protected, required, single-use and included atomically in payments',async()=>{
+  await db.exec(await readFile(new URL('../supabase/migrations/20261005000100_delivery_quotes.sql',import.meta.url),'utf8'));
+  await db.exec('set role anon');await assert.rejects(q('select * from public.delivery_quotes'),/permission denied/);await db.exec('reset role');
+  const quote=(await q('insert into public.delivery_quotes(user_id,latitude,longitude,distance_m,fee) values($1,11,76,7000,30) returning id',[user]))[0].id;
+  const customer={name:'Test Customer',phone:'9999999999',address:'Test address',order_type:'delivery',quote_id:quote};
+  const request=crypto.randomUUID();
+  const args=[user,request,'c'.repeat(64),customer,[{id:'multi',portion:'quarter',quantity:2}],'razorpay'];
+  await db.exec('set role service_role');
+  const call=()=>q('select public.oms_create_order($1,$2,$3,$4,$5,$6) id',args.map(x=>typeof x==='object'?JSON.stringify(x):x));
+  const id=(await call())[0].id;
+  assert.equal((await call())[0].id,id);
+  assert.equal(Number((await q('select total from public.orders where id=$1',[id]))[0].total),534);
+  assert.equal(Number((await q('select amount_paise from public.payments where order_id=$1',[id]))[0].amount_paise),53400);
+  args[1]=crypto.randomUUID();await assert.rejects(call(),/quote expired/);
+  delete customer.quote_id;await assert.rejects(call(),/quote expired/);
+  customer.order_type='takeaway';assert.ok((await call())[0].id);
+  await db.exec('reset role');
+ });
  } finally {await db.close();}
 });

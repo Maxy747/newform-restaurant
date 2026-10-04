@@ -5,6 +5,7 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
  let role='customer',profile=null,channel=null,poll=null,detailId=null,detailVersion=0,listVersion=0;
  let config={payments:false,testMode:true},placing=false,paying=false,addressEditing=false;
  let dashboardMode='orders',page=0,historyPage=0,realtimeTimer;
+ let deliveryQuote=null,quoteVersion=0;
  const $=id=>document.getElementById(id);
  const active=id=>$(id)?.classList.contains('active');
  const receiptKey='newform_order_receipts_v1',pendingKey='newform_pending_checkout_v1';
@@ -31,6 +32,11 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
  };
  function updateCheckout() {
   const kind=$('orderType').value;
+  $('deliveryLocation').hidden=kind!=='delivery';
+  if(deliveryQuote && Date.parse(deliveryQuote.expires_at)<=Date.now())deliveryQuote=null;
+  const deliveryFee=kind==='delivery'?(deliveryQuote?.fee||0):0;
+  $('cartTotal').textContent=money(totals().total+Number(deliveryFee))+(kind==='delivery'&&!deliveryQuote?' + delivery':'');
+  $('deliveryQuoteStatus').textContent=deliveryQuote?`${(deliveryQuote.distance_m/1000).toFixed(2)} km by road · Delivery ${money(deliveryQuote.fee)} · Quote valid for 15 minutes`:'Choose your delivery location and calculate the delivery fee.';
   $('deliveryAddressField').hidden=kind!=='delivery';
   $('tableNumberField').hidden=kind!=='dine_in';
   const summary=Boolean(getSession()&&hasDeliveryDetails(profile,kind)&&!addressEditing);
@@ -47,6 +53,7 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   $('razorpayHint').textContent=config.payments?(config.testMode?'Test mode':'Pay securely'):'Setup pending';
  }
  function fillCheckout() {
+  deliveryQuote=null;quoteVersion++;
   $('custName').value=profile?.full_name||'';
   $('custPhone').value=profile?.phone||'';
   $('custAddress').value=profile?.default_address||'';
@@ -90,6 +97,24 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
  }
  function init() {
   $('orderType').onchange=updateCheckout;
+  const invalidateQuote=()=>{deliveryQuote=null;quoteVersion++;updateCheckout();};
+  $('deliveryLat').oninput=invalidateQuote;$('deliveryLng').oninput=invalidateQuote;
+  $('custAddress').addEventListener('input',invalidateQuote);
+  $('calculateDelivery').onclick=run(async()=>{
+   invalidateQuote();const version=quoteVersion;
+   if(!$('deliveryLat').value||!$('deliveryLng').value)throw new Error('Set your delivery coordinates first.');
+   $('deliveryQuoteStatus').textContent='Calculating driving route…';
+   const result=await api('delivery_quote',{location:{lat:Number($('deliveryLat').value),lng:Number($('deliveryLng').value)}});
+   if(version!==quoteVersion)return;
+   deliveryQuote=result.quote;updateCheckout();
+  });
+  $('useDeliveryLocation').onclick=run(async()=>{
+   invalidateQuote();
+   if(!navigator.geolocation)throw new Error('Location is not supported. Enter your destination coordinates instead.');
+   const position=await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,()=>reject(new Error('Location unavailable. Allow location access or enter your destination coordinates.')),{enableHighAccuracy:true,timeout:15000,maximumAge:0}));
+   $('deliveryLat').value=position.coords.latitude;$('deliveryLng').value=position.coords.longitude;
+   toast('Location selected. Check the address, then calculate delivery.');
+  });
   $('changeAddressBtn').onclick=()=>{addressEditing=true;updateCheckout();$('custName').focus();};
   $('saveDeliveryBtn').onclick=run(async()=>{
    const fields={full_name:$('custName').value.trim(),phone:$('custPhone').value.trim(),default_address:$('custAddress').value.trim()};
@@ -182,6 +207,10 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
    const payload={customer:{name:$('custName').value.trim(),phone:$('custPhone').value.trim(),address:$('custAddress').value.trim(),table:$('tableNumber').value.trim(),order_type:$('orderType').value},items:getCart().map(i=>({id:i.id,portion:i.portion?.toLowerCase()||'single',quantity:i.quantity})),method:document.querySelector('[name="paymentMethod"]:checked')?.value};
    if(!payload.customer.name||!payload.customer.phone)throw new Error('Enter your name and phone number.');
    if(payload.customer.order_type==='delivery'&&!payload.customer.address)throw new Error('Enter a delivery address.');
+   if(payload.customer.order_type==='delivery'){
+    if(!deliveryQuote||Date.parse(deliveryQuote.expires_at)<=Date.now())throw new Error('Calculate your delivery fee before placing the order.');
+    payload.customer.quote_id=deliveryQuote.id;
+   }
    if(payload.customer.order_type==='dine_in'&&!payload.customer.table)throw new Error('Enter your table number.');
    // Persist only a fingerprint and random identifiers, not addresses/passwords.
    const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify({user:getSession()?.user.id,...payload})))),x=>x.toString(16).padStart(2,'0')).join('');
@@ -209,6 +238,13 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   const steps=['new','confirmed','preparing','ready',...(o.order_type==='delivery'?['out_for_delivery']:[]),'completed'];
   const index=steps.indexOf(o.order_status);
   $('orderDetailState').innerHTML=`<div class="oms-card-heading"><h3>#${e(o.id.slice(0,8))}</h3><strong>${money(o.total)}</strong></div><p class="oms-badge ${e(o.order_status)}">${e(label(o.order_status))}</p><p>Payment: <strong>${e(label(o.payment_status))}</strong> · ${e(o.payment_method.toUpperCase())}</p><ol class="order-progress">${steps.map((s,i)=>`<li class="${i<index?'done':i===index?'current':''}">${e(label(s))}</li>`).join('')}</ol>${itemsHTML(o)}<p>Subtotal ${money(o.subtotal)} · GST ${money(o.tax)}<br><strong>Total ${money(o.total)}</strong></p><p>${e(label(o.order_type))}${o.table_number?' · Table '+e(o.table_number):''}<br>${e(o.customer_name||'')}${o.phone?' · '+e(o.phone):''}<br>${e(o.delivery_address||'')}</p><small>Updates automatically while this screen is open.</small><div class="oms-actions">${o.payment_method==='razorpay'&&!['paid','refunded'].includes(o.payment_status)&&!['cancelled','completed'].includes(o.order_status)?'<button id="payOrderBtn" class="btn-minimal btn-primary-minimal">PAY / RETRY PAYMENT</button>':''}${o.payment_method==='whatsapp'?'<a id="sendWhatsAppOrder" class="btn-minimal" target="_blank" rel="noopener noreferrer">SEND TO WHATSAPP</a>':''}${staff()&&role!=='kitchen'&&o.payment_method!=='razorpay'&&o.payment_status!=='paid'&&o.order_status!=='cancelled'?'<button id="cashReceivedBtn" class="btn-minimal">MARK CASH RECEIVED</button>':''}</div><details><summary>Status history</summary><ul class="order-audit">${events.map(event=>`<li>${e(new Date(event.created_at).toLocaleString())} — ${e(label(event.detail))}</li>`).join('')}</ul></details>`;
+  if(o.order_type==='delivery'){
+   const breakdown=document.createElement('p');breakdown.textContent=`Delivery: ${money(o.delivery_fee||0)}${o.delivery_distance_m!=null?' · '+(o.delivery_distance_m/1000).toFixed(2)+' km by road':''}`;
+   $('orderDetailState').append(breakdown);
+   if(o.delivery_latitude!=null && o.delivery_longitude!=null){
+    const map=document.createElement('a');map.textContent='VIEW DELIVERY PIN';map.target='_blank';map.rel='noopener noreferrer';map.href=`https://www.google.com/maps?q=${Number(o.delivery_latitude)},${Number(o.delivery_longitude)}`;$('orderDetailState').append(map);
+   }
+  }
   if($('payOrderBtn'))$('payOrderBtn').onclick=run(()=>pay(o));
   if($('cashReceivedBtn'))$('cashReceivedBtn').onclick=run(async()=>{if(!confirm('Confirm you have received '+money(o.total)+' in cash?'))return;await api('cash',{id});await refreshDetail();});
   if($('sendWhatsAppOrder'))$('sendWhatsAppOrder').href='https://wa.me/917593881112?text='+encodeURIComponent(`NEWFORM ORDER #${o.id.slice(0,8)}\n${o.items.map(i=>`${i.quantity} × ${i.name} (${i.portion||'single'})`).join('\n')}\nTotal: ${money(o.total)}\n${o.customer_name}, ${o.phone}\n${o.delivery_address||o.order_type}`);
