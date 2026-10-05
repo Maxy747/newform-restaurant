@@ -36,7 +36,7 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   if(deliveryQuote && (Date.parse(deliveryQuote.expires_at)<=Date.now() || deliveryQuote.distance_m>6000))deliveryQuote=null;
   const deliveryFee=kind==='delivery'?(deliveryQuote?.fee||0):0;
   $('cartTotal').textContent=money(totals().total+Number(deliveryFee))+(kind==='delivery'&&!deliveryQuote?' + delivery':'');
-  $('deliveryQuoteStatus').textContent=deliveryQuote?`Delivery charge: ${money(deliveryQuote.fee)} · ${(deliveryQuote.distance_m/1000).toFixed(1)} km`:'Delivery charge: select location';
+  $('deliveryQuoteStatus').textContent=deliveryQuote?`Delivery charge: ${money(deliveryQuote.fee)} · ${(deliveryQuote.distance_m/1000).toFixed(1)} km`:'Delivery charge: address check pending';
   $('deliveryAddressField').hidden=kind!=='delivery';
   $('tableNumberField').hidden=kind!=='dine_in';
   const summary=Boolean(getSession()&&hasDeliveryDetails(profile,kind)&&!addressEditing);
@@ -95,7 +95,30 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   if(active('accountModal')&&getSession())await refreshHistory().catch(()=>{});
   if(active('ordersModal')&&staff())await refreshDashboard().catch(()=>{});
  }
- const invalidateQuote=()=>{deliveryQuote=null;quoteVersion++;updateCheckout();};
+ const invalidateQuote=()=>{deliveryQuote=null;quoteVersion++;$('deliveryAddressMatches').replaceChildren();$('deliveryAddressMatches').hidden=true;updateCheckout();};
+ async function searchDeliveryAddress(address) {
+  invalidateQuote();const version=quoteVersion;
+  $('deliveryQuoteStatus').textContent='Searching delivery address…';
+  const {matches}=await api('delivery_address',{address});
+  if(version!==quoteVersion)throw new Error('Address changed. Please try again.');
+  const container=$('deliveryAddressMatches');container.hidden=false;
+  $('deliveryQuoteStatus').textContent='Select your delivery address';
+  for(const match of matches){
+   const choice=document.createElement('button');choice.type='button';choice.className='btn-minimal';choice.textContent=match.label;
+   choice.style.cssText='display:block;width:100%;margin-top:8px;white-space:normal;text-align:left';
+   choice.onclick=run(async()=>{
+    if(version!==quoteVersion)return;
+    $('deliveryQuoteStatus').textContent='Checking road distance…';
+    let quote;
+    try { ({quote}=await api('delivery_quote',{location:{lat:match.lat,lng:match.lng}})); }
+    catch(error){if(version===quoteVersion)$('deliveryQuoteStatus').textContent=error.message;throw error;}
+    if(version!==quoteVersion)return;
+    deliveryQuote=quote;updateCheckout();container.hidden=true;container.replaceChildren();
+    toast('Delivery checked. Review total and place order.');
+   });container.append(choice);
+  }
+  $('deliveryLocation').scrollIntoView({behavior:'smooth',block:'center'});
+ }
  async function calculateDeliveryCharge(){
    invalidateQuote();const version=quoteVersion;
    if(!navigator.geolocation)throw new Error('Location is not supported by this browser.');
@@ -206,11 +229,9 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
    if(payload.customer.order_type==='delivery'&&!payload.customer.address)throw new Error('Enter a delivery address.');
    if(payload.customer.order_type==='delivery'){
     if(!deliveryQuote||Date.parse(deliveryQuote.expires_at)<=Date.now()){
-     updateCheckout();
-     $('deliveryLocationOptions').open=true;
-     $('useDeliveryLocation').focus({preventScroll:true});
-     $('deliveryLocation').scrollIntoView({behavior:'smooth',block:'center'});
-     throw new Error('Check delivery using “Use my location” first. Place order will not access your location.');
+     button.textContent='SEARCHING ADDRESS…';
+     await searchDeliveryAddress(payload.customer.address);
+     return;
     }
     payload.customer.quote_id=deliveryQuote.id;
    }

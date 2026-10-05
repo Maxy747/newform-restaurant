@@ -1,6 +1,6 @@
 import {db,checked,rpc,razorpay,paymentConfigured} from '../_shared/server.js';
 import {requireUUID,sha256,validHmac,canViewOrder,publicOrder} from '../_shared/security.js';
-import {roadQuote} from '../_shared/delivery.js';
+import {roadQuote,addressLocation} from '../_shared/delivery.js';
 
 const origin=Deno.env.get('SITE_ORIGIN')||'https://maxy747.github.io';
 const headers={'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Headers':'authorization, apikey, content-type, x-client-info','Access-Control-Allow-Methods':'POST, OPTIONS','Content-Type':'application/json','Cache-Control':'no-store','Vary':'Origin'};
@@ -25,6 +25,10 @@ Deno.serve(async req=>{
   const bucket=await sha256(identity+':'+(body.action==='create'?'checkout':'api'));
   if(!await rpc('oms_rate_limit',{p_bucket:bucket,p_limit:body.action==='create'?10:120})) return json({error:'Too many requests. Please wait a minute.'},429);
   if(body.action==='config') return json({role,payments:paymentConfigured(),deliveryRouting:Boolean(Deno.env.get('ORS_API_KEY')),testMode:!(Deno.env.get('RAZORPAY_KEY_ID')||'').startsWith('rzp_live_')});
+  if(body.action==='delivery_address') {
+   if(!await rpc('oms_rate_limit',{p_bucket:await sha256(identity+':geocoding'),p_limit:8})) throw new Error('Please wait a minute before searching again.');
+   return json({matches:await addressLocation(body.address,Deno.env.get('ORS_API_KEY'))});
+  }
   if(body.action==='delivery_quote') {
    if(!await rpc('oms_rate_limit',{p_bucket:await sha256(identity+':routing'),p_limit:8})) throw new Error('Please wait a minute before calculating another route.');
    const route=await roadQuote(body.location,Deno.env.get('ORS_API_KEY'));

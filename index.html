@@ -291,13 +291,14 @@
 
       <div style="margin-top:16px;" id="checkoutDetails">
         <section id="deliveryLocation" class="delivery-summary">
-          <strong id="deliveryQuoteStatus" role="status">Delivery charge: select location</strong>
+          <strong id="deliveryQuoteStatus" role="status">Delivery charge: address check pending</strong>
+          <div id="deliveryAddressMatches" hidden></div>
           <details id="deliveryLocationOptions" open><summary>Location / change</summary>
           <div class="delivery-location-row">
           <p class="checkout-note">Flat ₹100 · max 6 km by road</p>
           <button type="button" id="useDeliveryLocation" class="btn-minimal">USE MY LOCATION</button>
           </div>
-          <p class="checkout-note">Use at delivery address. Coordinates shared with routing provider.</p>
+          <p class="checkout-note">Place order searches your address. GPS is optional. Address or coordinates are shared with HeiGIT for delivery checks.</p>
           </details>
         </section>
         <section id="deliverySummary" class="delivery-summary" hidden>
