@@ -33,7 +33,7 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
  function updateCheckout() {
   const kind=$('orderType').value;
   $('deliveryLocation').hidden=kind!=='delivery';
-  if(deliveryQuote && (Date.parse(deliveryQuote.expires_at)<=Date.now() || deliveryQuote.distance_m>40000))deliveryQuote=null;
+  if(deliveryQuote && (Date.parse(deliveryQuote.expires_at)<=Date.now() || deliveryQuote.distance_m>6000))deliveryQuote=null;
   const deliveryFee=kind==='delivery'?(deliveryQuote?.fee||0):0;
   $('cartTotal').textContent=money(totals().total+Number(deliveryFee))+(kind==='delivery'&&!deliveryQuote?' + delivery':'');
   $('deliveryQuoteStatus').textContent=deliveryQuote?`Delivery charge: ${money(deliveryQuote.fee)} · ${(deliveryQuote.distance_m/1000).toFixed(1)} km`:'Delivery charge: select location';

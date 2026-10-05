@@ -1,8 +1,8 @@
 export const RESTAURANT = [76.0828979, 11.6137653];
 export function deliveryFee(metres) {
  if (!Number.isFinite(metres) || metres < 0) throw new Error('Invalid route distance');
- if (metres > 40000) throw new Error('Delivery is available within 40 km by road only.');
- return Math.round(Math.max(0, metres - 5000) * 15 / 1000 * 100) / 100;
+ if (metres > 6000) throw new Error('Delivery is available within 6 km by road only.');
+ return 100;
 }
 export function destination(value) {
  const {lat,lng} = value || {};

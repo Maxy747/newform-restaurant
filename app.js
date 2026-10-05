@@ -163,7 +163,6 @@ let selectedPortions = {};
 let isAdmin = false;
 let editingItemId = null;
 let currentSession = null;
-let activeToastTimer = null;
 let lastScrollY = 0;
 let lastClearedCart = null;
 const ordering = createOrdering({
@@ -926,7 +925,7 @@ window.addToCart = function(itemId, clickEvent) {
     }, 1500);
     setTimeout(renderMenu, 650);
   }
-  showToast(`Added ${item.name} (${portion !== 'single' ? portion.toUpperCase() : ''}) to cart`);
+  showToast('Item added');
 };
 
 // Update Cart Badge
@@ -1220,7 +1219,24 @@ function closeAddItemModal() {
 }
 
 // Handle Form Submission for Adding New Food Item
+let savingMenuItem = false;
 async function handleAddItemSubmit(e) {
+  e.preventDefault();
+  if (savingMenuItem) return;
+  savingMenuItem = true;
+  const button = e.currentTarget.querySelector('button[type="submit"]');
+  const original = button?.innerHTML;
+  if (button) { button.disabled = true; button.textContent = editingItemId ? 'SAVING…' : 'ADDING…'; }
+  const minimumDelay = new Promise(resolve => setTimeout(resolve, 5000));
+  try { await saveMenuItem(e, minimumDelay); }
+  catch (error) { showToast(`Could not save item: ${error.message}`); }
+  finally {
+    await minimumDelay;
+    savingMenuItem = false;
+    if (button) { button.disabled = false; button.innerHTML = original; }
+  }
+}
+async function saveMenuItem(e, minimumDelay) {
   e.preventDefault();
 
   if (!isAdmin) {
@@ -1279,6 +1295,7 @@ async function handleAddItemSubmit(e) {
     ? supabase.from('menu_items').update(newItem).eq('id', editingItemId)
     : supabase.from('menu_items').insert([newItem]);
   const { data, error } = await query.select().single();
+  await minimumDelay;
 
   if (error) {
     alert('Error saving item: ' + error.message);
@@ -1397,8 +1414,11 @@ function showToast(message) {
   const container = document.getElementById('toastContainer');
   if (!container) return;
 
-  clearTimeout(activeToastTimer);
-  container.replaceChildren();
+  const restack = () => Array.from(container.children).reverse().forEach((el,index) => {
+    el.style.setProperty('--toast-depth', index);
+    el.style.zIndex = String(3-index);
+  });
+  while (container.children.length >= 3) container.firstElementChild.remove();
 
   const toast = document.createElement('div');
   toast.className = 'toast';
@@ -1415,14 +1435,15 @@ function showToast(message) {
   closeButton.innerHTML = '<i class="fa-solid fa-xmark"></i>';
   toast.append(icon, text, closeButton);
   container.appendChild(toast);
+  restack();
 
   const dismiss = () => {
-    clearTimeout(activeToastTimer);
+    clearTimeout(timer);
     toast.classList.add('is-leaving');
-    setTimeout(() => toast.remove(), 260);
+    setTimeout(() => { toast.remove(); restack(); }, 260);
   };
   closeButton.addEventListener('click', dismiss);
-  activeToastTimer = setTimeout(() => {
+  const timer = setTimeout(() => {
     dismiss();
   }, 3000);
 }

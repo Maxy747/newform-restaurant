@@ -1542,6 +1542,11 @@ html { scroll-behavior: smooth; }
 }
 
 .toast {
+  position: absolute;
+  bottom: calc(var(--toast-depth, 0) * 9px);
+  left: calc(var(--toast-depth, 0) * 5px);
+  width: calc(100% - var(--toast-depth, 0) * 10px);
+  transition: bottom .2s ease, left .2s ease, width .2s ease;
   background: var(--modal-bg);
   border: 1px solid var(--gold-primary);
   color: var(--text-main);
