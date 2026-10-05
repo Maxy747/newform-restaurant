@@ -688,7 +688,7 @@ function renderMenu(animate = false) {
     const matchesSearch = item.name.toLowerCase().includes(searchQuery) ||
                           (item.description || '').toLowerCase().includes(searchQuery);
     return matchesCat && matchesDiet && matchesSearch;
-  });
+  }).sort((a, b) => Number(b.category === 'mandhi') - Number(a.category === 'mandhi'));
 
   if (countEl) countEl.textContent = `${filtered.length} DISHES`;
 
