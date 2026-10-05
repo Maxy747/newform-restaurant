@@ -1045,7 +1045,7 @@ function openCart() {
   ordering.updateCheckout();
   document.getElementById('overlay').classList.add('active');
   document.getElementById('cartDrawer').classList.add('active');
-  document.getElementById('cartDrawer').scrollTop = 0;
+  document.getElementById('cartScroll').scrollTop = 0;
 }
 
 function closeCart() {

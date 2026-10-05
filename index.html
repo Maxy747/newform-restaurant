@@ -260,6 +260,7 @@
 
   <!-- Cart Drawer -->
   <aside class="cart-drawer" id="cartDrawer">
+    <div class="cart-scroll" id="cartScroll">
     <div class="drawer-header">
       <div style="display:flex; align-items:center; gap:10px;">
         <img src="assets/newform_logo.png" alt="Logo" style="width:28px; height:28px;">
@@ -286,19 +287,15 @@
         <span>5% GST</span>
         <span id="cartTax">₹0</span>
       </div>
-      <div style="display:flex; justify-content:space-between; font-weight:700; font-size:1.1rem; color:var(--text-main); border-top:1px solid #ddd; padding-top:8px; margin-top:8px;">
-        <span>Total</span>
-        <span id="cartTotal">₹0</span>
-      </div>
 
       <div style="margin-top:16px;" id="checkoutDetails">
-        <label for="orderType">ORDER TYPE</label>
-        <select id="orderType" class="form-control"><option value="delivery">Delivery</option><option value="takeaway">Takeaway</option><option value="dine_in">Dine in</option></select>
         <section id="deliveryLocation" class="delivery-summary">
           <strong id="deliveryQuoteStatus" role="status">Delivery charge: select location</strong>
           <details id="deliveryLocationOptions" open><summary>Location / change</summary>
+          <div class="delivery-location-row">
           <p class="checkout-note">0–5 km free · then ₹15/km · max 40 km</p>
           <button type="button" id="useDeliveryLocation" class="btn-minimal">USE MY LOCATION</button>
+          </div>
           <p class="checkout-note">Use at delivery address. Coordinates shared with routing provider.</p>
           </details>
         </section>
@@ -329,10 +326,15 @@
           <label class="checkout-method is-disabled" id="razorpayMethod"><input type="radio" name="paymentMethod" value="razorpay" id="razorpayPayment" disabled><i class="fa-solid fa-credit-card"></i><span>Razorpay<small id="razorpayHint">Setup pending</small></span></label>
         </div>
         <p class="checkout-note">Login is optional. Final prices are confirmed by the restaurant’s secure checkout.</p>
-        <button id="placeOrderBtn" class="btn-minimal btn-primary-minimal" style="width:100%; padding:14px; margin-top:12px;">
-          <i class="fa-solid fa-bag-shopping"></i> PLACE ORDER
-        </button>
       </div>
+    </div>
+    </div>
+    <div class="cart-checkout-bar" aria-label="Checkout">
+      <div class="cart-checkout-info">
+        <select id="orderType" aria-label="Order type"><option value="delivery">Delivery</option><option value="takeaway">Takeaway</option><option value="dine_in">Dine in</option></select>
+        <strong id="cartTotal" aria-live="polite">₹0</strong>
+      </div>
+      <button id="placeOrderBtn" class="btn-minimal btn-primary-minimal">PLACE ORDER</button>
     </div>
   </aside>
 
