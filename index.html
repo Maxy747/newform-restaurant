@@ -322,8 +322,8 @@
         <div id="tableNumberField" hidden><label for="tableNumber">TABLE NUMBER</label><input id="tableNumber" class="form-control" maxlength="20" placeholder="e.g. 4"></div>
         <div class="checkout-methods" aria-label="Payment method">
           <label class="checkout-method"><input type="radio" name="paymentMethod" value="whatsapp" checked><i class="fa-brands fa-whatsapp"></i><span>WhatsApp<small>Send order</small></span></label>
-          <label class="checkout-method"><input type="radio" name="paymentMethod" value="cod" id="codPayment"><i class="fa-solid fa-money-bill-wave"></i><span id="cashMethodText">Cash on delivery<small>₹1,000 minimum</small></span></label>
-          <label class="checkout-method is-disabled" id="razorpayMethod"><input type="radio" name="paymentMethod" value="razorpay" id="razorpayPayment" disabled><i class="fa-solid fa-credit-card"></i><span>Razorpay<small id="razorpayHint">Setup pending</small></span></label>
+          <label class="checkout-method is-disabled"><input type="radio" name="paymentMethod" value="cod" id="codPayment" disabled><i class="fa-solid fa-money-bill-wave"></i><span id="cashMethodText">Cash on delivery<small>Unavailable</small></span></label>
+          <label class="checkout-method is-disabled" id="razorpayMethod" hidden><input type="radio" name="paymentMethod" value="razorpay" id="razorpayPayment" disabled><i class="fa-solid fa-credit-card"></i><span>Razorpay<small id="razorpayHint">Setup pending</small></span></label>
         </div>
         <p class="checkout-note">Login is optional. Final prices are confirmed by the restaurant’s secure checkout.</p>
       </div>

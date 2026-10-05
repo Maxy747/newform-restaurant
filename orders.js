@@ -45,11 +45,11 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   $('saveDeliveryBtn').hidden=!getSession();
   $('deliverySummaryTitle').textContent=kind==='delivery'?'DELIVERING TO':'ORDERING FOR';
   $('deliverySummaryText').textContent=profile?[profile.full_name,profile.phone,kind==='delivery'?profile.default_address:null].filter(Boolean).join('\n'):'';
-  const cash=$('codPayment');cash.value=kind==='delivery'?'cod':'cash';cash.disabled=kind==='delivery'&&totals().total<1000;
-  $('cashMethodText').innerHTML=kind==='delivery'?'Cash on delivery<small>₹1,000 minimum</small>':'Cash<small>Pay at restaurant</small>';
-  if(cash.disabled&&cash.checked)document.querySelector('[name="paymentMethod"][value="whatsapp"]').checked=true;
-  $('razorpayPayment').disabled=!config.payments;
-  $('razorpayMethod').classList.toggle('is-disabled',!config.payments);
+  const cash=$('codPayment');cash.value=kind==='delivery'?'cod':'cash';cash.disabled=true;
+  $('cashMethodText').innerHTML=(kind==='delivery'?'Cash on delivery':'Cash')+'<small>Unavailable</small>';
+  if(cash.checked||$('razorpayPayment').checked)document.querySelector('[name="paymentMethod"][value="whatsapp"]').checked=true;
+  $('razorpayPayment').disabled=true;
+  $('razorpayMethod').hidden=true;
   $('razorpayHint').textContent=config.payments?(config.testMode?'Test mode':'Pay securely'):'Setup pending';
  }
  function fillCheckout() {
