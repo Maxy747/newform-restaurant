@@ -695,6 +695,7 @@ html { scroll-behavior: smooth; }
 .category-scroll-shell.is-collapsed { max-height: 0; opacity: 0; margin-top: -14px; pointer-events: none; }
 
 .category-scroll {
+  min-width: 0;
   position: relative;
   isolation: isolate;
   display: flex;
@@ -705,15 +706,15 @@ html { scroll-behavior: smooth; }
   scrollbar-width: none;
   scroll-behavior: smooth;
   overscroll-behavior-x: contain;
-  touch-action: pan-x;
+  touch-action: pan-x pan-y;
 }
 .category-scroll::-webkit-scrollbar { display: none; }
 
 .category-scroll-control {
-  display: none;
-  width: 34px;
-  height: 34px;
-  flex: 0 0 34px;
+  display: inline-grid;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
   place-items: center;
   border: 1px solid var(--glass-border);
   border-radius: 50%;
@@ -728,6 +729,7 @@ html { scroll-behavior: smooth; }
 }
 
 .cat-tab {
+  flex: 0 0 auto;
   position: relative;
   z-index: 1;
   white-space: nowrap;

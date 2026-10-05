@@ -553,6 +553,9 @@ function setupEventListeners() {
     });
     categoryScroll.addEventListener('scroll', updateCategoryScrollControls, { passive: true });
     window.addEventListener('resize', updateCategoryScrollControls);
+    new ResizeObserver(updateCategoryScrollControls).observe(categoryScroll);
+    new MutationObserver(updateCategoryScrollControls).observe(categoryScroll, { childList: true });
+    document.fonts.ready.then(updateCategoryScrollControls);
     updateCategoryScrollControls();
   }
 
