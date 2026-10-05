@@ -46,7 +46,7 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   $('deliverySummaryTitle').textContent=kind==='delivery'?'DELIVERING TO':'ORDERING FOR';
   $('deliverySummaryText').textContent=profile?[profile.full_name,profile.phone,kind==='delivery'?profile.default_address:null].filter(Boolean).join('\n'):'';
   const cash=$('codPayment');cash.value=kind==='delivery'?'cod':'cash';cash.disabled=true;
-  $('cashMethodText').innerHTML=(kind==='delivery'?'Cash on delivery':'Cash')+'<small>Unavailable</small>';
+  $('cashMethodText').innerHTML=kind==='delivery'?'COD<small>Available from ₹799 onwards</small>':'Cash<small>Unavailable</small>';
   if(cash.checked||$('razorpayPayment').checked)document.querySelector('[name="paymentMethod"][value="whatsapp"]').checked=true;
   $('razorpayPayment').disabled=true;
   $('razorpayMethod').hidden=true;
@@ -95,22 +95,23 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   if(active('accountModal')&&getSession())await refreshHistory().catch(()=>{});
   if(active('ordersModal')&&staff())await refreshDashboard().catch(()=>{});
  }
- function init() {
-  $('orderType').onchange=updateCheckout;
-  const invalidateQuote=()=>{deliveryQuote=null;quoteVersion++;updateCheckout();};
-  $('custAddress').addEventListener('input',invalidateQuote);
-  $('useDeliveryLocation').onclick=run(async()=>{
+ const invalidateQuote=()=>{deliveryQuote=null;quoteVersion++;updateCheckout();};
+ async function calculateDeliveryCharge(){
    invalidateQuote();const version=quoteVersion;
    if(!navigator.geolocation)throw new Error('Location is not supported by this browser.');
    const position=await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,()=>reject(new Error('Location unavailable. Enable location access and try again.')),{enableHighAccuracy:true,timeout:15000,maximumAge:0}));
-   if(version!==quoteVersion)return;
+   if(version!==quoteVersion)throw new Error('Delivery details changed. Please try again.');
    $('deliveryQuoteStatus').textContent='Calculating driving route…';
    let result;
    try { result=await api('delivery_quote',{location:{lat:position.coords.latitude,lng:position.coords.longitude}}); }
    catch(error) { if(version===quoteVersion)$('deliveryQuoteStatus').textContent=error.message;throw error; }
-   if(version!==quoteVersion)return;
+   if(version!==quoteVersion)throw new Error('Delivery details changed. Please try again.');
    deliveryQuote=result.quote;updateCheckout();$('deliveryLocationOptions').open=false;
-  });
+ }
+ function init() {
+  $('orderType').onchange=()=>{quoteVersion++;updateCheckout();};
+  $('custAddress').addEventListener('input',invalidateQuote);
+  $('useDeliveryLocation').onclick=run(calculateDeliveryCharge);
   $('changeAddressBtn').onclick=()=>{addressEditing=true;updateCheckout();$('custName').focus();};
   $('saveDeliveryBtn').onclick=run(async()=>{
    const fields={full_name:$('custName').value.trim(),phone:$('custPhone').value.trim(),default_address:$('custAddress').value.trim()};
@@ -204,7 +205,11 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
    if(!payload.customer.name||!payload.customer.phone)throw new Error('Enter your name and phone number.');
    if(payload.customer.order_type==='delivery'&&!payload.customer.address)throw new Error('Enter a delivery address.');
    if(payload.customer.order_type==='delivery'){
-    if(!deliveryQuote||Date.parse(deliveryQuote.expires_at)<=Date.now())throw new Error('Calculate your delivery fee before placing the order.');
+    if(!deliveryQuote||Date.parse(deliveryQuote.expires_at)<=Date.now()){
+     button.textContent='CALCULATING DELIVERY…';
+     await calculateDeliveryCharge();
+     button.textContent='SAVING ORDER…';
+    }
     payload.customer.quote_id=deliveryQuote.id;
    }
    if(payload.customer.order_type==='dine_in'&&!payload.customer.table)throw new Error('Enter your table number.');
