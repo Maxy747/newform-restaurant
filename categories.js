@@ -1,7 +1,7 @@
 import { escapeHTML } from './oms-policy.js';
 
 export function createCategories({ client, isAdmin, onSelect, notify }) {
-  let rows = [], selected = 'all', ready = false, busy = false;
+  let rows = [], selected = 'specials', ready = false, busy = false;
   let bar, dialog, manage;
   function moveHighlight() {
     const active = bar?.querySelector('.cat-tab.active');
@@ -13,11 +13,11 @@ export function createCategories({ client, isAdmin, onSelect, notify }) {
   }
   function render() {
     if (!bar) return;
-    if (selected !== 'all' && !rows.some(row => row.id === selected && !row.archived)) {
+    if (!['all','specials'].includes(selected) && !rows.some(row => row.id === selected && !row.archived)) {
       selected = 'all'; onSelect('all');
     }
     bar.innerHTML = '<span class="category-highlight" aria-hidden="true"></span>' +
-      [{ id: 'all', name: 'All' }, ...rows.filter(row => !row.archived)].map(row =>
+      [{ id: 'specials', name: 'Specials' }, { id: 'all', name: 'All' }, ...rows.filter(row => !row.archived)].map(row =>
         `<button type="button" class="cat-tab${row.id === selected ? ' active' : ''}" data-category="${escapeHTML(row.id)}" aria-pressed="${row.id === selected}">${escapeHTML(row.name)}</button>`).join('');
     const select = document.getElementById('formCategory');
     const previous = select.value;

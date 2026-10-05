@@ -2,6 +2,7 @@ import { isSupabaseConfigured, supabase } from './supabaseClient.js';
 import { createOrdering } from './orders.js';
 import { escapeHTML } from './oms-policy.js';
 import { createCategories } from './categories.js';
+import { createSpecials } from './specials.js';
 import { featuredDish, featuredPrice } from './featured-dish.js';
 
 // Default Menu Dataset extracted directly from Newform Multi Cuisine Restaurant Menu Cards
@@ -154,7 +155,8 @@ const DEFAULT_MENU = [
 // App State Management
 let menuItems = [];
 let cart = [];
-let activeCategory = 'all';
+let activeCategory = 'specials';
+const selectSpecials = createSpecials();
 let activeDiet = 'non-veg';
 let searchQuery = '';
 let selectedPortions = {};
@@ -684,8 +686,9 @@ function renderMenu(animate = false) {
   if (!container) return;
 
   // Filter Items
+  const specials = selectSpecials(menuItems);
   const filtered = menuItems.filter(item => {
-    const matchesCat = (activeCategory === 'all') || (item.category === activeCategory);
+    const matchesCat = activeCategory === 'specials' ? (Boolean(searchQuery) || specials.has(item.id)) : (activeCategory === 'all' || item.category === activeCategory);
     // Non-Veg is the default full menu view; Veg narrows it to vegetarian dishes only.
     const matchesDiet = activeDiet !== 'veg' || item.diet === 'veg';
     const matchesSearch = item.name.toLowerCase().includes(searchQuery) ||
@@ -1204,7 +1207,7 @@ function openAddItemModal() {
   editingItemId = null;
   document.getElementById('addItemForm').reset();
   const categorySelect = document.getElementById('formCategory');
-  if (activeCategory !== 'all') categorySelect.value = activeCategory;
+  if (!['all','specials'].includes(activeCategory)) categorySelect.value = activeCategory;
   document.getElementById('itemModalTitle').textContent = 'ADD NEW ITEM';
   document.getElementById('saveItemButtonText').textContent = 'SAVE DISH TO MENU';
   document.getElementById('overlay').classList.add('active');
