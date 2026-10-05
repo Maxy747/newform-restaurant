@@ -98,24 +98,18 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
  function init() {
   $('orderType').onchange=updateCheckout;
   const invalidateQuote=()=>{deliveryQuote=null;quoteVersion++;updateCheckout();};
-  $('deliveryLat').oninput=invalidateQuote;$('deliveryLng').oninput=invalidateQuote;
   $('custAddress').addEventListener('input',invalidateQuote);
-  $('calculateDelivery').onclick=run(async()=>{
+  $('useDeliveryLocation').onclick=run(async()=>{
    invalidateQuote();const version=quoteVersion;
-   if(!$('deliveryLat').value||!$('deliveryLng').value)throw new Error('Set your delivery coordinates first.');
+   if(!navigator.geolocation)throw new Error('Location is not supported by this browser.');
+   const position=await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,()=>reject(new Error('Location unavailable. Enable location access and try again.')),{enableHighAccuracy:true,timeout:15000,maximumAge:0}));
+   if(version!==quoteVersion)return;
    $('deliveryQuoteStatus').textContent='Calculating driving route…';
    let result;
-   try { result=await api('delivery_quote',{location:{lat:Number($('deliveryLat').value),lng:Number($('deliveryLng').value)}}); }
+   try { result=await api('delivery_quote',{location:{lat:position.coords.latitude,lng:position.coords.longitude}}); }
    catch(error) { if(version===quoteVersion)$('deliveryQuoteStatus').textContent=error.message;throw error; }
    if(version!==quoteVersion)return;
    deliveryQuote=result.quote;updateCheckout();$('deliveryLocationOptions').open=false;
-  });
-  $('useDeliveryLocation').onclick=run(async()=>{
-   invalidateQuote();
-   if(!navigator.geolocation)throw new Error('Location is not supported. Enter your destination coordinates instead.');
-   const position=await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,()=>reject(new Error('Location unavailable. Allow location access or enter your destination coordinates.')),{enableHighAccuracy:true,timeout:15000,maximumAge:0}));
-   $('deliveryLat').value=position.coords.latitude;$('deliveryLng').value=position.coords.longitude;
-   toast('Location selected. Check the address, then calculate delivery.');
   });
   $('changeAddressBtn').onclick=()=>{addressEditing=true;updateCheckout();$('custName').focus();};
   $('saveDeliveryBtn').onclick=run(async()=>{
