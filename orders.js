@@ -206,9 +206,11 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
    if(payload.customer.order_type==='delivery'&&!payload.customer.address)throw new Error('Enter a delivery address.');
    if(payload.customer.order_type==='delivery'){
     if(!deliveryQuote||Date.parse(deliveryQuote.expires_at)<=Date.now()){
-     button.textContent='CALCULATING DELIVERY…';
-     await calculateDeliveryCharge();
-     button.textContent='SAVING ORDER…';
+     updateCheckout();
+     $('deliveryLocationOptions').open=true;
+     $('useDeliveryLocation').focus({preventScroll:true});
+     $('deliveryLocation').scrollIntoView({behavior:'smooth',block:'center'});
+     throw new Error('Check delivery using “Use my location” first. Place order will not access your location.');
     }
     payload.customer.quote_id=deliveryQuote.id;
    }
