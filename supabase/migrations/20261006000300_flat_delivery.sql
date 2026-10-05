@@ -1,6 +1,6 @@
 begin;
 -- Invalidate unconsumed quotes issued under the previous delivery policy.
-update public.delivery_quotes set expires_at=least(expires_at,now()) where order_id is null;
+update public.delivery_quotes set expires_at=now() where order_id is null and expires_at>now() and distance_m<=40000;
 alter table public.delivery_quotes add constraint quotes_delivery_6km check(distance_m<=6000) not valid;
 alter table public.delivery_quotes add constraint quotes_delivery_flat100 check(fee=100) not valid;
 -- Historical orders must still be updatable; validate only new orders/pricing changes.
