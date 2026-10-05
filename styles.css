@@ -1,29 +1,29 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
 
 :root {
-  /* Minimalist White & Obsidian Palette (Dark Theme Default) */
-  --bg-body: radial-gradient(ellipse at 50% -20%, rgba(255, 255, 255, 0.12) 0%, #0d0e10 60%, #070809 100%);
-  --bg-primary: #0d0e10;
-  --bg-secondary: #141619;
-  --bg-surface: rgba(22, 24, 28, 0.7);
-  --bg-surface-elevated: #1a1d22;
-  --bg-glass: rgba(16, 18, 21, 0.88);
+  /* True-black canvas with restrained, neutral raised surfaces. */
+  --bg-body: #000000;
+  --bg-primary: #000000;
+  --bg-secondary: #080808;
+  --bg-surface: #0b0b0b;
+  --bg-surface-elevated: #121212;
+  --bg-glass: rgba(0, 0, 0, 0.96);
   
   --gold-primary: #ffffff;
   --gold-light: #f8f9fa;
   --gold-dark: #cbd5e1;
   --gold-gradient: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
   --gold-btn-gradient: linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%);
-  --gold-glow: rgba(255, 255, 255, 0.25);
-  --glass-border: rgba(255, 255, 255, 0.18);
+  --gold-glow: rgba(255, 255, 255, 0.10);
+  --glass-border: rgba(255, 255, 255, 0.12);
   
   --accent-orange: #ff6b00;
   --accent-red: #ef4444;
   --accent-green: #2a9d8f;
 
   --text-main: #fcfcf9;
-  --text-muted: #cbd5e1;
-  --text-dim: #94a3b8;
+  --text-muted: #b8b8b8;
+  --text-dim: #929292;
   --text-title: #ffffff;
 
   --font-heading: 'Outfit', sans-serif;
@@ -34,9 +34,9 @@
   --radius-lg: 24px;
   --radius-full: 9999px;
 
-  --shadow-gold: 0 10px 30px rgba(255, 255, 255, 0.18);
-  --shadow-card: 0 15px 35px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  --shadow-hover: 0 20px 45px rgba(255, 255, 255, 0.25);
+  --shadow-gold: 0 4px 18px rgba(255, 255, 255, 0.08);
+  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --shadow-hover: 0 12px 32px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.16);
   --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 
   --btn-minimal-bg: rgba(255, 255, 255, 0.08);
@@ -44,14 +44,14 @@
   --btn-minimal-hover-color: #000000;
   --btn-primary-text: #000000;
 
-  --card-bg: rgba(22, 24, 28, 0.75);
-  --card-img-bg: #141619;
-  --input-bg: rgba(22, 24, 28, 0.8);
-  --portion-bg: rgba(12, 13, 15, 0.6);
-  --drawer-bg: #141619;
-  --drawer-footer-bg: #0d0e10;
-  --modal-bg: #1a1d22;
-  --footer-bg: #070809;
+  --card-bg: #0b0b0b;
+  --card-img-bg: #080808;
+  --input-bg: #101010;
+  --portion-bg: #060606;
+  --drawer-bg: #000000;
+  --drawer-footer-bg: #000000;
+  --modal-bg: #0b0b0b;
+  --footer-bg: #000000;
 }
 
 [data-theme="light"] {
