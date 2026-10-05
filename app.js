@@ -594,6 +594,7 @@ function setupEventListeners() {
   if (cartBtnMobile) cartBtnMobile.addEventListener('click', openCart);
   if (mobileCartCta) mobileCartCta.addEventListener('click', openCart);
   if (closeCartBtn) closeCartBtn.addEventListener('click', closeCart);
+  document.getElementById('minimizeCartBtn')?.addEventListener('click', closeCart);
   if (clearCartBtn) clearCartBtn.addEventListener('click', clearCart);
   if (undoClearCartBtn) undoClearCartBtn.addEventListener('click', undoClearCart);
   if (overlay) overlay.addEventListener('click', closeAllModals);

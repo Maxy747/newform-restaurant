@@ -1609,6 +1609,14 @@ html { scroll-behavior: smooth; }
 [hidden] { display: none !important; }
 .delivery-summary { margin: 14px 0; padding: 16px; border: 1px solid var(--glass-border); border-radius: 14px; background: var(--bg-surface-elevated); }
 .delivery-summary h4 { font-size: .76rem; letter-spacing: .08em; color: var(--text-muted); }
+#deliveryLocation { padding: 10px 12px; margin: 10px 0; }
+#deliveryQuoteStatus { display: block; font-size: .88rem; font-weight: 750; line-height: 1.4; }
+#deliveryLocation summary { cursor: pointer; font-size: .8rem; margin-top: 8px; }
+#deliveryLocation p { margin: 6px 0; line-height: 1.35; font-size: .72rem; }
+#deliveryLocation .btn-minimal { padding: 8px 12px; margin-top: 8px; font-size: .72rem; }
+#deliveryLocation input { padding: 8px 10px; }
+.routing-credit { display: block; margin: 10px auto; font-size: .68rem; color: var(--text-muted); }
+.routing-credit a { color: inherit; }
 .delivery-summary p { white-space: pre-line; overflow-wrap: anywhere; line-height: 1.65; margin: 8px 0 14px; }
 #checkoutDetails > label, #deliveryFields label, #tableNumberField label { display: block; margin: 12px 0 6px; font-size: .75rem; font-weight: 700; }
 #deliveryFields { margin-top: 14px; }

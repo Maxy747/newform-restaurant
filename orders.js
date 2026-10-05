@@ -33,10 +33,10 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
  function updateCheckout() {
   const kind=$('orderType').value;
   $('deliveryLocation').hidden=kind!=='delivery';
-  if(deliveryQuote && Date.parse(deliveryQuote.expires_at)<=Date.now())deliveryQuote=null;
+  if(deliveryQuote && (Date.parse(deliveryQuote.expires_at)<=Date.now() || deliveryQuote.distance_m>40000))deliveryQuote=null;
   const deliveryFee=kind==='delivery'?(deliveryQuote?.fee||0):0;
   $('cartTotal').textContent=money(totals().total+Number(deliveryFee))+(kind==='delivery'&&!deliveryQuote?' + delivery':'');
-  $('deliveryQuoteStatus').textContent=deliveryQuote?`${(deliveryQuote.distance_m/1000).toFixed(2)} km by road · Delivery ${money(deliveryQuote.fee)} · Quote valid for 15 minutes`:'Choose your delivery location and calculate the delivery fee.';
+  $('deliveryQuoteStatus').textContent=deliveryQuote?`Delivery charge: ${money(deliveryQuote.fee)} · ${(deliveryQuote.distance_m/1000).toFixed(1)} km`:'Delivery charge: select location';
   $('deliveryAddressField').hidden=kind!=='delivery';
   $('tableNumberField').hidden=kind!=='dine_in';
   const summary=Boolean(getSession()&&hasDeliveryDetails(profile,kind)&&!addressEditing);
@@ -104,9 +104,11 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
    invalidateQuote();const version=quoteVersion;
    if(!$('deliveryLat').value||!$('deliveryLng').value)throw new Error('Set your delivery coordinates first.');
    $('deliveryQuoteStatus').textContent='Calculating driving route…';
-   const result=await api('delivery_quote',{location:{lat:Number($('deliveryLat').value),lng:Number($('deliveryLng').value)}});
+   let result;
+   try { result=await api('delivery_quote',{location:{lat:Number($('deliveryLat').value),lng:Number($('deliveryLng').value)}}); }
+   catch(error) { if(version===quoteVersion)$('deliveryQuoteStatus').textContent=error.message;throw error; }
    if(version!==quoteVersion)return;
-   deliveryQuote=result.quote;updateCheckout();
+   deliveryQuote=result.quote;updateCheckout();$('deliveryLocationOptions').open=false;
   });
   $('useDeliveryLocation').onclick=run(async()=>{
    invalidateQuote();
