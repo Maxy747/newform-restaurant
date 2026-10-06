@@ -2,8 +2,17 @@ import { escapeHTML } from './oms-policy.js';
 
 export function createCategories({ client, isAdmin, onSelect, notify }) {
   let rows = [], selected = 'specials', ready = false, busy = false;
-  let bar, dialog, manage;
+  let bar, dialog, manage, bubble;
+  function syncBubble() {
+    const active = bar?.querySelector('.cat-tab.active');
+    if (!bubble || !active) return;
+    bubble.textContent = `${active.textContent} ⌄`;
+    const collapsed = bar.closest('.category-scroll-shell').classList.contains('is-collapsed');
+    bubble.setAttribute('aria-expanded', String(!collapsed));
+    bar.closest('.category-scroll-shell').inert = collapsed;
+  }
   function moveHighlight() {
+    syncBubble();
     const active = bar?.querySelector('.cat-tab.active');
     const marker = bar?.querySelector('.category-highlight');
     if (!active || !marker) return;
@@ -58,6 +67,23 @@ export function createCategories({ client, isAdmin, onSelect, notify }) {
   }
   function init() {
     bar = document.getElementById('categoryScroll');
+    const shell = bar.closest('.category-scroll-shell');
+    bubble = document.createElement('button');
+    bubble.type = 'button';
+    bubble.className = 'category-bubble';
+    bubble.setAttribute('aria-controls', 'categoryScroll');
+    bubble.title = 'Show menu categories';
+    shell.before(bubble);
+    bubble.addEventListener('click', () => {
+      shell.classList.remove('is-collapsed');
+      syncBubble();
+      const active = bar.querySelector('.cat-tab.active');
+      if (active) {
+        active.focus({ preventScroll: true });
+        bar.scrollTo({ left: Math.max(0, active.offsetLeft - (bar.clientWidth - active.offsetWidth) / 2), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+      }
+    });
+    new MutationObserver(syncBubble).observe(shell, { attributes: true, attributeFilter: ['class'] });
     rows = [...bar.querySelectorAll('[data-category]')].filter(el => !['all','specials'].includes(el.dataset.category)).map((el,index) => ({id:el.dataset.category,name:el.textContent,sort_order:index,archived:false}));
     manage = document.createElement('button'); manage.type = 'button'; manage.className = 'btn-minimal category-manage'; manage.textContent = 'Edit categories';
     bar.closest('.category-scroll-shell').after(manage);

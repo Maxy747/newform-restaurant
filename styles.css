@@ -682,6 +682,14 @@ html { scroll-behavior: smooth; }
   box-shadow: var(--shadow-gold);
 }
 
+.category-bubble {
+  display:block; width:fit-content; max-width:90%; min-height:32px;
+  margin:0 auto 8px; padding:5px 14px; border-radius:999px;
+  border:1px solid var(--glass-border); background:var(--bg-surface);
+  color:var(--gold-primary); font:inherit; font-size:.7rem; font-weight:700;
+  text-align:center; cursor:pointer; overflow-wrap:anywhere;
+}
+.category-bubble:focus-visible { outline:2px solid var(--gold-primary); outline-offset:2px; }
 .category-scroll-shell {
   display: flex;
   align-items: center;
@@ -692,7 +700,7 @@ html { scroll-behavior: smooth; }
   transition: max-height 0.24s ease, opacity 0.2s ease, margin 0.24s ease;
 }
 
-.category-scroll-shell.is-collapsed { max-height: 0; opacity: 0; margin-top: -14px; pointer-events: none; }
+.category-scroll-shell.is-collapsed { max-height: 0; opacity: 0; margin-top: 0; pointer-events: none; }
 
 .category-scroll {
   min-width: 0;

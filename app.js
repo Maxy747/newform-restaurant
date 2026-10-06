@@ -1091,6 +1091,7 @@ function setupCategoryVisibility() {
   if (!categories) return;
   window.addEventListener('scroll', () => {
     if (window.innerWidth > 768) {
+      categories.classList.remove('is-collapsed');
       header?.classList.remove('is-mobile-collapsed');
       controls?.classList.remove('header-collapsed');
       compactLogo?.classList.remove('visible');
