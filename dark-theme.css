@@ -1,4 +1,14 @@
 /* Ember & brass. Dark-only visual layer; light mode and application behavior stay intact. */
+html:not([data-theme="light"]) body {
+  background-color:#050403;
+  background-image:radial-gradient(ellipse 75% 700px at 0 1050px,rgba(115,13,16,.16),transparent 75%),radial-gradient(ellipse 65% 1000px at 100% 2200px,rgba(100,9,16,.13),transparent 75%);
+}
+html:not([data-theme="light"]) .menu-section { position:relative; isolation:isolate; }
+html:not([data-theme="light"]) .menu-section::before {
+  content:""; position:absolute; inset:0; z-index:-1; pointer-events:none;
+  background:radial-gradient(ellipse at 0 15%,#850e1012,transparent 45%),radial-gradient(ellipse at 100% 70%,#9e111214,transparent 45%);
+}
+html:not([data-theme="light"]) .food-card:hover { border-color:#773526; }
 html:not([data-theme="light"]) .hero-center-col::before {
   content:none;
 }
