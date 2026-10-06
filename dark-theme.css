@@ -60,7 +60,7 @@ html:not([data-theme="light"]) .nav-link { font-size:.73rem; letter-spacing:.16e
 html:not([data-theme="light"]) .hero-minimal { isolation:isolate; padding-top:76px; padding-bottom:88px; }
 html:not([data-theme="light"]) .hero-minimal::before {
   content:""; position:absolute; inset:0 calc((100% - 100vw)/2); z-index:-1; pointer-events:none;
-  background:#100301 url('./assets/hero-reference-background.png') center/cover no-repeat;
+  background:#100301 url('./assets/cinematic-burgundy-spice.png') center/cover no-repeat;
 }
 html:not([data-theme="light"]) .hero-sub-tag { color:#edc575; font-size:.68rem; letter-spacing:.22em; margin-bottom:20px; }
 html:not([data-theme="light"]) .hero-main-title { font-size:clamp(2.4rem,4vw,3.65rem); line-height:1.06; letter-spacing:.035em; font-weight:300; }
@@ -138,7 +138,7 @@ html:not([data-theme="light"]) .hero-portion-selector { border-radius:10px; }
   html:not([data-theme="light"]) .hero-center-col { padding:28px 0; isolation:isolate; }
   html:not([data-theme="light"]) .hero-center-col::before {
     content:""; position:absolute; inset:-26px -20px; z-index:-1; pointer-events:none;
-    background:url('./assets/hero-reference-background.png') 59% center/auto 100% no-repeat;
+    background:url('./assets/cinematic-burgundy-spice.png') 59% center/auto 100% no-repeat;
     mask-image:linear-gradient(transparent,#000 14%,#000 86%,transparent);
   }
   html:not([data-theme="light"]) .center-dish-wrapper { width:82%; max-width:340px; }
