@@ -117,5 +117,25 @@ html:not([data-theme="light"]) .hero-portion-selector { border-radius:10px; }
   html:not([data-theme="light"]) .controls-wrapper { border-top:0; background:#0e0302; }
 }
 @media (max-width:899px) {
-  html:not([data-theme="light"]) .hero-minimal::before { background-size:auto 540px; background-position:58% 340px; }
+  html:not([data-theme="light"]) .hero-minimal { padding:26px 20px 32px; min-height:0; }
+  html:not([data-theme="light"]) .hero-minimal::before { background:linear-gradient(180deg,#130503,#080302); }
+  html:not([data-theme="light"]) .hero-grid { grid-template-columns:minmax(0,1fr); gap:26px; }
+  html:not([data-theme="light"]) .hero-left-col { align-items:center; text-align:center; }
+  html:not([data-theme="light"]) .hero-sub-tag { margin-bottom:14px; font-size:.58rem; }
+  html:not([data-theme="light"]) .hero-main-title { max-width:15ch; margin-bottom:18px; font-size:clamp(2rem,8.5vw,3.2rem); line-height:1.08; letter-spacing:.035em; }
+  html:not([data-theme="light"]) .hero-about-copy { max-width:40ch; margin:0 0 14px; font-size:.82rem; line-height:1.65; }
+  html:not([data-theme="light"]) .hero-cuisine-tags { justify-content:center; }
+  html:not([data-theme="light"]) .hero-center-col { padding:28px 0; isolation:isolate; }
+  html:not([data-theme="light"]) .hero-center-col::before {
+    content:""; position:absolute; inset:-26px -20px; z-index:-1; pointer-events:none;
+    background:url('./assets/hero-reference-background.png') 59% center/auto 100% no-repeat;
+    mask-image:linear-gradient(transparent,#000 14%,#000 86%,transparent);
+  }
+  html:not([data-theme="light"]) .center-dish-wrapper { width:82%; max-width:340px; }
+  html:not([data-theme="light"]) .hero-right-col { padding:0 10px; border:0; background:none; text-align:center; }
+  html:not([data-theme="light"]) .current-dish-desc { max-width:36ch; margin-left:auto; margin-right:auto; font-size:.82rem; }
+  html:not([data-theme="light"]) .hero-portion-selector { width:100%; max-width:360px; margin:14px auto; }
+  html:not([data-theme="light"]) .hero-portion-btn { min-height:40px; }
+  html:not([data-theme="light"]) .current-dish-price { margin:14px 0; font-size:2.4rem; }
+  html:not([data-theme="light"]) #heroOrderNowBtn { min-height:46px; min-width:180px; }
 }
