@@ -50,7 +50,7 @@ html:not([data-theme="light"]) .nav-link { font-size:.73rem; letter-spacing:.16e
 html:not([data-theme="light"]) .hero-minimal { isolation:isolate; padding-top:76px; padding-bottom:88px; }
 html:not([data-theme="light"]) .hero-minimal::before {
   content:""; position:absolute; inset:0 calc((100% - 100vw)/2); z-index:-1; pointer-events:none;
-  background:#100301 url('./assets/hero-reference-hq.png') center/cover no-repeat;
+  background:#100301 url('./assets/hero-reference-background.png') center/cover no-repeat;
 }
 html:not([data-theme="light"]) .hero-sub-tag { color:#edc575; font-size:.68rem; letter-spacing:.22em; margin-bottom:20px; }
 html:not([data-theme="light"]) .hero-main-title { font-size:clamp(2.4rem,4vw,3.65rem); line-height:1.06; letter-spacing:.035em; font-weight:300; }
