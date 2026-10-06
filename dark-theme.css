@@ -1,4 +1,19 @@
 /* Ember & brass. Dark-only visual layer; light mode and application behavior stay intact. */
+html:not([data-theme="light"]) .hero-center-col::before {
+  content:""; position:absolute; width:158%; aspect-ratio:3/2; left:50%; top:50%;
+  transform:translate(-50%,-50%) rotate(-12deg); pointer-events:none;
+  background:url('./assets/hero-spice-garnish.png') center/contain no-repeat;
+  mix-blend-mode:screen; opacity:.86;
+  mask-image:radial-gradient(ellipse,#000 48%,transparent 74%);
+}
+html:not([data-theme="light"]) .hero-center-col { isolation:isolate; }
+html:not([data-theme="light"]) .hero-left-col,
+html:not([data-theme="light"]) .hero-right-col { position:relative; z-index:1; }
+html:not([data-theme="light"]) .garnish-leaf { display:none; }
+@media(max-width:768px) {
+  html:not([data-theme="light"]) .hero-center-col::before { width:135%; opacity:.9; }
+  html:not([data-theme="light"]) .hero-minimal { overflow:hidden; }
+}
 :root:not([data-theme="light"]) {
   color-scheme: dark;
   --bg-body: #050403;
