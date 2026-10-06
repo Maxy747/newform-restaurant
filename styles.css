@@ -868,6 +868,8 @@ html { scroll-behavior: smooth; }
   .center-dish-wrapper { max-width: 330px; }
   .controls-wrapper { top: 63px; padding: 10px 12px; }
   .controls-wrapper.header-collapsed { transform: translate3d(0, -63px, 0); padding-left: 66px; }
+  /* Only the search row makes room for the compact logo; tabs use full width. */
+  .controls-wrapper.header-collapsed .category-scroll-shell { margin-left:-54px; }
   .controls-container { gap: 10px; }
   .search-filter-row { display: flex; flex-wrap: nowrap; align-items: stretch; }
   .search-box { min-width: 0; }
