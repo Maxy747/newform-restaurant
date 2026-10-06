@@ -1,4 +1,4 @@
-/* Dark-only visual layer; light mode and application behavior stay intact. */
+/* Ember & brass. Dark-only visual layer; light mode and application behavior stay intact. */
 html:not([data-theme="light"]) body {
   background-color:#050403;
   background-image:radial-gradient(ellipse 75% 700px at 0 1050px,rgba(115,13,16,.16),transparent 75%),radial-gradient(ellipse 65% 1000px at 100% 2200px,rgba(100,9,16,.13),transparent 75%);
@@ -148,40 +148,4 @@ html:not([data-theme="light"]) .hero-portion-selector { border-radius:10px; }
   html:not([data-theme="light"]) .hero-portion-btn { min-height:40px; }
   html:not([data-theme="light"]) .current-dish-price { margin:14px 0; font-size:2.4rem; }
   html:not([data-theme="light"]) #heroOrderNowBtn { min-height:46px; min-width:180px; }
-}
-
-/* Plain charcoal theme. Keep the responsive layout, remove decorative artwork. */
-:root:not([data-theme="light"]) {
-  --bg-body:#18191b; --bg-primary:#18191b; --bg-secondary:#202124;
-  --bg-surface:#242528; --bg-surface-elevated:#2c2d31; --bg-glass:rgba(27,28,30,.98);
-  --gold-primary:#e0e1e4; --gold-light:#fff; --gold-dark:#a8abb2;
-  --gold-gradient:linear-gradient(#f4f4f5,#dadce0);
-  --gold-btn-gradient:linear-gradient(#f1f2f3,#d8dade); --gold-glow:transparent;
-  --glass-border:#3e4045; --text-main:#e9eaed; --text-title:#f5f5f6;
-  --text-muted:#b8bbc2; --text-dim:#92969e; --btn-minimal-bg:#2b2d31;
-  --btn-minimal-color:#e9eaed; --btn-primary-text:#1d1e21; --btn-minimal-hover-color:#1d1e21;
-  --card-bg:#232427; --card-img-bg:#202124; --input-bg:#202124;
-  --portion-bg:#1c1d20; --drawer-bg:#202124; --drawer-footer-bg:#202124;
-  --modal-bg:#242528; --footer-bg:#18191b; --shadow-gold:none;
-  --shadow-card:0 5px 16px #0002; --shadow-hover:0 8px 22px #0004;
-}
-html:not([data-theme="light"]) body { background:#18191b; }
-html:not([data-theme="light"]) :is(.hero-minimal,.hero-center-col,.menu-section)::before { content:none; }
-html:not([data-theme="light"]) :is(.header,.controls-wrapper,.mobile-nav,.cart-checkout-bar) { background:#1c1d20; border-color:#3e4045; }
-html:not([data-theme="light"]) :is(.hero-main-title strong,.section-title) { color:#f5f5f6; -webkit-text-fill-color:#f5f5f6; }
-html:not([data-theme="light"]) :is(.hero-sub-tag,.current-dish-label,.food-name,.info-card h3) { color:#e9eaed; }
-html:not([data-theme="light"]) :is(.hero-about-copy,.current-dish-desc,.food-desc) { color:#b8bbc2; }
-html:not([data-theme="light"]) :is(.hero-cuisine-tags span,.search-input,.category-scroll-control,.category-highlight,.hero-portion-selector,.portion-selector) { background:#25262a; border-color:#45474d; color:#e0e1e4; }
-html:not([data-theme="light"]) :is(.food-card,.food-card:hover,.toast,.drawer-header,.modal-header) { border-color:#45474d; }
-html:not([data-theme="light"]) :is(.card-body,.info-card) { background:#232427; border-color:#3e4045; }
-html:not([data-theme="light"]) .hero-portion-selector::before { background:#414349; border-color:#686b73; }
-html:not([data-theme="light"]) .portion-btn { color:#b8bbc2; }
-html:not([data-theme="light"]) .portion-btn.active { color:#fff; }
-html:not([data-theme="light"]) .center-dish-img { border-color:#656870; box-shadow:0 12px 30px #0004; }
-html:not([data-theme="light"]) .hero-minimal .btn-primary-minimal { background:#e5e7eb; color:#1d1e21; box-shadow:none; }
-html:not([data-theme="light"]) .current-dish-price { color:#f5f5f6; }
-html:not([data-theme="light"]) .search-input:focus { border-color:#a8abb2; box-shadow:0 0 0 3px #ffffff0d; }
-html:not([data-theme="light"]) :is(button,a,input,select,textarea):focus-visible { outline-color:#c8cbd1; }
-@media(max-width:899px) {
-  html:not([data-theme="light"]) .hero-right-col { background:#232427; border-color:#45474d; }
 }
