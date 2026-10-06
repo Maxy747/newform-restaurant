@@ -683,13 +683,16 @@ html { scroll-behavior: smooth; }
 }
 
 .category-bubble {
-  display:block; width:fit-content; max-width:90%; min-height:32px;
-  margin:0 auto 8px; padding:5px 14px; border-radius:999px;
-  border:1px solid var(--glass-border); background:var(--bg-surface);
+  position:absolute; left:50%; bottom:-15px; transform:translateX(-50%);
+  z-index:2; display:block; width:max-content; max-width:70%; min-height:30px;
+  margin:0; padding:5px 14px; border-radius:999px;
+  border:1px solid #050403; background:var(--bg-surface);
+  box-shadow:0 3px 9px #0004, inset 0 0 0 1px var(--glass-border);
   color:var(--gold-primary); font:inherit; font-size:.7rem; font-weight:700;
   text-align:center; cursor:pointer; overflow-wrap:anywhere;
 }
 .category-bubble:focus-visible { outline:2px solid var(--gold-primary); outline-offset:2px; }
+.controls-container:has(.category-scroll-shell.is-collapsed) { gap:0; }
 .category-scroll-shell {
   display: flex;
   align-items: center;
