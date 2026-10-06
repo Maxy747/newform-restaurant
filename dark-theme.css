@@ -152,8 +152,8 @@ html:not([data-theme="light"]) .hero-portion-selector { border-radius:10px; }
   html:not([data-theme="light"]) #heroOrderNowBtn { min-height:46px; min-width:180px; }
 }
 
-/* Desktop-only obsidian/violet finish; retain the mobile burgundy theme. */
-@media (min-width:900px) {
+/* Shared obsidian/violet finish, with responsive layouts preserved. */
+@media (min-width:0px) {
   :root:not([data-theme="light"]) {
     --bg-body:#000; --bg-primary:#000; --bg-secondary:#0b0b0c;
     --bg-surface:#101011; --bg-surface-elevated:#1b1b1d; --bg-glass:rgba(0,0,0,.97);
@@ -196,6 +196,9 @@ html:not([data-theme="light"]) .hero-portion-selector { border-radius:10px; }
     --shadow-gold:0 5px 24px #3a0ca34d; --shadow-hover:0 0 0 1px #8854cf,0 10px 30px #3a0ca32b;
   }
   html:not([data-theme="light"]) body { background:#050505; }
+  html:not([data-theme="light"]) .hero-center-col::before { content:none; }
+  html:not([data-theme="light"]) .mobile-nav { background:#050505; border-color:#30203f; }
+  html:not([data-theme="light"]) .hero-right-col { background:none; border-color:#472b69; }
   html:not([data-theme="light"]) .hero-minimal::before { background:radial-gradient(ellipse at 77% 65%,#3a0ca34d,transparent 65%),linear-gradient(125deg,#050505 20%,#100821 65%,#050505); }
   html:not([data-theme="light"]) .menu-section::before { background:radial-gradient(ellipse at 100% 35%,#3a0ca326,transparent 65%); }
   html:not([data-theme="light"]) :is(.header,.controls-wrapper,.cart-checkout-bar) { background:#050505; border-color:#30203f; }

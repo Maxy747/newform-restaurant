@@ -3,7 +3,7 @@ import { createOrdering } from './orders.js';
 import { escapeHTML } from './oms-policy.js';
 import { createCategories } from './categories.js';
 import { createSpecials } from './specials.js';
-import { featuredDish, featuredPrice } from './featured-dish.js';
+import { createFeaturedSelector, featuredPrice } from './featured-dish.js';
 
 // Default Menu Dataset extracted directly from Newform Multi Cuisine Restaurant Menu Cards
 const DEFAULT_MENU = [
@@ -157,6 +157,9 @@ let menuItems = [];
 let cart = [];
 let activeCategory = 'specials';
 const selectSpecials = createSpecials();
+let featuredStorage;
+try { featuredStorage = window.localStorage; } catch {}
+const featuredDish = createFeaturedSelector({ specials: selectSpecials, storage: featuredStorage });
 let activeDiet = 'non-veg';
 let searchQuery = '';
 let selectedPortions = {};
