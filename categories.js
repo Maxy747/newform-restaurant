@@ -58,7 +58,7 @@ export function createCategories({ client, isAdmin, onSelect, notify }) {
   }
   function init() {
     bar = document.getElementById('categoryScroll');
-    rows = [...bar.querySelectorAll('[data-category]')].filter(el => el.dataset.category !== 'all').map((el,index) => ({id:el.dataset.category,name:el.textContent,sort_order:index,archived:false}));
+    rows = [...bar.querySelectorAll('[data-category]')].filter(el => !['all','specials'].includes(el.dataset.category)).map((el,index) => ({id:el.dataset.category,name:el.textContent,sort_order:index,archived:false}));
     manage = document.createElement('button'); manage.type = 'button'; manage.className = 'btn-minimal category-manage'; manage.textContent = 'Edit categories';
     bar.closest('.category-scroll-shell').after(manage);
     dialog = document.createElement('dialog'); dialog.className = 'category-editor'; dialog.setAttribute('aria-label','Manage menu categories');

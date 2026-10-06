@@ -1,0 +1,89 @@
+/* Ember & brass. Dark-only visual layer; light mode and application behavior stay intact. */
+:root:not([data-theme="light"]) {
+  color-scheme: dark;
+  --bg-body: #050403;
+  --bg-primary: #050403;
+  --bg-secondary: #100c08;
+  --bg-surface: #110e0a;
+  --bg-surface-elevated: #19130d;
+  --bg-glass: rgba(9,7,5,.97);
+  --gold-primary: #efc777;
+  --gold-light: #ffe4ad;
+  --gold-dark: #b58a46;
+  --gold-gradient: linear-gradient(115deg,#fff3d9,#e6b75f);
+  --gold-btn-gradient: linear-gradient(120deg,#ffe4a0,#e9b14e);
+  --gold-glow: rgba(226,158,50,.14);
+  --glass-border: rgba(230,191,125,.17);
+  --text-main: #f7efe3;
+  --text-title: #fff8ef;
+  --text-muted: #c4b8a8;
+  --text-dim: #a59784;
+  --btn-minimal-bg: rgba(231,184,103,.055);
+  --btn-minimal-color: #efd7ae;
+  --btn-primary-text: #241506;
+  --btn-minimal-hover-color: #241506;
+  --card-bg: #100d09;
+  --card-img-bg: #16100a;
+  --input-bg: #100d09;
+  --portion-bg: #090705;
+  --drawer-bg: #0b0906;
+  --drawer-footer-bg: #0b0906;
+  --modal-bg: #14100b;
+  --footer-bg: #050403;
+  --shadow-gold: 0 6px 24px rgba(206,139,37,.16);
+  --shadow-card: 0 8px 24px rgba(0,0,0,.32),inset 0 1px 0 rgba(255,226,170,.035);
+  --shadow-hover: 0 14px 36px rgba(0,0,0,.5),0 0 0 1px rgba(239,199,119,.2);
+}
+html:not([data-theme="light"]) .header { background:rgba(8,5,3,.96); border-bottom:1px solid rgba(239,199,119,.16); }
+html:not([data-theme="light"]) .nav-link { font-size:.73rem; letter-spacing:.16em; }
+html:not([data-theme="light"]) .hero-minimal { isolation:isolate; padding-top:76px; padding-bottom:88px; }
+html:not([data-theme="light"]) .hero-minimal::before {
+  content:""; position:absolute; inset:0 calc((100% - 100vw)/2); z-index:-1; pointer-events:none;
+  background:radial-gradient(ellipse at 65% 45%,rgba(141,52,12,.26),transparent 57%),radial-gradient(ellipse at 95% 0%,rgba(118,38,12,.2),transparent 48%),linear-gradient(180deg,#100704 0%,#080503 85%,#050403 100%);
+}
+html:not([data-theme="light"]) .hero-sub-tag { color:#edc575; font-size:.68rem; letter-spacing:.22em; margin-bottom:20px; }
+html:not([data-theme="light"]) .hero-main-title { font-size:clamp(2.4rem,4vw,3.65rem); line-height:1.06; letter-spacing:.035em; font-weight:300; }
+html:not([data-theme="light"]) .hero-main-title strong { margin-top:8px; color:#fff6e8; background:none; -webkit-text-fill-color:currentColor; font-weight:700; letter-spacing:-.015em; }
+html:not([data-theme="light"]) .hero-about-copy { color:#c7b7a3; line-height:1.8; font-size:.86rem; max-width:36ch; }
+html:not([data-theme="light"]) .hero-cuisine-tags span { border-color:rgba(226,182,104,.2); font-size:.6rem; letter-spacing:.12em; padding:5px 9px; color:#dfc8a4; background:rgba(228,175,81,.04); }
+html:not([data-theme="light"]) .center-dish-img { border:2px solid #d6a958; box-shadow:0 0 0 8px rgba(211,153,56,.035),0 0 0 9px rgba(211,153,56,.11),0 26px 65px #000,0 0 85px rgba(204,92,16,.15); }
+html:not([data-theme="light"]) .center-dish-wrapper::before { content:""; position:absolute; inset:-22px; border:1px solid rgba(204,151,63,.16); border-radius:50%; pointer-events:none; }
+html:not([data-theme="light"]) .current-dish-label { color:#ebca95; letter-spacing:.16em; font-size:.72rem; }
+html:not([data-theme="light"]) .current-dish-desc { color:#bfaf9a; line-height:1.8; }
+html:not([data-theme="light"]) .current-dish-price { color:#fff4df; font-weight:400; letter-spacing:-.045em; }
+html:not([data-theme="light"]) .hero-portion-selector { background:rgba(0,0,0,.35); border-color:rgba(224,175,92,.24); }
+html:not([data-theme="light"]) .hero-portion-selector::before { background:linear-gradient(135deg,#3b2c18,#21170c); border-color:#b38b4b; box-shadow:none; }
+html:not([data-theme="light"]) .controls-wrapper { background:rgba(8,6,4,.97); border-top:1px solid rgba(230,191,125,.14); border-bottom:1px solid rgba(230,191,125,.1); }
+html:not([data-theme="light"]) .search-input { background:#100d09; border-color:#3b3021; box-shadow:inset 0 1px 3px rgba(0,0,0,.35); }
+html:not([data-theme="light"]) .search-input:focus { border-color:#d8aa5f; box-shadow:0 0 0 3px rgba(216,170,95,.09); }
+html:not([data-theme="light"]) .category-scroll-control { background:#1b140b; border-color:#5c4627; color:#f2ce8c; }
+html:not([data-theme="light"]) .cat-tab { font-size:.72rem; letter-spacing:.055em; }
+html:not([data-theme="light"]) .category-highlight { background:#2a1d0d; border-color:#9b743a; }
+html:not([data-theme="light"]) .section-title { background:none; -webkit-text-fill-color:#fff3df; color:#fff3df; letter-spacing:.07em; }
+html:not([data-theme="light"]) .food-card { border-radius:20px; backdrop-filter:none; -webkit-backdrop-filter:none; border-color:#30261b; }
+html:not([data-theme="light"]) .food-name { color:#f8efdf; letter-spacing:-.015em; font-weight:600; }
+html:not([data-theme="light"]) .food-desc { color:#b9aa95; }
+html:not([data-theme="light"]) .card-body { background:linear-gradient(145deg,#151009,#0d0b08); }
+html:not([data-theme="light"]) .portion-selector { border-color:#392c1b; }
+html:not([data-theme="light"]) .portion-btn { color:#c7b797; }
+html:not([data-theme="light"]) .portion-btn.active { color:#ffe4a7; }
+html:not([data-theme="light"]) .info-card { background:linear-gradient(125deg,#171109,#0c0906); border-color:#392b18; box-shadow:var(--shadow-card); }
+html:not([data-theme="light"]) .info-card h3 { color:#f3dfbc; letter-spacing:.04em; }
+html:not([data-theme="light"]) .mobile-nav { border-color:#45331b; background:#0c0906; }
+html:not([data-theme="light"]) .cart-checkout-bar { border-color:#554023; box-shadow:0 -8px 28px rgba(0,0,0,.3); }
+html:not([data-theme="light"]) .drawer-header,html:not([data-theme="light"]) .modal-header { border-bottom-color:#3c2d1b; }
+html:not([data-theme="light"]) .toast { border-color:#987641; box-shadow:0 12px 32px rgba(0,0,0,.55); }
+html:not([data-theme="light"]) :is(button,a,input,select,textarea):focus-visible { outline:2px solid #edc575; outline-offset:3px; }
+@media (max-width:768px) {
+  html:not([data-theme="light"]) .hero-minimal { padding:32px 20px 44px; }
+  html:not([data-theme="light"]) .hero-main-title { font-size:clamp(2.2rem,9vw,3.25rem); max-width:12ch; }
+  html:not([data-theme="light"]) .hero-sub-tag { font-size:.59rem; letter-spacing:.13em; }
+  html:not([data-theme="light"]) .hero-grid { gap:32px; }
+  html:not([data-theme="light"]) .center-dish-wrapper { max-width:290px; width:82%; }
+  html:not([data-theme="light"]) .hero-right-col { width:100%; padding:20px; border:1px solid #3e2b16; border-radius:20px; background:rgba(18,12,6,.85); }
+  html:not([data-theme="light"]) .hero-about-copy { max-width:44ch; }
+  html:not([data-theme="light"]) .food-card { border-radius:16px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  html:not([data-theme="light"]) .garnish-leaf { animation:none; }
+}
