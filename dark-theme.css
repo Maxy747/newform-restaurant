@@ -116,7 +116,7 @@ html:not([data-theme="light"]) .hero-minimal .btn-primary-minimal {
 html:not([data-theme="light"]) .hero-portion-selector { border-radius:10px; }
 @media (min-width:900px) {
   html:not([data-theme="light"]) .hero-minimal::before {
-    background:radial-gradient(ellipse at 58% 38%,rgba(135,34,55,.48),transparent 62%),radial-gradient(ellipse at 94% 82%,rgba(91,15,40,.6),transparent 58%),linear-gradient(125deg,#120609 0%,#38101b 38%,#4b1424 60%,#1c080f 100%);
+    background:radial-gradient(ellipse at 55% 40%,rgba(105,108,114,.32),transparent 65%),linear-gradient(125deg,#000 0%,#141517 42%,#252629 60%,#030303 100%);
   }
   html:not([data-theme="light"]) .hero-minimal { min-height:660px; padding:56px 40px 64px; }
   html:not([data-theme="light"]) .hero-grid { grid-template-columns:1.05fr 1.35fr .95fr; gap:40px; }
