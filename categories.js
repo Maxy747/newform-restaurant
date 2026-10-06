@@ -10,6 +10,7 @@ export function createCategories({ client, isAdmin, onSelect, notify }) {
     bubble.textContent = `${active.textContent} ${collapsed ? '⌄' : '⌃'}`;
     bubble.title = collapsed ? 'Show menu categories' : 'Hide menu categories';
     bubble.setAttribute('aria-expanded', String(!collapsed));
+    bubble.hidden = !collapsed;
     bar.closest('.category-scroll-shell').inert = collapsed;
   }
   function moveHighlight() {
@@ -85,9 +86,10 @@ export function createCategories({ client, isAdmin, onSelect, notify }) {
     window.addEventListener('resize', anchorBubble, { passive: true });
     anchorBubble();
     bubble.addEventListener('click', () => {
-      shell.classList.toggle('is-collapsed');
+      shell.dataset.revealUntil = String(performance.now() + 600);
+      shell.classList.remove('is-collapsed');
       syncBubble();
-      if (shell.classList.contains('is-collapsed')) return;
+      requestAnimationFrame(moveHighlight);
       const active = bar.querySelector('.cat-tab.active');
       if (active) {
         bar.scrollTo({ left: Math.max(0, active.offsetLeft - (bar.clientWidth - active.offsetWidth) / 2), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });

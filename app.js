@@ -1098,6 +1098,11 @@ function setupCategoryVisibility() {
       return;
     }
     const currentY = window.scrollY;
+    // Opening the tabs changes sticky layout; ignore its scroll-anchor adjustment.
+    if (performance.now() < Number(categories.dataset.revealUntil || 0)) {
+      lastScrollY = currentY;
+      return;
+    }
     if (currentY > 170 && currentY > lastScrollY + 8) categories.classList.add('is-collapsed');
     if (currentY < lastScrollY - 8) categories.classList.remove('is-collapsed');
     const headerHeight = header?.offsetHeight || 0;
