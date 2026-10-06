@@ -130,11 +130,11 @@ html:not([data-theme="light"]) .hero-portion-selector { border-radius:10px; }
   html:not([data-theme="light"]) .hero-minimal { padding:26px 20px 32px; min-height:0; }
   html:not([data-theme="light"]) .hero-minimal::before { background:linear-gradient(180deg,#130503,#080302); }
   html:not([data-theme="light"]) .hero-grid { grid-template-columns:minmax(0,1fr); gap:26px; }
-  html:not([data-theme="light"]) .hero-left-col { align-items:center; text-align:center; }
+  html:not([data-theme="light"]) .hero-left-col { align-items:flex-start; text-align:left; }
   html:not([data-theme="light"]) .hero-sub-tag { margin-bottom:14px; font-size:.58rem; }
   html:not([data-theme="light"]) .hero-main-title { max-width:15ch; margin-bottom:18px; font-size:clamp(2rem,8.5vw,3.2rem); line-height:1.08; letter-spacing:.035em; }
   html:not([data-theme="light"]) .hero-about-copy { max-width:40ch; margin:0 0 14px; font-size:.82rem; line-height:1.65; }
-  html:not([data-theme="light"]) .hero-cuisine-tags { justify-content:center; }
+  html:not([data-theme="light"]) .hero-cuisine-tags { justify-content:flex-start; }
   html:not([data-theme="light"]) .hero-center-col { padding:28px 0; isolation:isolate; }
   html:not([data-theme="light"]) .hero-center-col::before {
     content:""; position:absolute; inset:-26px -20px; z-index:-1; pointer-events:none;
