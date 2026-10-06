@@ -151,3 +151,38 @@ html:not([data-theme="light"]) .hero-portion-selector { border-radius:10px; }
   html:not([data-theme="light"]) .current-dish-price { margin:14px 0; font-size:2.4rem; }
   html:not([data-theme="light"]) #heroOrderNowBtn { min-height:46px; min-width:180px; }
 }
+
+/* Desktop-only monochrome finish; retain the mobile burgundy theme. */
+@media (min-width:900px) {
+  :root:not([data-theme="light"]) {
+    --bg-body:#000; --bg-primary:#000; --bg-secondary:#0b0b0c;
+    --bg-surface:#101011; --bg-surface-elevated:#1b1b1d; --bg-glass:rgba(0,0,0,.97);
+    --gold-primary:#d5d6d9; --gold-light:#fff; --gold-dark:#8b8e94;
+    --gold-gradient:linear-gradient(120deg,#fff,#bfc2c8);
+    --gold-btn-gradient:linear-gradient(120deg,#f1f2f4,#c5c8ce);
+    --gold-glow:rgba(255,255,255,.06); --glass-border:#303033;
+    --text-main:#e6e7e9; --text-title:#f6f6f7; --text-muted:#b0b2b8; --text-dim:#90939a;
+    --btn-minimal-bg:#141415; --btn-minimal-color:#e1e2e5;
+    --btn-primary-text:#111; --btn-minimal-hover-color:#111;
+    --card-bg:#0b0b0c; --card-img-bg:#111; --input-bg:#101011; --portion-bg:#080809;
+    --drawer-bg:#09090a; --drawer-footer-bg:#09090a; --modal-bg:#111112; --footer-bg:#000;
+    --shadow-gold:0 4px 16px #ffffff08; --shadow-card:0 8px 24px #0006; --shadow-hover:0 0 0 1px #666;
+  }
+  html:not([data-theme="light"]) body { background:#000; }
+  html:not([data-theme="light"]) :is(.hero-minimal,.menu-section)::before { background:none; }
+  html:not([data-theme="light"]) :is(.header,.controls-wrapper,.cart-checkout-bar) { background:#000; border-color:#29292c; }
+  html:not([data-theme="light"]) :is(.hero-main-title strong,.section-title) { color:#f5f5f6; -webkit-text-fill-color:#f5f5f6; }
+  html:not([data-theme="light"]) :is(.hero-sub-tag,.current-dish-label,.current-dish-price,.food-name,.info-card h3) { color:#e6e7e9; }
+  html:not([data-theme="light"]) :is(.hero-about-copy,.current-dish-desc,.food-desc) { color:#b0b2b8; }
+  html:not([data-theme="light"]) :is(.hero-cuisine-tags span,.search-input,.category-scroll-control,.category-highlight,.hero-portion-selector,.portion-selector) { background:#101011; border-color:#39393d; color:#d5d6d9; }
+  html:not([data-theme="light"]) :is(.food-card,.toast,.drawer-header,.modal-header) { border-color:#303033; }
+  html:not([data-theme="light"]) .food-card:hover { border-color:#70737a; }
+  html:not([data-theme="light"]) :is(.card-body,.info-card) { background:#0b0b0c; border-color:#303033; }
+  html:not([data-theme="light"]) .hero-portion-selector::before { background:#303034; border-color:#5b5d64; }
+  html:not([data-theme="light"]) .portion-btn { color:#afb2b9; }
+  html:not([data-theme="light"]) .portion-btn.active { color:#fff; }
+  html:not([data-theme="light"]) .center-dish-img { border-color:#62656c; box-shadow:0 0 40px #ffffff08; }
+  html:not([data-theme="light"]) .hero-minimal .btn-primary-minimal { background:var(--gold-btn-gradient); color:#111; box-shadow:none; }
+  html:not([data-theme="light"]) .search-input:focus { border-color:#85888f; box-shadow:0 0 0 3px #ffffff0c; }
+  html:not([data-theme="light"]) :is(button,a,input,select,textarea):focus-visible { outline-color:#d5d6d9; }
+}
