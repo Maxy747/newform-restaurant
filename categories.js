@@ -24,11 +24,11 @@ export function createCategories({ client, isAdmin, onSelect, notify }) {
   }
   function render() {
     if (!bar) return;
-    if (!['all','specials'].includes(selected) && !rows.some(row => row.id === selected && !row.archived)) {
+    if ((selected === '__out_of_stock' && !isAdmin()) || (!['all','specials','__out_of_stock'].includes(selected) && !rows.some(row => row.id === selected && !row.archived))) {
       selected = 'all'; onSelect('all');
     }
     bar.innerHTML = '<span class="category-highlight" aria-hidden="true"></span>' +
-      [{ id: 'specials', name: 'Specials' }, { id: 'all', name: 'All' }, ...rows.filter(row => !row.archived)].map(row =>
+      [{ id: 'specials', name: 'Specials' }, { id: 'all', name: 'All' }, ...(isAdmin() ? [{id:'__out_of_stock',name:'Out of stock'}] : []), ...rows.filter(row => !row.archived)].map(row =>
         `<button type="button" class="cat-tab${row.id === selected ? ' active' : ''}" data-category="${escapeHTML(row.id)}" aria-pressed="${row.id === selected}">${escapeHTML(row.name)}</button>`).join('');
     const select = document.getElementById('formCategory');
     const previous = select.value;
@@ -134,6 +134,6 @@ export function createCategories({ client, isAdmin, onSelect, notify }) {
     document.fonts.ready.then(moveHighlight);
     render();
   }
-  function adminChanged() { if (manage) manage.hidden = !isAdmin(); if (!isAdmin() && dialog?.open) dialog.close(); }
+  function adminChanged() { if (manage) render(); if (!isAdmin() && dialog?.open) dialog.close(); }
   return { init, load, adminChanged };
 }

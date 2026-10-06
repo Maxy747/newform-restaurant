@@ -687,9 +687,10 @@ function renderMenu(animate = false) {
   // Filter Items
   const specials = selectSpecials(menuItems);
   const filtered = menuItems.filter(item => {
-    const matchesCat = activeCategory === 'specials' ? (Boolean(searchQuery) || specials.has(item.id)) : (activeCategory === 'all' || item.category === activeCategory);
+    const stockView = isAdmin && activeCategory === '__out_of_stock';
+    const matchesCat = stockView ? item.available === false : activeCategory === 'specials' ? (Boolean(searchQuery) || specials.has(item.id)) : (activeCategory === 'all' || item.category === activeCategory);
     // Non-Veg is the default full menu view; Veg narrows it to vegetarian dishes only.
-    const matchesDiet = activeDiet !== 'veg' || item.diet === 'veg';
+    const matchesDiet = stockView || activeDiet !== 'veg' || item.diet === 'veg';
     const matchesSearch = item.name.toLowerCase().includes(searchQuery) ||
                           (item.description || '').toLowerCase().includes(searchQuery);
     return matchesCat && matchesDiet && matchesSearch;
@@ -1212,7 +1213,7 @@ function openAddItemModal() {
   editingItemId = null;
   document.getElementById('addItemForm').reset();
   const categorySelect = document.getElementById('formCategory');
-  if (!['all','specials'].includes(activeCategory)) categorySelect.value = activeCategory;
+  if (!['all','specials','__out_of_stock'].includes(activeCategory)) categorySelect.value = activeCategory;
   document.getElementById('itemModalTitle').textContent = 'ADD NEW ITEM';
   document.getElementById('saveItemButtonText').textContent = 'SAVE DISH TO MENU';
   document.getElementById('overlay').classList.add('active');
