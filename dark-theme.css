@@ -115,7 +115,9 @@ html:not([data-theme="light"]) .hero-minimal .btn-primary-minimal {
 }
 html:not([data-theme="light"]) .hero-portion-selector { border-radius:10px; }
 @media (min-width:900px) {
-  html:not([data-theme="light"]) .hero-minimal::before { background-size:100% 100%; }
+  html:not([data-theme="light"]) .hero-minimal::before {
+    background:radial-gradient(ellipse at 55% 42%,rgba(93,32,26,.25),transparent 62%),linear-gradient(125deg,#080605 0%,#170c0b 52%,#080605 100%);
+  }
   html:not([data-theme="light"]) .hero-minimal { min-height:660px; padding:56px 40px 64px; }
   html:not([data-theme="light"]) .hero-grid { grid-template-columns:1.05fr 1.35fr .95fr; gap:40px; }
   html:not([data-theme="light"]) .hero-main-title { font-size:clamp(2.6rem,4.6vw,4rem); line-height:1.08; letter-spacing:.08em; }
