@@ -75,6 +75,15 @@ export function createCategories({ client, isAdmin, onSelect, notify }) {
     bubble.setAttribute('aria-controls', 'categoryScroll');
     bubble.title = 'Show menu categories';
     shell.before(bubble);
+    // Anchor to the whole sticky bar, never the shrinking search field or tabs.
+    const controls = shell.closest('.controls-wrapper');
+    const searchRow = controls.querySelector('.search-filter-row');
+    const anchorBubble = () => {
+      controls.style.setProperty('--category-bubble-top', `${searchRow.getBoundingClientRect().bottom - controls.getBoundingClientRect().top}px`);
+    };
+    new ResizeObserver(anchorBubble).observe(searchRow);
+    window.addEventListener('resize', anchorBubble, { passive: true });
+    anchorBubble();
     bubble.addEventListener('click', () => {
       shell.classList.toggle('is-collapsed');
       syncBubble();
