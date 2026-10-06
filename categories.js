@@ -6,8 +6,9 @@ export function createCategories({ client, isAdmin, onSelect, notify }) {
   function syncBubble() {
     const active = bar?.querySelector('.cat-tab.active');
     if (!bubble || !active) return;
-    bubble.textContent = `${active.textContent} ⌄`;
     const collapsed = bar.closest('.category-scroll-shell').classList.contains('is-collapsed');
+    bubble.textContent = `${active.textContent} ${collapsed ? '⌄' : '⌃'}`;
+    bubble.title = collapsed ? 'Show menu categories' : 'Hide menu categories';
     bubble.setAttribute('aria-expanded', String(!collapsed));
     bar.closest('.category-scroll-shell').inert = collapsed;
   }
@@ -75,11 +76,11 @@ export function createCategories({ client, isAdmin, onSelect, notify }) {
     bubble.title = 'Show menu categories';
     shell.before(bubble);
     bubble.addEventListener('click', () => {
-      shell.classList.remove('is-collapsed');
+      shell.classList.toggle('is-collapsed');
       syncBubble();
+      if (shell.classList.contains('is-collapsed')) return;
       const active = bar.querySelector('.cat-tab.active');
       if (active) {
-        active.focus({ preventScroll: true });
         bar.scrollTo({ left: Math.max(0, active.offsetLeft - (bar.clientWidth - active.offsetWidth) / 2), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
       }
     });
