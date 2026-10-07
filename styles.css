@@ -1620,10 +1620,11 @@ body:has(.cart-drawer.active) .mobile-cart-cta { display: none; }
 .checkout-method small { color: var(--text-muted); }
 .checkout-method.is-disabled { opacity: .55; cursor: not-allowed; }
 .account-section { display: grid; gap: 12px; }
-.account-details > summary { list-style: none; text-align: center; cursor: pointer; }
+#accountContent > .account-section > strong:first-child { justify-self: center; text-align: center; overflow-wrap: anywhere; }
+.account-details > summary { list-style: none; display: flex; align-items: center; gap: 10px; width: fit-content; margin-inline: auto; cursor: pointer; }
 .account-details > summary::-webkit-details-marker { display: none; }
-.account-details > summary::after { content: " BE"; }
-.account-details[open] > summary::after { content: " B4"; }
+.account-details > summary::after { content: ""; width: 6px; height: 6px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: translateY(-2px) rotate(45deg); transition: transform .2s ease; }
+.account-details[open] > summary::after { transform: translateY(2px) rotate(-135deg); }
 .account-details[open] > .account-section { margin-top: 12px; }
 [hidden] { display: none !important; }
 /* One card for "delivering to" + delivery charge; each part hides independently. */
