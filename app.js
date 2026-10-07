@@ -1,6 +1,6 @@
 import { isSupabaseConfigured, supabase } from './supabaseClient.js';
 import { createOrdering } from './orders.js';
-import { escapeHTML } from './oms-policy.js';
+import { escapeHTML, money } from './oms-policy.js';
 import { createCategories } from './categories.js';
 import { createSpecials } from './specials.js';
 import { createFeaturedSelector, featuredPrice } from './featured-dish.js';
@@ -671,6 +671,17 @@ function triggerAddItem() {
 }
 
 // Render Menu Cards
+// The bundled hero shot was the seed placeholder; show a neutral tile rather than a photo of a different dish.
+function hasDishPhoto(image) {
+  const src = String(image || '').trim();
+  return Boolean(src) && !/(^|\/)assets\/hero\.png(\?.*)?$/.test(src);
+}
+
+// Inline handler argument: a JSON string literal, HTML-escaped so it survives the attribute.
+function jsArg(value) {
+  return escapeHTML(JSON.stringify(String(value ?? '')));
+}
+
 function getTagTone(tag) {
   const normalizedTag = String(tag || '').trim().toLowerCase();
   if (normalizedTag === 'bestseller') return 'tag-bestseller';
@@ -720,35 +731,42 @@ function renderMenu(animate = false) {
     }
     const currentCartId = `${item.id}_${item.portionType === 'multi' ? currentPortion : 'single'}`;
     const cartEntry = cart.find(entry => entry.cartId === currentCartId);
+    // Menu rows are admin-editable data: escape every value placed into markup or inline handlers.
+    const name = escapeHTML(item.name);
+    const id = escapeHTML(item.id);
+    const idArg = jsArg(item.id);
+    const cartIdArg = jsArg(currentCartId);
+    const hasPhoto = hasDishPhoto(item.image);
 
     return `
-      <div class="food-card${isAdmin ? ' admin-mode' : ''}" id="card-${item.id}">
-        <div class="card-img-container">
-          <img src="${item.image || 'assets/hero.png'}" alt="${item.name}" class="card-img" role="button" tabindex="0" aria-label="Preview ${item.name}" onerror="this.src='assets/hero.png'">
-          <div class="diet-icon ${item.diet}"></div>
-          ${item.tag ? `<span class="card-badge ${getTagTone(item.tag)}">${item.tag}</span>` : ''}
+      <div class="food-card${isAdmin ? ' admin-mode' : ''}" id="card-${id}">
+        <div class="card-img-container${hasPhoto ? '' : ' photo-missing'}">
+          ${hasPhoto ? `<img src="${escapeHTML(item.image)}" alt="${name}" class="card-img" role="button" tabindex="0" aria-label="Preview ${name}" onerror="this.closest('.card-img-container').classList.add('photo-missing'); this.remove();">` : ''}
+          <div class="card-photo-placeholder" aria-hidden="true"><i class="fa-solid fa-utensils"></i><span>Photo coming soon</span></div>
+          <div class="diet-icon ${escapeHTML(item.diet)}"></div>
+          ${item.tag ? `<span class="card-badge ${getTagTone(item.tag)}">${escapeHTML(item.tag)}</span>` : ''}
           ${isAdmin ? `
             <div class="card-admin-controls" aria-label="Admin item controls">
-              <button type="button" class="admin-card-action admin-edit-item-btn" data-menu-action="edit" data-item-id="${item.id}" title="Edit ${item.name}" aria-label="Edit ${item.name}">
+              <button type="button" class="admin-card-action admin-edit-item-btn" data-menu-action="edit" data-item-id="${id}" title="Edit ${name}" aria-label="Edit ${name}">
                 <i class="fa-solid fa-pen"></i>
               </button>
-              <button type="button" class="admin-card-action admin-remove-item-btn" data-menu-action="remove" data-item-id="${item.id}" title="Remove ${item.name}" aria-label="Remove ${item.name}">
+              <button type="button" class="admin-card-action admin-remove-item-btn" data-menu-action="remove" data-item-id="${id}" title="Remove ${name}" aria-label="Remove ${name}">
                 <i class="fa-solid fa-xmark"></i>
               </button>
             </div>
           ` : ''}
         </div>
         <div class="card-body">
-          <h3 class="food-name">${item.name}</h3>
-          <p class="food-desc"><span class="food-desc-text">${item.description || ''}</span></p>
+          <h3 class="food-name">${name}</h3>
+          <p class="food-desc"><span class="food-desc-text">${escapeHTML(item.description)}</span></p>
           ${item.available === false ? '<small class="danger">Out of stock</small>' : ''}
-          ${isAdmin ? `<button type="button" class="btn-minimal" data-menu-action="stock" data-item-id="${item.id}" aria-pressed="${item.available !== false}">${item.available === false ? 'OUT OF STOCK · RESTOCK' : 'IN STOCK · DISABLE'}</button>` : ''}
+          ${isAdmin ? `<button type="button" class="btn-minimal" data-menu-action="stock" data-item-id="${id}" aria-pressed="${item.available !== false}">${item.available === false ? 'OUT OF STOCK · RESTOCK' : 'IN STOCK · DISABLE'}</button>` : ''}
           
           ${item.portionType === 'multi' ? `
             <div class="portion-selector" style="--portion-offset:${currentPortion === 'quarter' ? '0px' : currentPortion === 'half' ? 'calc(100% + 4px)' : 'calc(200% + 8px)'}">
-              <button class="portion-btn ${currentPortion === 'quarter' ? 'active' : ''}" aria-label="Quarter, ₹${item.prices.quarter}" onclick="selectPortion('${item.id}', 'quarter')">Qtr<span class="portion-price"> (₹${item.prices.quarter})</span></button>
-              <button class="portion-btn ${currentPortion === 'half' ? 'active' : ''}" aria-label="Half, ₹${item.prices.half}" onclick="selectPortion('${item.id}', 'half')">Half<span class="portion-price"> (₹${item.prices.half})</span></button>
-              <button class="portion-btn ${currentPortion === 'full' ? 'active' : ''}" aria-label="Full, ₹${item.prices.full}" onclick="selectPortion('${item.id}', 'full')">Full<span class="portion-price"> (₹${item.prices.full})</span></button>
+              <button class="portion-btn ${currentPortion === 'quarter' ? 'active' : ''}" aria-label="Quarter, ₹${item.prices.quarter}" onclick="selectPortion(${idArg}, 'quarter')">Qtr<span class="portion-price"> (₹${item.prices.quarter})</span></button>
+              <button class="portion-btn ${currentPortion === 'half' ? 'active' : ''}" aria-label="Half, ₹${item.prices.half}" onclick="selectPortion(${idArg}, 'half')">Half<span class="portion-price"> (₹${item.prices.half})</span></button>
+              <button class="portion-btn ${currentPortion === 'full' ? 'active' : ''}" aria-label="Full, ₹${item.prices.full}" onclick="selectPortion(${idArg}, 'full')">Full<span class="portion-price"> (₹${item.prices.full})</span></button>
             </div>
           ` : ''}
 
@@ -757,13 +775,13 @@ function renderMenu(animate = false) {
               <span class="price-amount">₹${currentPrice}</span>
             </div>
             ${item.available === false ? '<button class="add-cart-btn" disabled>OUT OF STOCK</button>' : cartEntry ? `
-              <div class="card-qty-control" aria-label="Quantity for ${item.name}">
-                <button type="button" onclick="updateCartItemQty('${currentCartId}', -1)" aria-label="Remove one ${item.name}">−</button>
+              <div class="card-qty-control" aria-label="Quantity for ${name}">
+                <button type="button" onclick="updateCartItemQty(${cartIdArg}, -1)" aria-label="Remove one ${name}">−</button>
                 <span>${cartEntry.quantity}</span>
-                <button type="button" onclick="updateCartItemQty('${currentCartId}', 1)" aria-label="Add one ${item.name}">+</button>
+                <button type="button" onclick="updateCartItemQty(${cartIdArg}, 1)" aria-label="Add one ${name}">+</button>
               </div>
             ` : `
-              <button class="add-cart-btn" onclick="addToCart('${item.id}', event)">+ ADD</button>
+              <button class="add-cart-btn" onclick="addToCart(${idArg}, event)">+ ADD</button>
             `}
           </div>
         </div>
@@ -991,9 +1009,9 @@ function renderCart() {
         <p>Your cart is empty.</p>
       </div>
     `;
-    if (subtotalEl) subtotalEl.textContent = '₹0';
-    if (taxEl) taxEl.textContent = '₹0';
-    if (totalEl) totalEl.textContent = '₹0';
+    if (subtotalEl) subtotalEl.textContent = money(0);
+    if (taxEl) taxEl.textContent = money(0);
+    if (totalEl) totalEl.textContent = money(0);
     return;
   }
 
@@ -1001,8 +1019,8 @@ function renderCart() {
     <div class="cart-item">
       <div class="cart-item-details" role="button" tabindex="0" data-cart-detail="${idx}" aria-label="View details for ${escapeHTML(item.name)}">
         <div style="font-family:var(--font-heading); font-weight:700; font-size:0.95rem;">${escapeHTML(item.name)}</div>
-        <div style="font-size:0.75rem; color:var(--text-muted);">${item.portion ? `Portion: ${escapeHTML(item.portion)} | ` : ''}₹${Number(item.price)} each</div>
-        <div style="font-weight:700; color:var(--primary); font-size:0.9rem;">₹${item.price * item.quantity}</div>
+        <div style="font-size:0.75rem; color:var(--text-muted);">${item.portion ? `Portion: ${escapeHTML(item.portion)} | ` : ''}${money(item.price)} each</div>
+        <div style="font-weight:700; color:var(--primary); font-size:0.9rem;">${money(item.price * item.quantity)}</div>
         <small class="cart-detail-hint">View details ›</small>
       </div>
       <div class="cart-qty-control" aria-label="Quantity">
@@ -1015,9 +1033,9 @@ function renderCart() {
 
   const { subtotal, tax: gst, total } = calculateCartTotals();
 
-  if (subtotalEl) subtotalEl.textContent = `₹${subtotal}`;
-  if (taxEl) taxEl.textContent = `₹${gst}`;
-  if (totalEl) totalEl.textContent = `₹${total}`;
+  if (subtotalEl) subtotalEl.textContent = money(subtotal);
+  if (taxEl) taxEl.textContent = money(gst);
+  if (totalEl) totalEl.textContent = money(total);
   ordering.updateCheckout();
 }
 
