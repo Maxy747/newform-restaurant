@@ -1647,7 +1647,7 @@ body:has(.cart-drawer.active) .mobile-cart-cta { display: none; }
 .delivery-locate-btn:hover, .delivery-locate-btn:focus-visible { border-color: var(--gold-primary); }
 .delivery-locate-btn:disabled { opacity: .6; cursor: progress; }
 .delivery-privacy { margin: 6px 0 0 40px; font-size: .66rem; line-height: 1.35; color: var(--text-muted); }
-#deliveryLocation.has-quote .delivery-locate-btn, #deliveryLocation.has-quote .delivery-privacy { display: none; }
+#deliveryLocation.has-quote .delivery-locate-btn, #deliveryLocation.has-quote .delivery-privacy, #deliveryLocation.has-quote .delivery-fee-text small { display: none; }
 #deliveryAddressMatches .btn-minimal { padding: 8px 10px; font-size: .74rem; }
 .routing-credit { display: block; margin: 10px auto; font-size: .68rem; color: var(--text-muted); }
 .routing-credit a { color: inherit; }

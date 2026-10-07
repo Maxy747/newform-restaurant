@@ -32,8 +32,8 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   $('deliveryLocation').hidden=kind!=='delivery';
   if(deliveryQuote && (Date.parse(deliveryQuote.expires_at)<=Date.now() || deliveryQuote.distance_m>6000))deliveryQuote=null;
   const deliveryFee=kind==='delivery'?(deliveryQuote?.fee||0):0;
-  $('cartTotal').textContent=money(totals().total+Number(deliveryFee))+(kind==='delivery'&&!deliveryQuote?' + delivery':'');
-  $('deliveryQuoteStatus').textContent=deliveryQuote?`Delivery ${money(deliveryQuote.fee)} · ${(deliveryQuote.distance_m/1000).toFixed(1)} km`:'Delivery fee: set at checkout';
+  $('cartTotal').textContent=money(totals().total+Number(deliveryFee))+(kind==='delivery'&&!deliveryQuote?' + ₹100 delivery':'');
+  $('deliveryQuoteStatus').textContent=deliveryQuote?`Delivery ₹${Number(deliveryQuote.fee)} · ${(deliveryQuote.distance_m/1000).toFixed(1)} km`:'Delivery ₹100';
   // Once a quote exists the locate button and privacy note step aside.
   $('deliveryLocation').classList.toggle('has-quote',Boolean(deliveryQuote));
   $('deliveryAddressField').hidden=kind!=='delivery';
