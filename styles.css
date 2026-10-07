@@ -1845,3 +1845,11 @@ footer {
 .contact-action strong {
   color: var(--text-main);
 }
+
+/* Theme switch: one page-wide cross-fade instead of staggered per-element transitions. */
+.theme-switching,
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after { transition: none !important; }
+::view-transition-old(root),
+::view-transition-new(root) { animation-duration: .45s; animation-timing-function: cubic-bezier(.4, 0, .2, 1); }

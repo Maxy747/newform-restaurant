@@ -207,7 +207,20 @@ function setTheme(theme) {
 function toggleTheme() {
   const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
   const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-  setTheme(newTheme);
+  const root = document.documentElement;
+
+  // Per-element transitions fade at different speeds while gradients snap, so
+  // switch them off and cross-fade the whole page as one GPU snapshot instead.
+  root.classList.add('theme-switching');
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!document.startViewTransition || reduceMotion) {
+    setTheme(newTheme);
+    getComputedStyle(root).color; // commit the new styles before transitions return
+    requestAnimationFrame(() => root.classList.remove('theme-switching'));
+    return;
+  }
+  document.startViewTransition(() => setTheme(newTheme))
+    .finished.finally(() => root.classList.remove('theme-switching'));
 }
 
 // Initialize App
