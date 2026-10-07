@@ -1614,6 +1614,11 @@ html { scroll-behavior: smooth; }
 .checkout-method small { color: var(--text-muted); }
 .checkout-method.is-disabled { opacity: .55; cursor: not-allowed; }
 .account-section { display: grid; gap: 12px; }
+.account-details > summary { list-style: none; text-align: center; cursor: pointer; }
+.account-details > summary::-webkit-details-marker { display: none; }
+.account-details > summary::after { content: " BE"; }
+.account-details[open] > summary::after { content: " B4"; }
+.account-details[open] > .account-section { margin-top: 12px; }
 [hidden] { display: none !important; }
 .delivery-summary { margin: 14px 0; padding: 16px; border: 1px solid var(--glass-border); border-radius: 14px; background: var(--bg-surface-elevated); }
 .delivery-summary h4 { font-size: .76rem; letter-spacing: .08em; color: var(--text-muted); }
