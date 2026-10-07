@@ -112,7 +112,7 @@ let categories = [
   { id: 'beef', name: 'Beef Specials', sort_order: 2, archived: false }, { id: 'veg', name: 'Vegetarian', sort_order: 3, archived: false },
   { id: 'old', name: 'Old Specials', sort_order: 4, archived: true },
 ];
-const tables = { menu_items: () => menu, menu_categories: () => categories, profiles: () => [{ id: 'u1', role: role(), full_name: 'Test Admin', phone: '9999999999', default_address: '' }] };
+const tables = { menu_items: () => menu, menu_categories: () => categories, profiles: () => [{ id: 'u1', role: role(), full_name: 'Test Admin', phone: '9999999999', default_address: 'J36M+G56, Kuttikunnu Rd, Mandayapuram,' + String.fromCharCode(10) + 'Kalpetta, Kerala 673121' }] };
 const setTable = (name, rows) => { if (name === 'menu_items') menu = rows; if (name === 'menu_categories') categories = rows; };
 
 function query(table) {

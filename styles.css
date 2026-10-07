@@ -1574,16 +1574,11 @@ html { scroll-behavior: smooth; }
 @keyframes toastSlideIn { to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes toastSlideOut { to { opacity: 0; transform: translateY(14px) scale(.98); } }
 
-.mobile-cart-cta {
-  display: none;
-}
-
-@media (max-width: 768px) {
-  .toast-container { bottom: calc(132px + env(safe-area-inset-bottom)); }
-  .mobile-cart-cta:not([hidden]) {
+/* Floating "Go to cart" button: above the bottom nav on phones, bottom-right on desktop. */
+.mobile-cart-cta:not([hidden]) {
     position: fixed;
-    right: 14px;
-    bottom: 78px;
+    right: 24px;
+    bottom: 24px;
     z-index: 149;
     display: inline-flex;
     align-items: center;
@@ -1599,7 +1594,13 @@ html { scroll-behavior: smooth; }
     letter-spacing: .08em;
     box-shadow: var(--shadow-gold);
     cursor: pointer;
-  }
+}
+.mobile-cart-cta:not([hidden]):hover { filter: brightness(1.08); transform: translateY(-1px); }
+body:has(.cart-drawer.active) .mobile-cart-cta { display: none; }
+
+@media (max-width: 768px) {
+  .toast-container { bottom: calc(132px + env(safe-area-inset-bottom)); }
+  .mobile-cart-cta:not([hidden]) { right: 14px; bottom: 78px; }
 }
 
 .checkout-methods { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin-top: 14px; }
@@ -1620,9 +1621,16 @@ html { scroll-behavior: smooth; }
 .account-details[open] > summary::after { content: " B4"; }
 .account-details[open] > .account-section { margin-top: 12px; }
 [hidden] { display: none !important; }
-.delivery-summary { margin: 14px 0; padding: 16px; border: 1px solid var(--glass-border); border-radius: 14px; background: var(--bg-surface-elevated); }
-.delivery-summary h4 { font-size: .76rem; letter-spacing: .08em; color: var(--text-muted); }
-#deliveryLocation { padding: 10px 12px; margin: 10px 0; }
+/* One card for "delivering to" + delivery charge; each part hides independently. */
+.delivery-card { margin: 14px 0; border: 1px solid var(--glass-border); border-radius: 14px; background: var(--bg-surface-elevated); overflow: hidden; }
+.delivery-card:not(:has(> .delivery-part:not([hidden]))) { display: none; }
+.delivery-part { padding: 12px 14px; }
+.delivery-part:not([hidden]) ~ .delivery-part:not([hidden]) { border-top: 1px dashed var(--glass-border); }
+.delivery-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.delivery-card h4 { margin: 0; font-size: .74rem; letter-spacing: .08em; color: var(--text-muted); }
+.delivery-change-btn { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border: 1px solid var(--glass-border); border-radius: var(--radius-full); background: transparent; color: var(--gold-primary); font-size: .72rem; font-weight: 700; cursor: pointer; }
+.delivery-change-btn:hover, .delivery-change-btn:focus-visible { border-color: var(--gold-primary); }
+#deliverySummaryText { white-space: pre-line; overflow-wrap: anywhere; line-height: 1.5; margin: 6px 0 0; font-size: .92rem; }
 #deliveryQuoteStatus { display: block; font-size: .88rem; font-weight: 750; line-height: 1.4; }
 #deliveryLocation summary { cursor: pointer; font-size: .8rem; margin-top: 8px; }
 #deliveryLocation p { margin: 6px 0; line-height: 1.35; font-size: .72rem; }
@@ -1630,7 +1638,6 @@ html { scroll-behavior: smooth; }
 #deliveryLocation input { padding: 8px 10px; }
 .routing-credit { display: block; margin: 10px auto; font-size: .68rem; color: var(--text-muted); }
 .routing-credit a { color: inherit; }
-.delivery-summary p { white-space: pre-line; overflow-wrap: anywhere; line-height: 1.65; margin: 8px 0 14px; }
 #checkoutDetails > label, #deliveryFields label, #tableNumberField label { display: block; margin: 12px 0 6px; font-size: .75rem; font-weight: 700; }
 #deliveryFields { margin-top: 14px; }
 .checkout-note { font-size: .73rem; color: var(--text-muted); line-height: 1.5; margin-top: 12px; }

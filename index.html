@@ -257,22 +257,23 @@
 
       <div style="margin-top:16px;" id="checkoutDetails">
         <p id="deliveryUnavailable" class="delivery-off-note" role="status" hidden><i class="fa-solid fa-motorcycle"></i> Home delivery is paused right now. Takeaway and dine in are open.</p>
-        <section id="deliveryLocation" class="delivery-summary">
-          <strong id="deliveryQuoteStatus" role="status">Delivery charge: address check pending</strong>
-          <div id="deliveryAddressMatches" hidden></div>
-          <details id="deliveryLocationOptions" open><summary>Location / change</summary>
-          <div class="delivery-location-row">
-          <p class="checkout-note">Flat ₹100 · max 6 km by road</p>
-          <button type="button" id="useDeliveryLocation" class="btn-minimal">USE MY LOCATION</button>
-          </div>
-          <p class="checkout-note">Place order searches your address. GPS is optional. Address or coordinates are shared with HeiGIT for delivery checks.</p>
-          </details>
-        </section>
-        <section id="deliverySummary" class="delivery-summary" hidden>
-          <h4 id="deliverySummaryTitle">DELIVERING TO</h4>
-          <p id="deliverySummaryText"></p>
-          <button type="button" id="changeAddressBtn" class="btn-minimal">CHANGE ADDRESS</button>
-        </section>
+        <div class="delivery-card">
+          <section id="deliverySummary" class="delivery-part" hidden>
+            <div class="delivery-card-head"><h4 id="deliverySummaryTitle">DELIVERING TO</h4><button type="button" id="changeAddressBtn" class="delivery-change-btn"><i class="fa-solid fa-pen"></i> Change</button></div>
+            <p id="deliverySummaryText"></p>
+          </section>
+          <section id="deliveryLocation" class="delivery-part">
+            <strong id="deliveryQuoteStatus" role="status">Delivery charge: address check pending</strong>
+            <div id="deliveryAddressMatches" hidden></div>
+            <details id="deliveryLocationOptions" open><summary>Location / change</summary>
+            <div class="delivery-location-row">
+            <p class="checkout-note">Flat ₹100 · max 6 km by road</p>
+            <button type="button" id="useDeliveryLocation" class="btn-minimal">USE MY LOCATION</button>
+            </div>
+            <p class="checkout-note">Place order searches your address. GPS is optional. Address or coordinates are shared with HeiGIT for delivery checks.</p>
+            </details>
+          </section>
+        </div>
         <div id="deliveryFields">
         <div class="form-group" style="margin-bottom:10px;">
           <label style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Name</label>
