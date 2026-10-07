@@ -213,3 +213,7 @@ html:not([data-theme="light"]) .hero-portion-selector { border-radius:10px; }
   html:not([data-theme="light"]) .search-input:focus { border-color:#9a6cdf; box-shadow:0 0 0 3px #3a0ca333; }
   html:not([data-theme="light"]) :is(button,a,input,select,textarea):focus-visible { outline-color:#c4a7ff; }
 }
+/* Desktop uses the available screen width; mobile keeps its existing layout. */
+@media (min-width:900px) {
+  .header-container, .controls-container, .hero-minimal, .menu-section, .info-section { max-width:none; }
+}
