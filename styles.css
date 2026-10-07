@@ -421,7 +421,9 @@ html { scroll-behavior: smooth; }
   transition: transform 0.5s ease;
 }
 
-.center-dish-img.hero-shop-logo { display:block; aspect-ratio:1; object-fit:cover; object-position:center; border-radius:50%; background:var(--bg-surface); cursor:pointer; }
+.center-dish-img.hero-shop-logo { display:block; position:relative; overflow:hidden; aspect-ratio:1; border-radius:50%; background:var(--bg-surface); cursor:pointer; }
+/* Fit the artwork bounds (28,16)-(1218,1215), not the padded PNG canvas. */
+.hero-shop-logo > img { position:absolute; display:block; max-width:none; width:105.3782%; height:104.5872%; left:-2.3529%; top:-1.3344%; }
 .center-dish-wrapper:has(.hero-shop-logo) { border-radius:50%; }
 .center-dish-img.hero-shop-logo.is-tapped { transform:scale(1.03) rotate(2deg); }
 
