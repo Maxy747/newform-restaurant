@@ -1,6 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
 
 :root {
+  /* Layout tokens shared by both themes. */
+  --content-max: 1600px;
+  --gutter: 40px;
+
   /* True-black canvas with restrained, neutral raised surfaces. */
   --bg-body: #000000;
   --bg-primary: #000000;
@@ -160,7 +164,7 @@ body {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--glass-border);
-  padding: 14px 40px;
+  padding: 14px var(--gutter);
   will-change: transform;
   transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -170,7 +174,7 @@ html { scroll-behavior: smooth; }
 .compact-brand-logo { display: none; }
 
 .header-container {
-  max-width: 1320px;
+  max-width: var(--content-max);
   margin: 0 auto;
   display: flex;
   align-items: center;
@@ -338,9 +342,7 @@ html { scroll-behavior: smooth; }
 /* HERO SECTION - PREMIUM GOLDEN DESIGN */
 .hero-minimal {
   position: relative;
-  padding: 60px 40px 80px;
-  max-width: 1320px;
-  margin: 0 auto;
+  padding: 60px var(--gutter) 80px;
   min-height: 520px;
   display: flex;
   align-items: center;
@@ -348,6 +350,8 @@ html { scroll-behavior: smooth; }
 
 .hero-grid {
   width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
   display: grid;
   grid-template-columns: 1fr;
   gap: 40px;
@@ -519,7 +523,7 @@ html { scroll-behavior: smooth; }
   background: var(--bg-glass);
   backdrop-filter: blur(20px);
   border-y: 1px solid var(--glass-border);
-  padding: 16px 40px;
+  padding: 16px var(--gutter);
   will-change: transform, padding-left;
   transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1), padding-left 0.42s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -602,7 +606,7 @@ html { scroll-behavior: smooth; }
 }
 
 .controls-container {
-  max-width: 1320px;
+  max-width: var(--content-max);
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -813,9 +817,9 @@ html { scroll-behavior: smooth; }
 
 /* TRANSLUCENT GLASS FOOD CARDS */
 .menu-section {
-  max-width: 1320px;
+  max-width: calc(var(--content-max) + 2 * var(--gutter));
   margin: 40px auto;
-  padding: 0 40px;
+  padding: 0 var(--gutter);
   scroll-margin-top: 154px;
 }
 
@@ -850,7 +854,8 @@ html { scroll-behavior: smooth; }
 }
 
 @media (max-width: 768px) {
-  .header { padding: 10px 14px; }
+  :root { --gutter: 14px; }
+  .header { padding: 10px var(--gutter); }
   .header.is-mobile-collapsed { transform: translate3d(0, -110%, 0); }
   .compact-brand-logo {
     position: fixed;
@@ -872,33 +877,26 @@ html { scroll-behavior: smooth; }
   .brand-logo-img { width: 42px; height: 42px; }
   .brand-text { font-size: 1.02rem; letter-spacing: 2px; }
   .nav-actions { gap: 10px; }
-  .hero-minimal { padding: 32px 16px 40px; min-height: auto; }
-  .hero-grid { gap: 24px; }
-  .hero-main-title { font-size: 2.55rem; letter-spacing: 4px; }
-  .hero-about-copy { font-size: .88rem; margin-top: -10px; }
-  .center-dish-wrapper { max-width: 330px; }
-  .controls-wrapper { top: 63px; padding: 10px 12px; }
+  /* Keep the hero close to one screen so the menu starts sooner. */
+  .hero-minimal { padding: 24px var(--gutter) 32px; min-height: auto; }
+  .hero-grid { gap: 20px; }
+  .hero-main-title { font-size: 2.3rem; letter-spacing: 4px; margin-bottom: 18px; }
+  .hero-about-copy { font-size: .88rem; margin-top: -8px; }
+  .center-dish-wrapper { max-width: 250px; }
+  .controls-wrapper { top: 63px; padding: 10px var(--gutter); }
   .controls-wrapper.header-collapsed { transform: translate3d(0, -63px, 0); padding-left: 66px; }
   /* Only the search row makes room for the compact logo; tabs use full width. */
-  .controls-wrapper.header-collapsed .category-scroll-shell { margin-left:-54px; }
+  .controls-wrapper.header-collapsed .category-scroll-shell { margin-left: calc(var(--gutter) - 66px); }
   .controls-container { gap: 10px; }
   .search-filter-row { display: flex; flex-wrap: nowrap; align-items: stretch; }
   .search-box { min-width: 0; }
   .search-input { min-height: 48px; font-size: 0.98rem; }
   .diet-filter-toggle { min-width: 98px; font-size: .72rem; padding: 10px 9px; }
-  .menu-section { margin: 22px auto 32px; padding: 0 10px; }
-  .menu-section { scroll-margin-top: 126px; }
+  .menu-section { margin: 22px auto 32px; scroll-margin-top: 126px; }
   .section-header { padding: 0 4px; margin-bottom: 14px; }
-  .food-grid { grid-template-columns: 1fr; gap: 14px; }
-  .food-card { border-radius: 18px; }
-  .card-img-container { height: clamp(220px, 62vw, 300px); }
-  .card-body { padding: 18px; }
-  .food-name { font-size: 1.28rem; }
-  .food-desc { font-size: 0.9rem; }
   .add-cart-btn { padding: 11px 22px; font-size: 0.84rem; }
   .info-section {
     margin: 32px auto;
-    padding: 0 12px;
     grid-template-columns: 1fr;
     gap: 12px;
   }
@@ -1716,9 +1714,9 @@ html { scroll-behavior: smooth; }
 .order-status { text-transform: capitalize; color: var(--gold-primary); font-weight: 700; }
 
 .info-section {
-  max-width: 1320px;
+  max-width: calc(var(--content-max) + 2 * var(--gutter));
   margin: 60px auto;
-  padding: 0 40px;
+  padding: 0 var(--gutter);
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 24px;
