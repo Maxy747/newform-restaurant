@@ -1203,10 +1203,6 @@ function updateFeaturedDish() {
   if (price === null) { cancelAnimationFrame(priceElement._priceAnimationFrame); priceElement.textContent = 'Unavailable'; }
   else animatePrice(priceElement, price, {hero:true});
   if (item) {
-    const image = document.querySelector('.center-dish-img');
-    image.src = item.image || 'assets/mandhi.png';
-    image.alt = item.name;
-    image.setAttribute('aria-label', `Preview ${item.name}`);
     document.querySelector('.current-dish-label').textContent = item.name;
   }
 }
