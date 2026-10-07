@@ -206,16 +206,19 @@ body:has(#gate:not([hidden])) { padding-bottom: 0; }
 }
 .adm-order:hover { border-color: var(--accent); }
 .adm-order.is-new { border-left: 4px solid var(--orange); }
-.adm-order.just-arrived { animation: adm-arrive .5s ease-out; }
+.adm-order.just-arrived { animation: adm-flash .6s ease-in-out 5; }
 .adm-order.is-late { border-left: 4px solid var(--danger); }
 .adm-order.is-late .adm-age { color: var(--danger); font-weight: 800; }
-@keyframes adm-arrive { from { transform: translateY(-6px); opacity: 0; } }
+@keyframes adm-flash { 0%, 100% { background: var(--surface-2); box-shadow: none; } 50% { background: color-mix(in srgb, var(--orange) 26%, var(--surface-2)); box-shadow: 0 0 0 2px var(--orange), 0 0 18px color-mix(in srgb, var(--orange) 55%, transparent); } }
 .adm-order header, .adm-order footer, .adm-order-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .adm-order header strong { font-family: var(--font-head); letter-spacing: .04em; }
 .adm-age { color: var(--muted); font-size: .8rem; }
 .adm-order-meta { font-size: .82rem; color: var(--muted); }
 .adm-order-name { font-weight: 700; }
-.adm-order-items { font-size: .86rem; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.adm-order-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; font-size: .88rem; }
+.adm-order-items li { display: grid; grid-template-columns: 2.2em 1fr; align-items: baseline; }
+.adm-order-items b { color: var(--accent-text); font-weight: 800; }
+.adm-order-items small { color: var(--muted); }
 .adm-order footer strong { font-family: var(--font-head); font-size: 1.05rem; }
 .adm-order-actions { display: flex; gap: 6px; margin-left: auto; }
 .adm-order-actions .adm-btn { min-height: 36px; padding: 6px 12px; }
@@ -470,4 +473,6 @@ body:has(#gate:not([hidden])) { padding-bottom: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
+  /* The new-order flash is an alert (colour only, no movement), so it stays on. */
+  .adm-order.just-arrived { animation: adm-flash .6s steps(2, jump-none) 5 !important; }
 }

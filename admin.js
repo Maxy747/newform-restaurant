@@ -6,6 +6,7 @@ import { createMenuAdmin } from './admin-menu.js';
 
 const THEME_KEY = 'newform_theme_v1';
 const SOUND_KEY = 'newform_admin_sound_v1';
+const FLASH_MS = 3000;
 const ACTIVE_STATUSES = ['new', 'awaiting_payment', 'confirmed', 'preparing', 'ready', 'out_for_delivery'];
 const SECTIONS = { orders: ['admin', 'staff', 'kitchen', 'delivery'], menu: ['admin'], tickets: ['admin', 'staff'], reports: ['admin', 'staff'], settings: ['admin'] };
 const TYPE_ICON = { delivery: 'fa-motorcycle', takeaway: 'fa-bag-shopping', dine_in: 'fa-chair' };
@@ -18,7 +19,7 @@ const $ = id => document.getElementById(id);
 const api = createOmsApi(supabase, isSupabaseConfigured);
 const state = { role: null, config: {}, section: 'orders', ordersView: 'board', historyPage: 0, detailId: null, reportDays: 1 };
 const seenOrders = new Set();
-let primed = false, arrived = new Set(), boardOrders = [], lastBoardHTML = '', channel = null, pollTimer = null, refreshTimer = null, boardVersion = 0, detailVersion = 0, authVersion = 0;
+let primed = false, arrivedAt = new Map(), boardOrders = [], lastBoardHTML = '', channel = null, pollTimer = null, refreshTimer = null, boardVersion = 0, detailVersion = 0, authVersion = 0;
 const baseTitle = document.title;
 
 // ---------- small UI helpers ----------
@@ -252,8 +253,8 @@ async function fetchBoardOrders() {
   return results.flatMap(result => result.orders);
 }
 
-function itemSummary(order) {
-  return order.items.map(item => `${item.quantity}× ${item.name}${item.portion && item.portion !== 'single' ? ` (${item.portion})` : ''}`).join(', ');
+function itemList(order) {
+  return `<ul class="adm-order-items">${order.items.map(item => `<li><b>${e(item.quantity)}×</b><span>${e(item.name)}${item.portion && item.portion !== 'single' ? ` <small>(${e(item.portion)})</small>` : ''}</span></li>`).join('')}</ul>`;
 }
 
 function actionButtons(order, compact = false) {
@@ -269,11 +270,14 @@ function orderCard(order) {
   const waiting = minutesSince(order.created_at);
   const late = ['new', 'confirmed', 'preparing'].includes(order.order_status) && waiting >= 20;
   const payment = order.payment_status === 'paid' ? '<span class="adm-chip adm-chip-ok">Paid</span>' : `<span class="adm-chip">${e(paymentName(order.payment_method))}</span>`;
-  return `<article class="adm-order${late ? ' is-late' : ''}${order.order_status === 'new' ? ' is-new' : ''}${arrived.has(order.id) ? ' just-arrived' : ''}${pending.has(order.id) ? ' is-pending' : ''}" data-open="${e(order.id)}" tabindex="0" aria-label="Order ${e(shortId(order.id))}">
+  // New arrivals flash for FLASH_MS; a negative delay keeps the flash continuous across re-renders.
+  const flashAge = arrivedAt.has(order.id) ? Date.now() - arrivedAt.get(order.id) : Infinity;
+  const flash = flashAge < FLASH_MS ? ` style="animation-delay:-${flashAge}ms"` : '';
+  return `<article class="adm-order${late ? ' is-late' : ''}${order.order_status === 'new' ? ' is-new' : ''}${flash ? ' just-arrived' : ''}${pending.has(order.id) ? ' is-pending' : ''}"${flash} data-open="${e(order.id)}" tabindex="0" aria-label="Order ${e(shortId(order.id))}">
     <header><strong>${e(shortId(order.id))}</strong><span class="adm-age" title="${e(time(order.created_at))}"><i class="fa-regular fa-clock"></i> ${e(ageLabel(order.created_at))}</span></header>
     <div class="adm-order-meta"><span><i class="fa-solid ${TYPE_ICON[order.order_type] || 'fa-receipt'}"></i> ${e(typeName(order.order_type))}${order.table_number ? ' · Table ' + e(order.table_number) : ''}</span>${payment}</div>
     ${order.customer_name ? `<p class="adm-order-name">${e(order.customer_name)}</p>` : ''}
-    <p class="adm-order-items">${e(itemSummary(order))}</p>
+    ${itemList(order)}
     <footer><strong>${money(order.total)}</strong>${order.order_status === 'awaiting_payment' ? '<span class="adm-chip">Awaiting payment</span>' : ''}<span class="adm-order-actions">${actionButtons(order, true)}</span></footer>
   </article>`;
 }
@@ -291,9 +295,14 @@ async function refreshBoard() {
   const fresh = findNewOrders(seenOrders, boardOrders, primed);
   announce(fresh);
   // Only genuinely new arrivals get the slide-in animation, once.
-  arrived = new Set(fresh.map(order => order.id));
+  const now = Date.now();
+  fresh.forEach(order => arrivedAt.set(order.id, now));
+  arrivedAt.forEach((at, id) => { if (now - at >= FLASH_MS) arrivedAt.delete(id); });
   primed = true;
   renderBoard();
+  // Columns list oldest first, so bring a just-arrived card into view for its flash.
+  const newest = fresh.at(-1) && document.querySelector(`#orderBoard [data-open="${CSS.escape(fresh.at(-1).id)}"]`);
+  newest?.scrollIntoView({ block: 'nearest' });
   if (isManager() && state.section === 'orders' && state.ordersView === 'board') await refreshTodayStats(version);
 }
 
@@ -309,7 +318,12 @@ function renderBoard() {
     <div class="adm-column-body">${columns[column.key].map(orderCard).join('') || '<p class="adm-empty">Nothing here</p>'}</div>
   </section>`).join('');
   // Ages change every minute; skip identical re-renders so hover and focus aren't disturbed.
-  if (boardHTML !== lastBoardHTML) { $('orderBoard').innerHTML = boardHTML; lastBoardHTML = boardHTML; }
+  if (boardHTML !== lastBoardHTML) {
+    // Rebuilding the columns would reset their scroll, so carry each column's position over.
+    const scrolls = new Map([...$('orderBoard').querySelectorAll('.adm-column')].map(column => [column.className, column.querySelector('.adm-column-body').scrollTop]));
+    $('orderBoard').innerHTML = boardHTML; lastBoardHTML = boardHTML;
+    $('orderBoard').querySelectorAll('.adm-column').forEach(column => { column.querySelector('.adm-column-body').scrollTop = scrolls.get(column.className) || 0; });
+  }
   $('finishedCount').textContent = `(${finished.length})`;
   $('finishedList').innerHTML = finished.map(finishedRow).join('') || '<p class="adm-empty">No finished orders yet today.</p>';
   $('finishedWrap').hidden = !isManager() && state.role !== 'delivery';
