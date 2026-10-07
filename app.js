@@ -166,6 +166,7 @@ let selectedPortions = {};
 let currentSession = null;
 let lastScrollY = 0;
 let lastClearedCart = null;
+let ctaCompactTimer = null, lastCtaCount = -1;
 const ordering = createOrdering({
   getSession: () => currentSession,
   getCart: () => cart,
@@ -787,7 +788,14 @@ function updateCartBadge() {
   const mobileCtaCount = document.getElementById('mobileCartCtaCount');
   if (badge1) badge1.textContent = totalCount;
   if (mobileCta) mobileCta.hidden = totalCount === 0;
-  if (mobileCtaCount) mobileCtaCount.textContent = totalCount ? `(${totalCount})` : '';
+  if (mobileCtaCount) mobileCtaCount.textContent = totalCount ? String(totalCount) : '';
+  // Full "Go to cart" pill when the cart changes, shrinking to a small cart icon after 10s.
+  if (mobileCta && totalCount !== lastCtaCount) {
+    lastCtaCount = totalCount;
+    mobileCta.classList.remove('is-compact');
+    clearTimeout(ctaCompactTimer);
+    if (totalCount) ctaCompactTimer = setTimeout(() => mobileCta.classList.add('is-compact'), 10000);
+  }
 }
 
 function updateClearCartControls() {

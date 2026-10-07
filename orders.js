@@ -33,7 +33,9 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   if(deliveryQuote && (Date.parse(deliveryQuote.expires_at)<=Date.now() || deliveryQuote.distance_m>6000))deliveryQuote=null;
   const deliveryFee=kind==='delivery'?(deliveryQuote?.fee||0):0;
   $('cartTotal').textContent=money(totals().total+Number(deliveryFee))+(kind==='delivery'&&!deliveryQuote?' + delivery':'');
-  $('deliveryQuoteStatus').textContent=deliveryQuote?`Delivery charge: ${money(deliveryQuote.fee)} · ${(deliveryQuote.distance_m/1000).toFixed(1)} km`:'Delivery charge: address check pending';
+  $('deliveryQuoteStatus').textContent=deliveryQuote?`Delivery ${money(deliveryQuote.fee)} · ${(deliveryQuote.distance_m/1000).toFixed(1)} km`:'Delivery fee: set at checkout';
+  // Once a quote exists the locate button and privacy note step aside.
+  $('deliveryLocation').classList.toggle('has-quote',Boolean(deliveryQuote));
   $('deliveryAddressField').hidden=kind!=='delivery';
   $('tableNumberField').hidden=kind!=='dine_in';
   const summary=Boolean(getSession()&&hasDeliveryDetails(profile,kind)&&!addressEditing);
@@ -41,7 +43,7 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   $('deliveryFields').hidden=summary;
   $('saveDeliveryBtn').hidden=!getSession();
   $('deliverySummaryTitle').textContent=kind==='delivery'?'DELIVERING TO':'ORDERING FOR';
-  $('deliverySummaryText').textContent=profile?[profile.full_name,profile.phone,kind==='delivery'?profile.default_address:null].filter(Boolean).join('\n'):'';
+  $('deliverySummaryText').textContent=profile?[[profile.full_name,profile.phone].filter(Boolean).join(' · '),kind==='delivery'?profile.default_address?.replace(/\s*,?\s*\n\s*/g,', '):null].filter(Boolean).join('\n'):'';
   const cash=$('codPayment'),option=cashOption(kind,config.codEnabled,totals().total);
   cash.value=option.value;cash.disabled=!option.enabled;
   cash.closest('.checkout-method').classList.toggle('is-disabled',cash.disabled);
@@ -134,7 +136,7 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
    try { result=await api('delivery_quote',{location:{lat:position.coords.latitude,lng:position.coords.longitude}}); }
    catch(error) { if(version===quoteVersion)$('deliveryQuoteStatus').textContent=error.message;throw error; }
    if(version!==quoteVersion)throw new Error('Delivery details changed. Please try again.');
-   deliveryQuote=result.quote;updateCheckout();$('deliveryLocationOptions').open=false;
+   deliveryQuote=result.quote;updateCheckout();
  }
  function init() {
   $('orderType').onchange=()=>{quoteVersion++;updateCheckout();};
