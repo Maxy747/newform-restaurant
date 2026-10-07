@@ -278,11 +278,11 @@ function setupFoodPhotoPreview() {
     dialog.showModal();
   };
   document.addEventListener('click', event => {
-    const target = event.target.closest('.card-img, .center-dish-img, [data-cart-detail]');
+    const target = event.target.closest('.card-img, .center-dish-img:not(.hero-shop-logo), [data-cart-detail]');
     if (target) open(target);
   });
   document.addEventListener('keydown', event => {
-    if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('.card-img, .center-dish-img, [data-cart-detail]')) {
+    if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('.card-img, .center-dish-img:not(.hero-shop-logo), [data-cart-detail]')) {
       event.preventDefault();
       open(event.target);
     }

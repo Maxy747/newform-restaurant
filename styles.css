@@ -421,7 +421,8 @@ html { scroll-behavior: smooth; }
   transition: transform 0.5s ease;
 }
 
-.center-dish-img.hero-shop-logo { object-fit:contain; background:var(--bg-surface); }
+.center-dish-img.hero-shop-logo { object-fit:contain; background:transparent; border:0 !important; box-shadow:none !important; cursor:default; }
+.center-dish-wrapper:hover .center-dish-img.hero-shop-logo { transform:none; }
 
 .center-dish-wrapper:hover .center-dish-img {
   transform: scale(1.03) rotate(2deg);
