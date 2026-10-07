@@ -425,8 +425,13 @@ html { scroll-behavior: smooth; }
 .center-dish-wrapper:has(.hero-shop-logo) { border-radius:50%; }
 .center-dish-img.hero-shop-logo.is-tapped { transform:scale(1.03) rotate(2deg); }
 
+@media (hover:hover) {
 .center-dish-wrapper:hover .center-dish-img {
   transform: scale(1.03) rotate(2deg);
+}
+}
+@media (prefers-reduced-motion:reduce) {
+  .center-dish-wrapper:hover .center-dish-img.hero-shop-logo { transform:none; }
 }
 
 .garnish-leaf {
