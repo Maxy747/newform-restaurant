@@ -163,8 +163,6 @@ const featuredDish = createFeaturedSelector({ specials: selectSpecials, storage:
 let activeDiet = 'non-veg';
 let searchQuery = '';
 let selectedPortions = {};
-let isAdmin = false;
-let editingItemId = null;
 let currentSession = null;
 let lastScrollY = 0;
 let lastClearedCart = null;
@@ -180,9 +178,7 @@ const ordering = createOrdering({
 // LocalStorage Keys
 const categories = createCategories({
   client: isSupabaseConfigured ? supabase : null,
-  isAdmin: () => isAdmin,
-  onSelect: category => { activeCategory = category; renderMenu(true); },
-  notify: message => showToast(message)
+  onSelect: category => { activeCategory = category; renderMenu(true); }
 });
 
 const CART_STORAGE_KEY = 'newform_cart_v1';
@@ -317,10 +313,7 @@ function setupInfoCardMotion() {
 }
 
 async function checkAdminState() {
-  if (!isSupabaseConfigured) {
-    updateAdminUI();
-    return;
-  }
+  if (!isSupabaseConfigured) return;
   const { data: { session } } = await supabase.auth.getSession();
   await refreshAdminState(session);
   
@@ -333,45 +326,9 @@ async function checkAdminState() {
 
 async function refreshAdminState(session) {
   currentSession = session;
-  isAdmin = false;
-  if (session) {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', session.user.id)
-      .maybeSingle();
-    isAdmin = !error && data?.role === 'admin';
-  }
-  updateAdminUI();
-  renderMenu();
-  await ordering.sessionChanged();
-}
-
-function updateAdminUI() {
-  categories.adminChanged();
-  const adminElements = document.querySelectorAll('.admin-only-element');
-  adminElements.forEach(el => {
-    el.style.display = isAdmin ? 'inline-flex' : 'none';
-  });
-
-  const adminToggleTextFooter = document.getElementById('adminToggleBtnFooter');
   const accountIcon = document.getElementById('accountIcon');
-  if (accountIcon) accountIcon.className = currentSession ? 'fa-solid fa-user-check' : 'fa-solid fa-user';
-
-  if (isAdmin) {
-    if (adminToggleTextFooter) adminToggleTextFooter.innerHTML = '<i class="fa-solid fa-right-from-bracket"></i> LOG OUT ADMIN';
-  } else {
-    if (adminToggleTextFooter) adminToggleTextFooter.innerHTML = '<i class="fa-solid fa-lock"></i> STAFF ADMIN';
-  }
-}
-
-function openAdminLoginModal() {
-  openAccountModal();
-}
-
-function closeAdminLoginModal() {
-  document.getElementById('overlay').classList.remove('active');
-  document.getElementById('adminLoginModal').classList.remove('active');
+  if (accountIcon) accountIcon.className = session ? 'fa-solid fa-user-check' : 'fa-solid fa-user';
+  await ordering.sessionChanged();
 }
 
 function openAboutModal() {
@@ -392,44 +349,6 @@ function openContactModal() {
 function closeContactModal() {
   document.getElementById('contactModal').classList.remove('active');
   document.getElementById('overlay').classList.remove('active');
-}
-
-async function handleAdminLogin() {
-  if (!isSupabaseConfigured) {
-    showAuthError('Supabase is not configured. Add the GitHub Pages repository variables first.');
-    return;
-  }
-  const email = document.getElementById('adminEmailInput').value.trim();
-  const password = document.getElementById('adminPasswordInput').value.trim();
-
-  if (!email || !password) return;
-
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password
-  });
-
-  if (error) {
-    showAuthError(error.message);
-  } else {
-    await refreshAdminState(data.session);
-    if (ordering.getRole() === 'customer') { showAuthError('This account has no restaurant staff permissions. Use Your Account for customer orders.'); return; }
-    closeAdminLoginModal();
-    showToast('Restaurant access verified.');
-  }
-}
-
-async function handleAdminLogout() {
-  if (confirm('Logout from Admin Profile?')) {
-    await supabase.auth.signOut();
-    showToast('Logged out of Admin Profile');
-  }
-}
-
-function showAuthError(message) {
-  const errorMsg = document.getElementById('authErrorMsg');
-  errorMsg.textContent = message;
-  errorMsg.style.display = 'block';
 }
 
 // Load Menu Data from Supabase
@@ -493,27 +412,14 @@ function setupEventListeners() {
 
   if (themeToggleBtn) themeToggleBtn.addEventListener('click', toggleTheme);
 
-  // Admin Login Buttons
-  const adminToggleBtnFooter = document.getElementById('adminToggleBtnFooter');
   const aboutBtnNav = document.getElementById('aboutBtnNav');
   const contactBtnNav = document.getElementById('contactBtnNav');
   const contactBtnMobile = document.getElementById('contactBtnMobile');
   const accountBtn = document.getElementById('accountBtn');
   const accountBtnMobile = document.getElementById('accountBtnMobile');
   const closeAccountModalBtn = document.getElementById('closeAccountModalBtn');
-  const ordersBtn = document.getElementById('ordersBtn');
-  const closeOrdersModalBtn = document.getElementById('closeOrdersModalBtn');
   const closeAboutModalBtn = document.getElementById('closeAboutModalBtn');
   const closeContactModalBtn = document.getElementById('closeContactModalBtn');
-  const closeAdminModalBtn = document.getElementById('closeAdminModalBtn');
-  const submitAdminAuthBtn = document.getElementById('submitAdminAuthBtn');
-
-  if (adminToggleBtnFooter) {
-    adminToggleBtnFooter.addEventListener('click', () => {
-      if (isAdmin) handleAdminLogout();
-      else openAdminLoginModal();
-    });
-  }
 
   if (aboutBtnNav) aboutBtnNav.addEventListener('click', openAboutModal);
   if (contactBtnNav) contactBtnNav.addEventListener('click', openContactModal);
@@ -523,18 +429,7 @@ function setupEventListeners() {
   if (closeContactModalBtn) closeContactModalBtn.addEventListener('click', closeContactModal);
   if (accountBtnMobile) accountBtnMobile.addEventListener('click', openAccountModal);
   if (closeAccountModalBtn) closeAccountModalBtn.addEventListener('click', closeAccountModal);
-  if (ordersBtn) ordersBtn.addEventListener('click', openOrdersModal);
-  if (closeOrdersModalBtn) closeOrdersModalBtn.addEventListener('click', closeOrdersModal);
 
-  if (closeAdminModalBtn) closeAdminModalBtn.addEventListener('click', closeAdminLoginModal);
-  if (submitAdminAuthBtn) submitAdminAuthBtn.addEventListener('click', handleAdminLogin);
-
-  const adminPasswordInput = document.getElementById('adminPasswordInput');
-  if (adminPasswordInput) {
-    adminPasswordInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') handleAdminLogin();
-    });
-  }
 
   // Category Scroll Tabs
 
@@ -606,68 +501,14 @@ function setupEventListeners() {
   if (undoClearCartBtn) undoClearCartBtn.addEventListener('click', undoClearCart);
   if (overlay) overlay.addEventListener('click', closeAllModals);
 
-  // Menu cards are re-rendered, so use one delegated listener for admin actions.
-  const foodGrid = document.getElementById('foodGrid');
-  if (foodGrid) {
-    foodGrid.addEventListener('click', (event) => {
-      const actionButton = event.target.closest('[data-menu-action]');
-      if (!actionButton) return;
-
-      const { menuAction, itemId } = actionButton.dataset;
-      if (!itemId) return;
-      event.preventDefault();
-      event.stopPropagation();
-
-      if (menuAction === 'edit') window.editItem(itemId);
-      if (menuAction === 'remove') window.deleteItem(itemId);
-      if (menuAction === 'stock') toggleStock(itemId, actionButton);
-    });
-  }
   startSearchPlaceholderAnimation(searchInput);
   setupCategoryVisibility();
   setupImageParallax();
   setupFeaturedDishOrder();
 
-  // Add Item Modal Buttons (Admin Protected)
-  const addItemBtn = document.getElementById('addItemBtn');
-  const closeAddModalBtn = document.getElementById('closeAddModalBtn');
-
-  if (addItemBtn) addItemBtn.addEventListener('click', triggerAddItem);
-  if (closeAddModalBtn) closeAddModalBtn.addEventListener('click', closeAddItemModal);
-
-  // Form Submit for Add Item
-  const addItemForm = document.getElementById('addItemForm');
-  if (addItemForm) {
-    addItemForm.addEventListener('submit', handleAddItemSubmit);
-  }
-
-  // Portion Type Toggle in Form
-  const portionTypeSelect = document.getElementById('formPortionType');
-  if (portionTypeSelect) {
-    portionTypeSelect.addEventListener('change', (e) => {
-      const singleGroup = document.getElementById('singlePriceGroup');
-      const multiGroup = document.getElementById('multiPriceGroup');
-      if (e.target.value === 'single') {
-        singleGroup.style.display = 'block';
-        multiGroup.style.display = 'none';
-      } else {
-        singleGroup.style.display = 'none';
-        multiGroup.style.display = 'grid';
-      }
-    });
-  }
-
-  // WhatsApp Checkout
+  // Checkout
   const placeOrderBtn = document.getElementById('placeOrderBtn');
   if (placeOrderBtn) placeOrderBtn.addEventListener('click', placeOrder);
-}
-
-function triggerAddItem() {
-  if (!isAdmin) {
-    openAdminLoginModal();
-  } else {
-    openAddItemModal();
-  }
 }
 
 // Render Menu Cards
@@ -701,10 +542,9 @@ function renderMenu(animate = false) {
   // Filter Items
   const specials = selectSpecials(menuItems);
   const filtered = menuItems.filter(item => {
-    const stockView = isAdmin && activeCategory === '__out_of_stock';
-    const matchesCat = stockView ? item.available === false : activeCategory === 'specials' ? (Boolean(searchQuery) || specials.has(item.id)) : (activeCategory === 'all' || item.category === activeCategory);
+    const matchesCat = activeCategory === 'specials' ? (Boolean(searchQuery) || specials.has(item.id)) : (activeCategory === 'all' || item.category === activeCategory);
     // Non-Veg is the default full menu view; Veg narrows it to vegetarian dishes only.
-    const matchesDiet = stockView || activeDiet !== 'veg' || item.diet === 'veg';
+    const matchesDiet = activeDiet !== 'veg' || item.diet === 'veg';
     const matchesSearch = item.name.toLowerCase().includes(searchQuery) ||
                           (item.description || '').toLowerCase().includes(searchQuery);
     return matchesCat && matchesDiet && matchesSearch;
@@ -739,28 +579,17 @@ function renderMenu(animate = false) {
     const hasPhoto = hasDishPhoto(item.image);
 
     return `
-      <div class="food-card${isAdmin ? ' admin-mode' : ''}" id="card-${id}">
+      <div class="food-card" id="card-${id}">
         <div class="card-img-container${hasPhoto ? '' : ' photo-missing'}">
           ${hasPhoto ? `<img src="${escapeHTML(item.image)}" alt="${name}" class="card-img" role="button" tabindex="0" aria-label="Preview ${name}" onerror="this.closest('.card-img-container').classList.add('photo-missing'); this.remove();">` : ''}
           <div class="card-photo-placeholder" aria-hidden="true"><i class="fa-solid fa-utensils"></i><span>Photo coming soon</span></div>
           <div class="diet-icon ${escapeHTML(item.diet)}"></div>
           ${item.tag ? `<span class="card-badge ${getTagTone(item.tag)}">${escapeHTML(item.tag)}</span>` : ''}
-          ${isAdmin ? `
-            <div class="card-admin-controls" aria-label="Admin item controls">
-              <button type="button" class="admin-card-action admin-edit-item-btn" data-menu-action="edit" data-item-id="${id}" title="Edit ${name}" aria-label="Edit ${name}">
-                <i class="fa-solid fa-pen"></i>
-              </button>
-              <button type="button" class="admin-card-action admin-remove-item-btn" data-menu-action="remove" data-item-id="${id}" title="Remove ${name}" aria-label="Remove ${name}">
-                <i class="fa-solid fa-xmark"></i>
-              </button>
-            </div>
-          ` : ''}
         </div>
         <div class="card-body">
           <h3 class="food-name">${name}</h3>
           <p class="food-desc"><span class="food-desc-text">${escapeHTML(item.description)}</span></p>
           ${item.available === false ? '<small class="danger">Out of stock</small>' : ''}
-          ${isAdmin ? `<button type="button" class="btn-minimal" data-menu-action="stock" data-item-id="${id}" aria-pressed="${item.available !== false}">${item.available === false ? 'OUT OF STOCK · RESTOCK' : 'IN STOCK · DISABLE'}</button>` : ''}
           
           ${item.portionType === 'multi' ? `
             <div class="portion-selector" style="--portion-offset:${currentPortion === 'quarter' ? '0px' : currentPortion === 'half' ? 'calc(100% + 4px)' : 'calc(200% + 8px)'}">
@@ -1082,12 +911,9 @@ function closeCart() {
 
 function closeAllModals() {
   closeCart();
-  closeAddItemModal();
-  closeAdminLoginModal();
   closeAboutModal();
   closeContactModal();
   closeAccountModal();
-  closeOrdersModal();
   ordering.closeTracking();
 }
 
@@ -1233,213 +1059,11 @@ function updateFeaturedDish() {
   }
 }
 
-// In-App Manager: Open / Close Add Food Item Modal
-function openAddItemModal() {
-  editingItemId = null;
-  document.getElementById('addItemForm').reset();
-  const categorySelect = document.getElementById('formCategory');
-  if (!['all','specials','__out_of_stock'].includes(activeCategory)) categorySelect.value = activeCategory;
-  document.getElementById('itemModalTitle').textContent = 'ADD NEW ITEM';
-  document.getElementById('saveItemButtonText').textContent = 'SAVE DISH TO MENU';
-  document.getElementById('overlay').classList.add('active');
-  document.getElementById('addItemModal').classList.add('active');
-}
-
-function closeAddItemModal() {
-  document.getElementById('overlay').classList.remove('active');
-  document.getElementById('addItemModal').classList.remove('active');
-}
-
-// Handle Form Submission for Adding New Food Item
-let savingMenuItem = false;
-async function handleAddItemSubmit(e) {
-  e.preventDefault();
-  if (savingMenuItem) return;
-  savingMenuItem = true;
-  const button = e.currentTarget.querySelector('button[type="submit"]');
-  const original = button?.innerHTML;
-  if (button) { button.disabled = true; button.textContent = editingItemId ? 'SAVING…' : 'ADDING…'; }
-  const minimumDelay = new Promise(resolve => setTimeout(resolve, 5000));
-  try { await saveMenuItem(e, minimumDelay); }
-  catch (error) { showToast(`Could not save item: ${error.message}`); }
-  finally {
-    await minimumDelay;
-    savingMenuItem = false;
-    if (button) { button.disabled = false; button.innerHTML = original; }
-  }
-}
-async function saveMenuItem(e, minimumDelay) {
-  e.preventDefault();
-
-  if (!isAdmin) {
-    alert('Access Denied: Only logged in Admin can add items.');
-    closeAddItemModal();
-    openAdminLoginModal();
-    return;
-  }
-
-  const name = document.getElementById('formItemName').value.trim();
-  const category = document.getElementById('formCategory').value;
-  if (!category) { showToast('Add a category before creating a dish.'); return; }
-  const diet = document.getElementById('formDiet').value;
-  const tag = document.getElementById('formTag').value.trim();
-  const description = document.getElementById('formDesc').value.trim();
-  const imageSelect = document.getElementById('formImage').value;
-  const imageFile = document.getElementById('formImageFile').files[0];
-  const portionType = document.getElementById('formPortionType').value;
-
-  if (!name) {
-    alert('Please enter dish name.');
-    return;
-  }
-
-  const currentItem = editingItemId ? menuItems.find(item => item.id === editingItemId) : null;
-  let image = imageSelect || currentItem?.image || 'assets/hero.png';
-  try {
-    if (imageFile) image = await uploadMenuImage(imageFile);
-  } catch (error) {
-    alert(`Image upload failed: ${error.message}`);
-    return;
-  }
-
-  const newItem = {
-    id: editingItemId || crypto.randomUUID(),
-    name,
-    category,
-    diet,
-    tag,
-    description: description || 'Freshly prepared dish from NEWFORM kitchen.',
-    image,
-    portionType,
-    available: document.getElementById('formAvailable').checked
-  };
-
-  if (portionType === 'single') {
-    newItem.price = parseFloat(document.getElementById('formSinglePrice').value) || 100;
-  } else {
-    const qPrice = parseFloat(document.getElementById('formQPrice').value) || 100;
-    const hPrice = parseFloat(document.getElementById('formHPrice').value) || 200;
-    const fPrice = parseFloat(document.getElementById('formFPrice').value) || 400;
-    newItem.pricesJSON = JSON.stringify({ quarter: qPrice, half: hPrice, full: fPrice });
-  }
-
-  const query = editingItemId
-    ? supabase.from('menu_items').update(newItem).eq('id', editingItemId)
-    : supabase.from('menu_items').insert([newItem]);
-  const { data, error } = await query.select().single();
-  await minimumDelay;
-
-  if (error) {
-    alert('Error saving item: ' + error.message);
-    return;
-  }
-  
-  if (data) {
-      const savedItem = normalizeMenuItem(data);
-      const existingIndex = menuItems.findIndex(item => item.id === savedItem.id);
-      if (existingIndex === -1) menuItems.unshift(savedItem);
-      else menuItems[existingIndex] = savedItem;
-      if (savedItem.portionType === 'multi') selectedPortions[savedItem.id] = 'quarter';
-  }
-
-  renderMenu();
-  closeAddItemModal();
-  showToast(editingItemId ? `Updated "${name}"` : `Successfully added "${name}" to menu!`);
-  editingItemId = null;
-}
-
-async function toggleStock(id, button) {
-  if (!isAdmin) return;
-  const item = menuItems.find(row => row.id === id);
-  if (!item || button.disabled) return;
-  button.disabled = true;
-  try {
-    const {data, error} = await supabase.from('menu_items').update({available: item.available === false}).eq('id', id).select().single();
-    if (error) throw error;
-    Object.assign(item, normalizeMenuItem(data));
-    renderMenu();
-    showToast(item.available ? `${item.name} is back in stock` : `${item.name} marked out of stock`);
-  } catch (error) { showToast(`Stock update failed: ${error.message}`); }
-  finally { button.disabled = false; }
-}
-
-function normalizeMenuItem(item) {
-  if (item.pricesJSON) {
-    item.prices = typeof item.pricesJSON === 'string' ? JSON.parse(item.pricesJSON) : item.pricesJSON;
-  }
-  return item;
-}
-
-async function uploadMenuImage(file) {
-  if (!file.type.startsWith('image/')) throw new Error('Choose an image file.');
-  if (file.size > 5 * 1024 * 1024) throw new Error('Images must be 5 MB or smaller.');
-  const extension = file.name.split('.').pop().toLowerCase();
-  const path = `${crypto.randomUUID()}.${extension}`;
-  const { error } = await supabase.storage.from('menu-images').upload(path, file, {
-    cacheControl: '31536000',
-    upsert: false,
-    contentType: file.type
-  });
-  if (error) throw error;
-  return supabase.storage.from('menu-images').getPublicUrl(path).data.publicUrl;
-}
-
-window.editItem = function(id) {
-  if (!isAdmin) return openAdminLoginModal();
-  const item = menuItems.find(menuItem => menuItem.id === id);
-  if (!item) return;
-  editingItemId = id;
-  document.getElementById('itemModalTitle').textContent = 'EDIT MENU ITEM';
-  document.getElementById('saveItemButtonText').textContent = 'SAVE CHANGES';
-  document.getElementById('formItemName').value = item.name;
-  document.getElementById('formCategory').value = item.category;
-  document.getElementById('formDiet').value = item.diet;
-  document.getElementById('formTag').value = item.tag || '';
-  document.getElementById('formAvailable').checked = item.available !== false;
-  document.getElementById('formDesc').value = item.description || '';
-  document.getElementById('formPortionType').value = item.portionType;
-  document.getElementById('formImage').value = item.image?.startsWith('assets/') ? item.image : '';
-  document.getElementById('formSinglePrice').value = item.price || '';
-  document.getElementById('formQPrice').value = item.prices?.quarter || '';
-  document.getElementById('formHPrice').value = item.prices?.half || '';
-  document.getElementById('formFPrice').value = item.prices?.full || '';
-  document.getElementById('singlePriceGroup').style.display = item.portionType === 'single' ? 'block' : 'none';
-  document.getElementById('multiPriceGroup').style.display = item.portionType === 'multi' ? 'grid' : 'none';
-  document.getElementById('overlay').classList.add('active');
-  document.getElementById('addItemModal').classList.add('active');
-};
-
-// Delete item function (Admin Protected)
-window.deleteItem = async function(id) {
-  if (!isAdmin) {
-    openAdminLoginModal();
-    return;
-  }
-  if (confirm('Delete this dish from the menu?')) {
-    const item = menuItems.find(menuItem => menuItem.id === id);
-    const { error } = await supabase.from('menu_items').delete().eq('id', id);
-    if(error) {
-      alert("Failed to delete: " + error.message);
-      return;
-    }
-    menuItems = menuItems.filter(i => i.id !== id);
-    if (item?.image?.includes('/storage/v1/object/public/menu-images/')) {
-      const objectPath = item.image.split('/menu-images/')[1];
-      if (objectPath) await supabase.storage.from('menu-images').remove([objectPath]);
-    }
-    renderMenu();
-    showToast('Item deleted from menu');
-  }
-};
-
 function openAccountModal() { document.getElementById('overlay').classList.add('active'); document.getElementById('accountModal').classList.add('active'); renderAccount(); }
 function closeAccountModal() { document.getElementById('overlay').classList.remove('active'); document.getElementById('accountModal').classList.remove('active'); }
-function openOrdersModal() { document.getElementById('overlay').classList.add('active'); document.getElementById('ordersModal').classList.add('active'); renderAdminOrders(); }
-function closeOrdersModal() { document.getElementById('overlay').classList.remove('active'); document.getElementById('ordersModal').classList.remove('active'); }
 
 function renderAccount() { return ordering.renderAccount().catch(error => showToast(error.message)); }
 function placeOrder() { return ordering.placeOrder(); }
-function renderAdminOrders() { return ordering.renderDashboard().catch(error => showToast(error.message)); }
 
 // Toast notification helper
 function showToast(message) {

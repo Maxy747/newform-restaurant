@@ -44,13 +44,10 @@
           <i class="fa-solid fa-user" id="accountIcon"></i>
         </button>
 
-        <!-- Admin Only Add Item Button -->
-        <button id="addItemBtn" class="btn-minimal btn-primary-minimal admin-only-element" style="display:none; padding:8px 16px;">
-          <i class="fa-solid fa-plus"></i> ADD ITEM
-        </button>
-        <button id="ordersBtn" class="btn-minimal admin-only-element" style="display:none; padding:8px 16px;">
-          <i class="fa-solid fa-receipt"></i> ORDERS
-        </button>
+        <!-- Shown only to restaurant staff accounts -->
+        <a id="ordersBtn" href="admin.html" class="btn-minimal admin-link-btn" hidden>
+          <i class="fa-solid fa-gauge"></i> ADMIN
+        </a>
 
         <button id="cartBtn" class="cart-icon-btn" aria-label="View Order Cart">
           <i class="fa-solid fa-bag-shopping"></i>
@@ -201,38 +198,6 @@
   <!-- Modal Overlay -->
   <div class="overlay" id="overlay"></div>
 
-  <!-- Admin Login Modal (Supabase Auth) -->
-  <div class="modal" id="adminLoginModal">
-    <div class="modal-header">
-      <div style="display:flex; align-items:center; gap:10px;">
-        <img src="assets/newform_logo.png" alt="Logo" style="width:28px; height:28px;">
-        <h3 style="font-family:var(--font-heading); font-weight:700; letter-spacing:1px;">ADMIN AUTHENTICATION</h3>
-      </div>
-      <button type="button" class="cart-icon-btn" id="closeAdminModalBtn" aria-label="Close admin sign-in"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    <div class="modal-body">
-      <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:16px;">Enter your admin credentials to manage menu items.</p>
-      
-      <div class="form-group" style="margin-bottom:12px;">
-        <label style="font-size:0.75rem; font-weight:700; text-transform:uppercase; margin-bottom:6px; display:block;">Email</label>
-        <input type="email" id="adminEmailInput" class="form-control" placeholder="Email" style="width:100%;">
-      </div>
-
-      <div class="form-group" style="margin-bottom:16px;">
-        <label style="font-size:0.75rem; font-weight:700; text-transform:uppercase; margin-bottom:6px; display:block;">Password</label>
-        <input type="password" id="adminPasswordInput" class="form-control" placeholder="Enter password" style="width:100%;">
-      </div>
-
-      <div id="authErrorMsg" style="color:var(--accent-red); font-size:0.8rem; display:none; margin-bottom:12px;">
-        <i class="fa-solid fa-circle-exclamation"></i> Invalid email or password.
-      </div>
-
-      <button id="submitAdminAuthBtn" class="btn-minimal btn-primary-minimal" style="width:100%; padding:12px;">
-        VERIFY &amp; LOGIN
-      </button>
-    </div>
-  </div>
-
   <!-- About Restaurant Modal -->
   <div class="modal" id="aboutModal">
     <div class="modal-header">
@@ -324,11 +289,11 @@
         </div>
         <div id="tableNumberField" hidden><label for="tableNumber">TABLE NUMBER</label><input id="tableNumber" class="form-control" maxlength="20" placeholder="e.g. 4"></div>
         <div class="checkout-methods" aria-label="Payment method">
-          <label class="checkout-method"><input type="radio" name="paymentMethod" value="whatsapp" checked><i class="fa-brands fa-whatsapp"></i><span>WhatsApp<small>Send order</small></span></label>
+          <label class="checkout-method"><input type="radio" name="paymentMethod" value="whatsapp" checked><i class="fa-brands fa-whatsapp"></i><span>WhatsApp<small>Confirm on chat</small></span></label>
           <label class="checkout-method is-disabled"><input type="radio" name="paymentMethod" value="cod" id="codPayment" disabled><i class="fa-solid fa-money-bill-wave"></i><span id="cashMethodText">COD<small>Available from ₹799 onwards</small></span></label>
           <label class="checkout-method is-disabled" id="razorpayMethod" hidden><input type="radio" name="paymentMethod" value="razorpay" id="razorpayPayment" disabled><i class="fa-solid fa-credit-card"></i><span>Razorpay<small id="razorpayHint">Setup pending</small></span></label>
         </div>
-        <p class="checkout-note">Login is optional. Final prices are confirmed by the restaurant’s secure checkout.</p>
+        <p class="checkout-note">Login is optional. After placing the order you can track it live here.</p>
       </div>
     </div>
     </div>
@@ -346,119 +311,9 @@
     <div class="modal-body" id="accountContent"></div>
   </div>
 
-  <div class="modal" id="ordersModal">
-    <div class="modal-header"><h3><i class="fa-solid fa-receipt"></i> LIVE ORDERS</h3><button class="cart-icon-btn" id="closeOrdersModalBtn" aria-label="Close orders"><i class="fa-solid fa-xmark"></i></button></div>
-    <div class="modal-body" id="ordersContent"></div>
-  </div>
   <div class="modal" id="trackingModal" role="dialog" aria-modal="true" aria-label="Order tracking">
     <div class="modal-header"><h3>YOUR ORDER</h3><button class="cart-icon-btn" id="closeTrackingBtn" aria-label="Close order tracking"><i class="fa-solid fa-xmark"></i></button></div>
     <div class="modal-body" id="trackingContent"></div>
-  </div>
-
-  <!-- Add New Food Item Manager Modal (ADMIN ONLY) -->
-  <div class="modal" id="addItemModal">
-    <div class="modal-header">
-      <div style="display:flex; align-items:center; gap:10px;">
-        <img src="assets/newform_logo.png" alt="Logo" style="width:28px; height:28px;">
-        <h3 id="itemModalTitle" style="font-family:var(--font-heading); font-weight:700; letter-spacing:1px;">ADD NEW ITEM</h3>
-      </div>
-      <button type="button" class="cart-icon-btn" id="closeAddModalBtn" aria-label="Close dish editor"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    
-    <div class="modal-body">
-      <form id="addItemForm">
-        <div class="form-group" style="margin-bottom:12px;">
-          <label style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Dish Name *</label>
-          <input type="text" id="formItemName" class="form-control" placeholder="e.g. Dragon Chicken, Mutton Fry" required>
-        </div>
-
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
-          <div>
-            <label style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Category</label>
-            <select id="formCategory" class="form-control">
-              <option value="mandhi">Mandhi &amp; Rice</option>
-              <option value="broast_alfaham">Broast &amp; Alfaham</option>
-              <option value="beef">Beef Specials</option>
-              <option value="chicken">Chicken Curries</option>
-              <option value="seafood">Seafood &amp; Prawns</option>
-              <option value="mutton">Mutton</option>
-              <option value="veg">Vegetarian</option>
-              <option value="kada_egg">Kada &amp; Egg</option>
-            </select>
-          </div>
-
-          <div>
-            <label style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Dietary Type</label>
-            <select id="formDiet" class="form-control">
-              <option value="non-veg">Non-Veg</option>
-              <option value="veg">Vegetarian</option>
-            </select>
-          </div>
-        </div>
-
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
-          <div>
-            <label style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Special Tag</label>
-            <input type="text" id="formTag" class="form-control" placeholder="e.g. NEW, Bestseller">
-            <label><input type="checkbox" id="formAvailable" checked> Available to order</label>
-          </div>
-
-          <div>
-            <label style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Price Mode</label>
-            <select id="formPortionType" class="form-control">
-              <option value="single">Single Fixed Price</option>
-              <option value="multi">Portion Prices (Q / H / F)</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-group" id="singlePriceGroup" style="margin-bottom:12px;">
-          <label style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Price (₹)</label>
-          <input type="number" id="formSinglePrice" class="form-control" placeholder="e.g. 250" value="250">
-        </div>
-
-        <div class="form-group" id="multiPriceGroup" style="display:none; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:12px;">
-          <div>
-            <label style="font-size:0.75rem; font-weight:700;">Quarter (₹)</label>
-            <input type="number" id="formQPrice" class="form-control" placeholder="150" value="150">
-          </div>
-          <div>
-            <label style="font-size:0.75rem; font-weight:700;">Half (₹)</label>
-            <input type="number" id="formHPrice" class="form-control" placeholder="300" value="300">
-          </div>
-          <div>
-            <label style="font-size:0.75rem; font-weight:700;">Full (₹)</label>
-            <input type="number" id="formFPrice" class="form-control" placeholder="550" value="550">
-          </div>
-        </div>
-
-        <div class="form-group" style="margin-bottom:12px;">
-          <label style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Dish Image</label>
-          <select id="formImage" class="form-control">
-            <option value="">Upload a new image</option>
-            <option value="assets/mandhi.png">Mandhi Rice Platter</option>
-            <option value="assets/alfaham.png">Charcoal Alfaham Chicken</option>
-            <option value="assets/beeffry.png">Spicy Kerala Beef Fry / Roast</option>
-            <option value="assets/hero.png">Multi-Cuisine Feast</option>
-          </select>
-        </div>
-
-        <div class="form-group" style="margin-bottom:12px;">
-          <label style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Upload image</label>
-          <input type="file" id="formImageFile" class="form-control" accept="image/png,image/jpeg,image/webp,image/gif">
-          <small style="color:var(--text-muted);">Optional. PNG, JPG, WEBP, or GIF, up to 5 MB.</small>
-        </div>
-
-        <div class="form-group" style="margin-bottom:14px;">
-          <label style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Description</label>
-          <textarea id="formDesc" class="form-control" rows="2" placeholder="Brief description of dish..."></textarea>
-        </div>
-
-        <button type="submit" class="btn-minimal btn-primary-minimal" style="width:100%; padding:14px;">
-          <span id="saveItemButtonText">SAVE DISH TO MENU</span>
-        </button>
-      </form>
-    </div>
   </div>
 
   <!-- Mobile Bottom Navigation (For Android & Touch Devices) -->

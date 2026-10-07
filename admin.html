@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>NEWFORM Admin</title>
+  <link rel="icon" type="image/png" href="assets/newform_logo.png">
+  <meta name="theme-color" content="#120a24">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <header class="adm-top">
+    <a class="adm-brand" href="./" title="Open the customer site">
+      <img src="assets/newform_logo.png" alt="">
+      <span>NEWFORM <small>Admin</small></span>
+    </a>
+    <div class="adm-top-actions" id="topActions" hidden>
+      <span class="adm-live" id="liveStatus" title="Live updates"><i></i><span>Live</span></span>
+      <button type="button" class="adm-icon-btn" id="soundBtn" aria-pressed="false" title="New-order sound" aria-label="Turn on new-order sound"><i class="fa-solid fa-volume-xmark"></i></button>
+      <button type="button" class="adm-icon-btn" id="themeBtn" title="Switch theme" aria-label="Switch theme"><i class="fa-solid fa-circle-half-stroke"></i></button>
+      <a class="adm-icon-btn" href="./" title="Customer site" aria-label="Open customer site"><i class="fa-solid fa-store"></i></a>
+      <button type="button" class="adm-icon-btn" id="signOutBtn" title="Sign out" aria-label="Sign out"><i class="fa-solid fa-right-from-bracket"></i></button>
+    </div>
+  </header>
+
+  <nav class="adm-nav" id="adminNav" aria-label="Admin sections" hidden>
+    <a href="#orders" data-section="orders"><i class="fa-solid fa-receipt"></i><span>Orders</span><b class="adm-count" id="newCount" hidden></b></a>
+    <a href="#menu" data-section="menu" data-roles="admin"><i class="fa-solid fa-utensils"></i><span>Menu</span></a>
+    <a href="#tickets" data-section="tickets" data-roles="admin staff"><i class="fa-solid fa-life-ring"></i><span>Tickets</span></a>
+    <a href="#reports" data-section="reports" data-roles="admin staff"><i class="fa-solid fa-chart-column"></i><span>Reports</span></a>
+    <a href="#settings" data-section="settings" data-roles="admin"><i class="fa-solid fa-gear"></i><span>Settings</span></a>
+  </nav>
+
+  <main class="adm-main">
+    <section id="gate" class="adm-gate" aria-live="polite">
+      <div class="adm-card adm-gate-card">
+        <img src="assets/newform_logo.png" alt="NEWFORM logo">
+        <h1>Restaurant admin</h1>
+        <p id="gateMessage">Checking your session…</p>
+        <form id="signInForm" hidden>
+          <label>Email<input id="signInEmail" type="email" autocomplete="username" required></label>
+          <label>Password<input id="signInPassword" type="password" autocomplete="current-password" required></label>
+          <button type="submit" class="adm-btn adm-btn-primary">Sign in</button>
+        </form>
+        <button type="button" id="gateSignOut" class="adm-btn" hidden>Sign out</button>
+      </div>
+    </section>
+
+    <section id="section-orders" class="adm-section" hidden>
+      <div class="adm-section-head">
+        <h2>Orders</h2>
+        <div class="adm-segment" role="tablist" aria-label="Order view">
+          <button type="button" role="tab" data-orders-view="board" aria-selected="true">Live board</button>
+          <button type="button" role="tab" data-orders-view="history" aria-selected="false">History</button>
+        </div>
+      </div>
+      <div id="ordersBoardView">
+        <div class="adm-stat-row" id="todayStats"></div>
+        <div class="adm-board" id="orderBoard"></div>
+        <details class="adm-finished" id="finishedWrap">
+          <summary>Completed &amp; cancelled today <span id="finishedCount"></span></summary>
+          <div id="finishedList" class="adm-list"></div>
+        </details>
+      </div>
+      <div id="ordersHistoryView" hidden>
+        <form id="historyFilters" class="adm-filters">
+          <label>From<input type="date" id="histFrom"></label>
+          <label>To<input type="date" id="histTo"></label>
+          <label>Status<select id="histStatus"><option value="">All</option></select></label>
+          <label>Type<select id="histType"><option value="">All</option><option value="delivery">Delivery</option><option value="takeaway">Takeaway</option><option value="dine_in">Dine in</option></select></label>
+          <label class="adm-grow">Search<input id="histSearch" placeholder="Customer name or full order ID"></label>
+          <button type="submit" class="adm-btn adm-btn-primary">Search</button>
+        </form>
+        <div id="historyList" class="adm-list"></div>
+        <div class="adm-pager"><button type="button" class="adm-btn" id="histPrev">Previous</button><span id="histPage"></span><button type="button" class="adm-btn" id="histNext">Next</button></div>
+      </div>
+    </section>
+
+    <section id="section-menu" class="adm-section" hidden>
+      <div class="adm-section-head">
+        <h2>Menu</h2>
+        <div class="adm-head-actions">
+          <button type="button" class="adm-btn" id="manageCategoriesBtn"><i class="fa-solid fa-layer-group"></i> Categories</button>
+          <button type="button" class="adm-btn adm-btn-primary" id="addDishBtn"><i class="fa-solid fa-plus"></i> Add dish</button>
+        </div>
+      </div>
+      <div class="adm-filters adm-menu-filters">
+        <label class="adm-grow">Search<input id="menuSearch" placeholder="Dish name"></label>
+        <label>Category<select id="menuCategoryFilter"><option value="">All categories</option></select></label>
+        <label>Stock<select id="menuStockFilter"><option value="">All</option><option value="in">In stock</option><option value="out">Out of stock</option></select></label>
+      </div>
+      <p class="adm-muted" id="menuSummary"></p>
+      <div id="menuList" class="adm-menu-list"></div>
+    </section>
+
+    <section id="section-tickets" class="adm-section" hidden>
+      <div class="adm-section-head"><h2>Support tickets</h2></div>
+      <div id="ticketList" class="adm-list"></div>
+    </section>
+
+    <section id="section-reports" class="adm-section" hidden>
+      <div class="adm-section-head">
+        <h2>Reports</h2>
+        <div class="adm-segment" id="reportRange" role="tablist" aria-label="Report range">
+          <button type="button" data-range="1" aria-selected="true">Today</button>
+          <button type="button" data-range="7" aria-selected="false">7 days</button>
+          <button type="button" data-range="30" aria-selected="false">30 days</button>
+        </div>
+      </div>
+      <div id="reportBody"></div>
+    </section>
+
+    <section id="section-settings" class="adm-section" hidden>
+      <div class="adm-section-head"><h2>Settings</h2></div>
+      <div class="adm-card adm-setting">
+        <div>
+          <h3>Cash on delivery</h3>
+          <p class="adm-muted">Delivery orders of ₹799 or more (before delivery charge) can pay cash on delivery. Takeaway and dine-in can always pay at the counter.</p>
+        </div>
+        <button type="button" class="adm-switch" id="codSwitch" role="switch" aria-checked="false" aria-label="Cash on delivery"><span></span></button>
+      </div>
+      <div class="adm-card adm-setting">
+        <div>
+          <h3>New-order alerts on this device</h3>
+          <p class="adm-muted" id="notifyHelp">Sound plays while this page is open. Desktop notifications also show when this tab is in the background.</p>
+        </div>
+        <button type="button" class="adm-btn" id="notifyBtn">Enable notifications</button>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="orderDialog" class="adm-drawer" aria-labelledby="orderDialogTitle">
+    <div class="adm-drawer-head">
+      <h2 id="orderDialogTitle">Order</h2>
+      <button type="button" class="adm-icon-btn" data-close aria-label="Close order"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="adm-drawer-body" id="orderDialogBody"></div>
+  </dialog>
+
+  <dialog id="dishDialog" class="adm-drawer" aria-labelledby="dishDialogTitle">
+    <form id="dishForm" method="dialog" novalidate>
+      <div class="adm-drawer-head">
+        <h2 id="dishDialogTitle">Add dish</h2>
+        <button type="button" class="adm-icon-btn" data-close aria-label="Close dish editor"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="adm-drawer-body adm-form">
+        <div class="adm-photo-field">
+          <div class="adm-photo-preview" id="dishPhotoPreview"><i class="fa-solid fa-image"></i></div>
+          <div>
+            <label class="adm-btn" for="dishPhoto"><i class="fa-solid fa-upload"></i> Upload photo</label>
+            <input type="file" id="dishPhoto" accept="image/png,image/jpeg,image/webp" hidden>
+            <button type="button" class="adm-btn adm-btn-ghost" id="dishPhotoRemove" hidden>Remove photo</button>
+            <small class="adm-muted">JPG, PNG or WEBP, up to 5 MB.</small>
+          </div>
+        </div>
+        <label>Dish name<input name="name" required maxlength="100" placeholder="e.g. Chicken Mandhi"></label>
+        <div class="adm-form-row">
+          <label>Category<select name="category" id="dishCategory" required></select></label>
+          <label>Type<select name="diet"><option value="non-veg">Non-veg</option><option value="veg">Veg</option></select></label>
+        </div>
+        <div class="adm-form-row">
+          <label>Badge<input name="tag" maxlength="30" placeholder="Optional, e.g. Bestseller"></label>
+          <label>Pricing<select name="portionType" id="dishPortionType"><option value="single">One price</option><option value="multi">Quarter / Half / Full</option></select></label>
+        </div>
+        <div class="adm-form-row" id="singlePriceRow">
+          <label>Price (₹)<input name="price" type="number" min="1" step="1" inputmode="decimal"></label>
+        </div>
+        <div class="adm-form-row adm-form-row-3" id="multiPriceRow" hidden>
+          <label>Quarter (₹)<input name="quarter" type="number" min="1" step="1" inputmode="decimal"></label>
+          <label>Half (₹)<input name="half" type="number" min="1" step="1" inputmode="decimal"></label>
+          <label>Full (₹)<input name="full" type="number" min="1" step="1" inputmode="decimal"></label>
+        </div>
+        <label>Description<textarea name="description" rows="3" maxlength="500" placeholder="Short description customers will see"></textarea></label>
+        <label class="adm-check"><input type="checkbox" name="available" checked> In stock (customers can order it)</label>
+        <p class="adm-error" id="dishError" role="alert" hidden></p>
+      </div>
+      <div class="adm-drawer-foot">
+        <button type="button" class="adm-btn adm-btn-danger" id="dishDelete" hidden><i class="fa-solid fa-trash"></i> Delete</button>
+        <button type="submit" class="adm-btn adm-btn-primary" id="dishSave">Save dish</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="categoryDialog" class="adm-drawer" aria-labelledby="categoryDialogTitle">
+    <div class="adm-drawer-head">
+      <h2 id="categoryDialogTitle">Categories</h2>
+      <button type="button" class="adm-icon-btn" data-close aria-label="Close categories"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="adm-drawer-body">
+      <form id="newCategoryForm" class="adm-inline-form">
+        <input name="name" required maxlength="60" placeholder="New category, e.g. Desserts" aria-label="New category name">
+        <button type="submit" class="adm-btn adm-btn-primary">Add</button>
+      </form>
+      <p class="adm-muted">Removing a category hides it from customers; its dishes still show under All. You can restore it anytime.</p>
+      <div id="categoryList" class="adm-list"></div>
+    </div>
+  </dialog>
+
+  <div class="adm-toasts" id="toasts" aria-live="polite"></div>
+  <script type="module" src="/admin.js"></script>
+</body>
+</html>

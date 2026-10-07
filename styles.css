@@ -803,16 +803,6 @@ html { scroll-behavior: smooth; }
 
 .category-highlight { position:absolute; top:0; left:0; pointer-events:none; border:1px solid var(--glass-border); background:var(--btn-minimal-bg); border-radius:var(--radius-full); transition:transform .38s cubic-bezier(.22,1,.36,1),width .38s cubic-bezier(.22,1,.36,1); }
 .cat-tab.active { background:transparent; border-color:transparent; color:var(--gold-primary); }
-.category-manage { margin-top:10px; }
-.category-manage[hidden] { display:none; }
-.category-editor { position:fixed; inset:0; margin:auto; width:min(94vw,700px); max-height:85dvh; overflow:auto; padding:22px; border:1px solid var(--glass-border); border-radius:20px; color:var(--text-title); background:var(--drawer-bg); }
-.category-editor::backdrop { background:#000b; }
-.category-editor-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; }
-.category-editor p { margin:14px 0; color:var(--text-muted); font-size:.85rem; }
-.category-editor form { display:flex; align-items:end; flex-wrap:wrap; gap:8px; padding:12px 0; border-bottom:1px solid var(--glass-border); }
-.category-editor label { flex:1 1 180px; font-size:.8rem; }
-.category-editor input { display:block; width:100%; margin-top:6px; padding:10px; color:var(--text-title); background:var(--input-bg,var(--card-bg)); border:1px solid var(--glass-border); border-radius:8px; }
-.category-editor .btn-minimal { padding:10px 12px; }
 @media (prefers-reduced-motion:reduce) { .category-highlight { transition:none; } }
 
 /* TRANSLUCENT GLASS FOOD CARDS */
@@ -1069,48 +1059,6 @@ html { scroll-behavior: smooth; }
   50% { box-shadow: 0 0 15px rgba(255, 91, 62, .75), 0 0 28px rgba(220, 51, 40, .35); transform: translateY(-1px); }
 }
 
-.food-card.admin-mode .card-badge {
-  right: 94px;
-}
-
-.card-admin-controls {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 4;
-  display: flex;
-  gap: 6px;
-}
-
-.admin-card-action {
-  width: 34px;
-  height: 34px;
-  display: inline-grid;
-  place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.45);
-  border-radius: 50%;
-  color: #fff;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
-  transition: transform 0.18s ease, filter 0.18s ease;
-}
-
-.admin-card-action:hover,
-.admin-card-action:focus-visible {
-  transform: scale(1.08);
-  filter: brightness(1.12);
-  outline: 2px solid #fff;
-  outline-offset: 2px;
-}
-
-.admin-edit-item-btn {
-  background: var(--primary);
-}
-
-.admin-remove-item-btn {
-  background: #dc2626;
-}
-
 .card-body {
   padding: 20px;
   display: flex;
@@ -1295,8 +1243,6 @@ html { scroll-behavior: smooth; }
   .food-card .card-qty-control button { width: 30px; height: 30px; }
   .food-card .diet-icon { top: 8px; left: 8px; width: 17px; height: 17px; }
   .food-card .card-badge { top: 8px; right: 6px; max-width: calc(100% - 34px); padding: 3px 6px; font-size: .53rem; letter-spacing: .3px; text-align: center; }
-  .food-card.admin-mode .card-badge { top: auto; bottom: 8px; right: 8px; }
-  .food-card .card-admin-controls { top: 7px; right: 7px; gap: 4px; }
 }
 
 .card-img, .center-dish-img { cursor: zoom-in; }
@@ -1694,11 +1640,37 @@ html { scroll-behavior: smooth; }
 .oms-badge.ready,.oms-badge.completed { color: #278d67; }
 .oms-badge.cancelled,.danger { color: #eb6a6a; }
 .oms-badge.preparing { color: #ba8734; }
-.order-progress { list-style: none; padding: 0; display: grid; gap: 10px; margin: 18px 0; }
-.order-progress li { color: var(--text-muted); border-left: 3px solid var(--glass-border); padding: 5px 12px; }
-.order-progress .done { border-color: #278d67; }
-.order-progress .current { border-color: var(--gold-primary); color: var(--text-main); font-weight: 800; }
-.order-audit { padding-left: 20px; font-size: .8rem; line-height: 1.8; }
+/* Customer order tracker */
+.track-hero { display: flex; align-items: center; gap: 16px; padding: 18px; border-radius: 18px; background: var(--bg-surface-elevated); border: 1px solid var(--glass-border); }
+.track-hero > i { flex: none; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; font-size: 1.45rem; color: var(--gold-primary); background: color-mix(in srgb, var(--gold-primary) 14%, transparent); }
+.track-hero h3 { font-family: var(--font-heading); font-size: 1.3rem; margin: 0 0 2px; color: var(--text-title); }
+.track-hero p { margin: 0; color: var(--text-muted); font-size: .9rem; }
+.track-preparing > i, .track-confirmed > i { animation: track-pulse 1.8s ease-in-out infinite; }
+.track-completed > i, .track-ready > i { color: #34c08a; background: #34c08a22; }
+.track-cancelled > i { color: #eb6a6a; background: #eb6a6a22; }
+@keyframes track-pulse { 50% { transform: scale(1.08); } }
+.track-steps { list-style: none; padding: 0; margin: 18px 0; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; }
+.track-steps li { display: grid; gap: 2px; padding-top: 9px; border-top: 4px solid var(--glass-border); font-size: .7rem; font-weight: 700; color: var(--text-muted); line-height: 1.25; }
+.track-steps li.done { border-color: #34c08a; color: var(--text-main); }
+.track-steps li.current { border-color: var(--gold-primary); color: var(--gold-primary); }
+.track-steps small { font-weight: 500; color: var(--text-muted); font-size: .68rem; }
+.track-card { margin: 14px 0; padding: 16px; border-radius: 16px; border: 1px solid var(--glass-border); background: var(--card-bg); }
+.track-card h4 { margin: 0 0 6px; font-size: .8rem; letter-spacing: .08em; color: var(--text-muted); }
+.track-card p { margin: 0; line-height: 1.55; overflow-wrap: anywhere; white-space: pre-line; }
+.track-totals { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 8px 0 0; padding-top: 10px; border-top: 1px dashed var(--glass-border); font-size: .88rem; }
+.track-totals dt { color: var(--text-muted); }
+.track-totals dd { margin: 0; text-align: right; }
+.track-totals .track-total { font-weight: 800; font-size: 1rem; color: var(--text-title); }
+.track-pay { margin-top: 12px !important; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--gold-primary) 10%, transparent); font-weight: 700; font-size: .88rem; }
+.track-pay.is-paid { background: #34c08a1c; color: #34c08a; }
+.track-whatsapp { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 14px 0; padding: 12px 14px; border-radius: 14px; border: 1px dashed var(--glass-border); }
+.track-whatsapp p { margin: 0; flex: 1 1 200px; font-size: .85rem; color: var(--text-muted); }
+.track-live { display: flex; align-items: center; gap: 8px; font-size: .78rem; color: var(--text-muted); }
+.track-live span { width: 8px; height: 8px; border-radius: 50%; background: #34c08a; animation: track-pulse 1.6s ease-in-out infinite; }
+.track-help { font-size: .82rem; color: var(--text-muted); }
+.track-help a { color: var(--gold-primary); font-weight: 700; }
+.admin-link-btn { padding: 8px 16px; text-decoration: none; }
+.admin-link-btn[hidden] { display: none; }
 #orderSupport { margin-top: 24px; }
 #orderSupport form { display: grid; gap: 10px; margin: 12px 0; }
 #orderSupport summary { cursor: pointer; padding: 12px 0; font-weight: 700; }
@@ -1706,23 +1678,12 @@ html { scroll-behavior: smooth; }
 .ticket > .oms-badge { display: block; margin: 8px 0; }
 .ticket-message { white-space: pre-wrap; border-left: 2px solid var(--glass-border); padding-left: 10px; margin: 10px 0; }
 .ticket-message small { color: var(--text-muted); }
-#ordersModal { max-width: 1180px; }
-.oms-filters { display: grid; grid-template-columns: repeat(auto-fit,minmax(140px,1fr)); gap: 10px; margin: 16px 0; }
-.oms-filters label { font-size: .75rem; }
-.oms-filters .form-control { margin-top: 5px; }
-.oms-stats { display: grid; grid-template-columns: repeat(auto-fit,minmax(100px,1fr)); gap: 8px; margin: 12px 0; }
-.oms-stats > div { border: 1px solid var(--glass-border); border-radius: 12px; padding: 12px; }
-.oms-stats strong { display: block; font-size: 1.25rem; }
-#dashboardOrders { display: grid; gap: 12px; }
-.kitchen-board { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; }
-.kitchen-board section { min-width: 0; }
-.kitchen-board h4 { margin: 10px 0; }
-.kitchen-board article { margin-bottom: 12px; }
 .order-history-item { overflow-wrap: anywhere; }
 @media (max-width: 600px) {
-  #ordersModal,#trackingModal { width: calc(100% - 16px); max-height: 94dvh; }
-  #ordersModal .modal-body,#trackingModal .modal-body { padding: 16px; }
-  .kitchen-board { grid-template-columns: 1fr; }
+  /* Full-screen tracker on phones so it reads like an app screen. */
+  #trackingModal { width: 100%; max-width: none; height: 100dvh; max-height: none; border-radius: 0; border: 0; }
+  #trackingModal .modal-header { position: sticky; top: 0; z-index: 1; background: var(--modal-bg); }
+  #trackingModal .modal-body { padding: 16px 16px calc(24px + env(safe-area-inset-bottom)); }
   .cart-item { gap: 8px; }
   .cart-qty-control button { width: 32px; }
 }

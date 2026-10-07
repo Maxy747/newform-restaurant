@@ -1,10 +1,12 @@
 import {supabase as defaultSupabase,isSupabaseConfigured as defaultConfigured} from './supabaseClient.js';
-import {escapeHTML as e,money,statusLabel as label,nextStatuses,indiaDayRange,hasDeliveryDetails} from './oms-policy.js';
+import {escapeHTML as e,money,statusLabel as label,hasDeliveryDetails,cashOption,stepTimes,trackingCopy} from './oms-policy.js';
+import {createOmsApi} from './oms-client.js';
 
 export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAll,supabase=defaultSupabase,isSupabaseConfigured=defaultConfigured}) {
- let role='customer',profile=null,channel=null,poll=null,detailId=null,detailVersion=0,listVersion=0;
- let config={payments:false,testMode:true},placing=false,paying=false,addressEditing=false;
- let dashboardMode='orders',page=0,historyPage=0,realtimeTimer;
+ let role='customer',profile=null,channel=null,poll=null,detailId=null,detailVersion=0;
+ let config={payments:false,testMode:true},placing=false,paying=false,addressEditing=false,methodChosen=false;
+ let historyPage=0,realtimeTimer;
+ const lastStatus=new Map();
  let deliveryQuote=null,quoteVersion=0;
  const $=id=>document.getElementById(id);
  const active=id=>$(id)?.classList.contains('active');
@@ -14,17 +16,7 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
  const tokenFor=id=>receipts().find(x=>x.id===id)?.token;
  const showModal=id=>{closeAll();$('overlay').classList.add('active');$(id).classList.add('active');};
  const staff=()=>['admin','staff','kitchen','delivery'].includes(role);
- async function api(action,data={}) {
-  if(!isSupabaseConfigured) throw new Error('Ordering service is not configured yet.');
-  const result=await supabase.functions.invoke('oms-api',{body:{action,...data}});
-  if(result.error) {
-   let message=result.error.message;
-   try { const body=await result.error.context?.json();message=body?.error||message; } catch { /* transport error */ }
-   throw new Error(message);
-  }
-  if(result.data?.error) throw new Error(result.data.error);
-  return result.data;
- }
+ const api=createOmsApi(supabase,isSupabaseConfigured);
  const run=fn=>async event=>{
   const button=event?.currentTarget; if(button?.disabled)return;
   if(button)button.disabled=true;
@@ -45,11 +37,14 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   $('saveDeliveryBtn').hidden=!getSession();
   $('deliverySummaryTitle').textContent=kind==='delivery'?'DELIVERING TO':'ORDERING FOR';
   $('deliverySummaryText').textContent=profile?[profile.full_name,profile.phone,kind==='delivery'?profile.default_address:null].filter(Boolean).join('\n'):'';
-  const cash=$('codPayment');cash.value=kind==='delivery'?'cod':'cash';
-  cash.disabled=kind!=='delivery'||!config.codEnabled||totals().total<799;
+  const cash=$('codPayment'),option=cashOption(kind,config.codEnabled,totals().total);
+  cash.value=option.value;cash.disabled=!option.enabled;
   cash.closest('.checkout-method').classList.toggle('is-disabled',cash.disabled);
-  $('cashMethodText').innerHTML=kind==='delivery'?`COD<small>${!config.codEnabled?'Currently unavailable':totals().total<799?'Available from ₹799 onwards':'Pay on delivery'}</small>`:'Cash<small>Unavailable</small>';
-  if((cash.checked&&cash.disabled)||$('razorpayPayment').checked)document.querySelector('[name="paymentMethod"][value="whatsapp"]').checked=true;
+  $('cashMethodText').replaceChildren(option.title,Object.assign(document.createElement('small'),{textContent:option.hint}));
+  const whatsapp=document.querySelector('[name="paymentMethod"][value="whatsapp"]');
+  // Prefer in-app payment until the customer picks a method themselves.
+  if(!methodChosen&&!cash.disabled)cash.checked=true;
+  if((cash.checked&&cash.disabled)||$('razorpayPayment').checked||!document.querySelector('[name="paymentMethod"]:checked'))whatsapp.checked=true;
   $('razorpayPayment').disabled=true;
   $('razorpayMethod').hidden=true;
   $('razorpayHint').textContent=config.payments?(config.testMode?'Test mode':'Pay securely'):'Setup pending';
@@ -84,12 +79,11 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   }
   try{const next=await api('config');role=next.role;config=next;}catch { /* Site remains browseable if backend isn't deployed. */ }
   fillCheckout();
-  $('ordersBtn').style.display=staff()?'inline-flex':'none';
+  $('ordersBtn').hidden=!staff();
   if(user)channel=supabase.channel('newform-orders-'+user.id).on('postgres_changes',{event:'*',schema:'public',table:'order_signals'},()=>{
    clearTimeout(realtimeTimer);realtimeTimer=setTimeout(refreshVisible,200);
   }).subscribe();
   if(active('accountModal'))await renderAccount();
-  if(active('ordersModal')){if(staff())await renderDashboard();else closeAll();}
  }
  async function refreshVisible() {
   if(document.hidden)return;
@@ -98,7 +92,6 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   }
   if(active('trackingModal')&&detailId)await refreshDetail().catch(()=>{});
   if(active('accountModal')&&getSession())await refreshHistory().catch(()=>{});
-  if(active('ordersModal')&&staff())await refreshDashboard().catch(()=>{});
  }
  const invalidateQuote=()=>{deliveryQuote=null;quoteVersion++;$('deliveryAddressMatches').replaceChildren();$('deliveryAddressMatches').hidden=true;updateCheckout();};
  async function searchDeliveryAddress(address) {
@@ -147,7 +140,8 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
    await saveProfile(fields);addressEditing=false;updateCheckout();toast('Delivery details saved.');
   });
   $('closeTrackingBtn').onclick=closeTracking;
-  poll=setInterval(refreshVisible,15000);
+  document.querySelectorAll('[name="paymentMethod"]').forEach(input=>input.addEventListener('change',()=>{methodChosen=true;}));
+  poll=setInterval(refreshVisible,10000);
   document.addEventListener('visibilitychange',refreshVisible);
   window.addEventListener('online',refreshVisible);
   updateCheckout();
@@ -161,10 +155,9 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
    $('accountSignIn').onclick=run(()=>authenticate(false));$('accountSignUp').onclick=renderRegistration;
    renderGuestHistory();return;
   }
-  content.innerHTML=`<div class="account-section"><strong>${e(user.email)}</strong><label>Name<input id="profileName" class="form-control" autocomplete="name" maxlength="100" value="${e(profile?.full_name)}"></label><label>Phone<input id="profilePhone" type="tel" class="form-control" autocomplete="tel" maxlength="20" value="${e(profile?.phone)}"></label><label>Default address<textarea id="profileAddress" class="form-control" autocomplete="street-address" maxlength="500">${e(profile?.default_address)}</textarea></label><button id="saveProfile" class="btn-minimal">SAVE DETAILS</button>${staff()?'<button id="accountDashboard" class="btn-minimal">RESTAURANT DASHBOARD</button>':''}<h4>ORDER HISTORY</h4><div id="accountHistory" aria-live="polite"></div><div class="oms-actions"><button id="historyPrev" class="btn-minimal">PREVIOUS</button><button id="historyNext" class="btn-minimal">NEXT</button></div><h4>GUEST ORDERS ON THIS DEVICE</h4><div id="guestHistory"></div><button id="accountSignOut" class="btn-minimal">SIGN OUT</button></div>`;
+  content.innerHTML=`<div class="account-section"><strong>${e(user.email)}</strong><label>Name<input id="profileName" class="form-control" autocomplete="name" maxlength="100" value="${e(profile?.full_name)}"></label><label>Phone<input id="profilePhone" type="tel" class="form-control" autocomplete="tel" maxlength="20" value="${e(profile?.phone)}"></label><label>Default address<textarea id="profileAddress" class="form-control" autocomplete="street-address" maxlength="500">${e(profile?.default_address)}</textarea></label><button id="saveProfile" class="btn-minimal">SAVE DETAILS</button>${staff()?'<a href="admin.html" class="btn-minimal btn-primary-minimal">OPEN RESTAURANT ADMIN</a>':''}<h4>ORDER HISTORY</h4><div id="accountHistory" aria-live="polite"></div><div class="oms-actions"><button id="historyPrev" class="btn-minimal">PREVIOUS</button><button id="historyNext" class="btn-minimal">NEXT</button></div><h4>GUEST ORDERS ON THIS DEVICE</h4><div id="guestHistory"></div><button id="accountSignOut" class="btn-minimal">SIGN OUT</button></div>`;
   $('saveProfile').onclick=run(async()=>{await saveProfile({full_name:$('profileName').value.trim(),phone:$('profilePhone').value.trim(),default_address:$('profileAddress').value.trim()});fillCheckout();toast('Details saved.');});
   $('accountSignOut').onclick=run(async()=>{await supabase.auth.signOut();closeAll();});
-  if($('accountDashboard'))$('accountDashboard').onclick=()=>{showModal('ordersModal');renderDashboard();};
   $('historyPrev').onclick=run(async()=>{historyPage=Math.max(0,historyPage-1);await refreshHistory();});
   $('historyNext').onclick=run(async()=>{historyPage++;await refreshHistory();});
   renderGuestHistory();await refreshHistory();
@@ -217,14 +210,15 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   const target=$('accountHistory');if(!target)return;
   const {orders,count}=await api('list',{page:historyPage});
   if(!$('accountHistory'))return;
-  target.innerHTML=orders.map(o=>orderCard(o,false)).join('')||'<p>No orders yet.</p>';
+  target.innerHTML=orders.map(o=>orderCard(o)).join('')||'<p>No orders yet.</p>';
   bindTracking(target);$('historyPrev').disabled=historyPage===0;$('historyNext').disabled=(historyPage+1)*30>=count;
  }
  const bindTracking=element=>element.querySelectorAll('[data-track]').forEach(b=>b.onclick=run(()=>openDetail(b.dataset.track)));
  const itemsHTML=order=>`<ul class="oms-items">${order.items.map(i=>`<li><span>${e(i.quantity)} × ${e(i.name)}${i.portion&&i.portion!=='single'?` <small>(${e(i.portion)})</small>`:''}</span><strong>${money(i.quantity*i.price)}</strong></li>`).join('')}</ul>`;
- function orderCard(o,operations=true) {
-  return `<article class="order-history-item"><div class="oms-card-heading"><strong>#${e(o.id.slice(0,8))}</strong><strong>${money(o.total)}</strong></div><span class="oms-badge ${e(o.order_status)}">${e(label(o.order_status))}</span><small>${e(new Date(o.created_at).toLocaleString())} · ${e(label(o.order_type))}</small><span>Payment: <strong>${e(label(o.payment_status))}</strong> · ${e(o.payment_method.toUpperCase())}</span>${operations?`${o.customer_name?`<p>${e(o.customer_name)} · ${e(o.phone)}<br>${e(o.delivery_address)}</p>`:''}${o.table_number?`<p>Table ${e(o.table_number)}</p>`:''}${itemsHTML(o)}`:''}<div class="oms-actions"><button class="btn-minimal" data-track="${e(o.id)}">${operations?'DETAILS / SUPPORT':'TRACK / REPORT ISSUE'}</button>${operations?nextStatuses(o,role).map(s=>`<button class="btn-minimal ${s==='cancelled'?'danger':'btn-primary-minimal'}" data-order="${e(o.id)}" data-status="${s}">${e(label(s))}</button>`).join(''):''}</div></article>`;
+ function orderCard(o) {
+  return `<article class="order-history-item"><div class="oms-card-heading"><strong>#${e(o.id.slice(0,8))}</strong><strong>${money(o.total)}</strong></div><span class="oms-badge ${e(o.order_status)}">${e(label(o.order_status))}</span><small>${e(new Date(o.created_at).toLocaleString())} · ${e(label(o.order_type))}</small><span>Payment: <strong>${e(label(o.payment_status))}</strong> · ${e(paymentName(o.payment_method))}</span><div class="oms-actions"><button class="btn-minimal" data-track="${e(o.id)}">TRACK / REPORT ISSUE</button></div></article>`;
  }
+ const paymentName=method=>({cash:'Pay at counter',cod:'Cash on delivery',whatsapp:'WhatsApp',razorpay:'Online'})[method]||method;
  async function placeOrder() {
   if(placing)return;if(!getCart().length)return toast('Your cart is empty.');
   placing=true;const button=$('placeOrderBtn');button.disabled=true;button.textContent='SAVING ORDER…';
@@ -264,19 +258,30 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   const id=detailId,version=++detailVersion;
   const {order:o,events,tickets}=await api('detail',{id,token:tokenFor(id)});
   if(detailId!==id||version!==detailVersion||!$('orderDetailState'))return;
+  const previous=lastStatus.get(o.id);lastStatus.set(o.id,o.order_status);
+  const [headline,subline]=trackingCopy(o);
+  // Tell the customer when the restaurant moves their order while this screen is open.
+  if(previous&&previous!==o.order_status){toast(headline);navigator.vibrate?.(150);}
   const steps=['new','confirmed','preparing','ready',...(o.order_type==='delivery'?['out_for_delivery']:[]),'completed'];
-  const index=steps.indexOf(o.order_status);
-  $('orderDetailState').innerHTML=`<div class="oms-card-heading"><h3>#${e(o.id.slice(0,8))}</h3><strong>${money(o.total)}</strong></div><p class="oms-badge ${e(o.order_status)}">${e(label(o.order_status))}</p><p>Payment: <strong>${e(label(o.payment_status))}</strong> · ${e(o.payment_method.toUpperCase())}</p><ol class="order-progress">${steps.map((s,i)=>`<li class="${i<index?'done':i===index?'current':''}">${e(label(s))}</li>`).join('')}</ol>${itemsHTML(o)}<p>Subtotal ${money(o.subtotal)} · GST ${money(o.tax)}<br><strong>Total ${money(o.total)}</strong></p><p>${e(label(o.order_type))}${o.table_number?' · Table '+e(o.table_number):''}<br>${e(o.customer_name||'')}${o.phone?' · '+e(o.phone):''}<br>${e(o.delivery_address||'')}</p><small>Updates automatically while this screen is open.</small><div class="oms-actions">${o.payment_method==='razorpay'&&!['paid','refunded'].includes(o.payment_status)&&!['cancelled','completed'].includes(o.order_status)?'<button id="payOrderBtn" class="btn-minimal btn-primary-minimal">PAY / RETRY PAYMENT</button>':''}${o.payment_method==='whatsapp'?'<a id="sendWhatsAppOrder" class="btn-minimal" target="_blank" rel="noopener noreferrer">SEND TO WHATSAPP</a>':''}${staff()&&role!=='kitchen'&&o.payment_method!=='razorpay'&&o.payment_status!=='paid'&&o.order_status!=='cancelled'?'<button id="cashReceivedBtn" class="btn-minimal">MARK CASH RECEIVED</button>':''}</div><details><summary>Status history</summary><ul class="order-audit">${events.map(event=>`<li>${e(new Date(event.created_at).toLocaleString())} — ${e(label(event.detail))}</li>`).join('')}</ul></details>`;
-  if(o.order_type==='delivery'){
-   const breakdown=document.createElement('p');breakdown.textContent=`Delivery: ${money(o.delivery_fee||0)}${o.delivery_distance_m!=null?' · '+(o.delivery_distance_m/1000).toFixed(2)+' km by road':''}`;
-   $('orderDetailState').append(breakdown);
-   if(o.delivery_latitude!=null && o.delivery_longitude!=null){
-    const map=document.createElement('a');map.textContent='VIEW DELIVERY PIN';map.target='_blank';map.rel='noopener noreferrer';map.href=`https://www.google.com/maps?q=${Number(o.delivery_latitude)},${Number(o.delivery_longitude)}`;$('orderDetailState').append(map);
-   }
-  }
+  const index=steps.indexOf(o.order_status),times=stepTimes(events);
+  const clock=value=>new Date(value).toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'});
+  const icon={new:'fa-receipt',awaiting_payment:'fa-credit-card',confirmed:'fa-circle-check',preparing:'fa-fire-burner',ready:o.order_type==='delivery'?'fa-box':'fa-bell-concierge',out_for_delivery:'fa-motorcycle',completed:'fa-face-smile',cancelled:'fa-circle-xmark'}[o.order_status]||'fa-receipt';
+  const unpaid=o.payment_status!=='paid'&&o.order_status!=='cancelled';
+  const payNote=o.payment_status==='paid'?'Paid':o.payment_method==='cash'?`Pay ${money(o.total)} at the counter`:o.payment_method==='cod'?`Pay ${money(o.total)} in cash on delivery`:o.payment_method==='whatsapp'?'Payment arranged with the restaurant':label(o.payment_status);
+  const live=!['completed','cancelled'].includes(o.order_status);
+  $('orderDetailState').innerHTML=`<section class="track-hero track-${e(o.order_status)}"><i class="fa-solid ${icon}" aria-hidden="true"></i><div><h3>${e(headline)}</h3><p>${e(subline)}</p></div></section>
+   ${o.order_status==='cancelled'?'':`<ol class="track-steps">${steps.map((s,i)=>`<li class="${i<index?'done':i===index?'current':''}"><span>${e(label(s))}</span><small>${times.has(s)&&i<=index?e(clock(times.get(s))):''}</small></li>`).join('')}</ol>`}
+   ${o.payment_method==='whatsapp'&&live?'<div class="track-whatsapp"><p>Want to confirm on WhatsApp too? Your order is already saved.</p><a id="sendWhatsAppOrder" class="btn-minimal" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-whatsapp"></i> SEND ON WHATSAPP</a></div>':''}
+   ${o.payment_method==='razorpay'&&!['paid','refunded'].includes(o.payment_status)&&live?'<button id="payOrderBtn" class="btn-minimal btn-primary-minimal">PAY / RETRY PAYMENT</button>':''}
+   <section class="track-card"><div class="oms-card-heading"><h4>ORDER #${e(o.id.slice(0,8).toUpperCase())}</h4><small>${e(new Date(o.created_at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}))}</small></div>
+   ${itemsHTML(o)}
+   <dl class="track-totals"><dt>Subtotal</dt><dd>${money(o.subtotal)}</dd><dt>GST</dt><dd>${money(o.tax)}</dd>${o.order_type==='delivery'?`<dt>Delivery${o.delivery_distance_m!=null?' · '+(o.delivery_distance_m/1000).toFixed(1)+' km':''}</dt><dd>${money(o.delivery_fee||0)}</dd>`:''}<dt class="track-total">Total</dt><dd class="track-total">${money(o.total)}</dd></dl>
+   <p class="track-pay${unpaid?'':' is-paid'}"><i class="fa-solid ${unpaid?'fa-wallet':'fa-circle-check'}"></i> ${e(payNote)}</p></section>
+   <section class="track-card"><h4>${e(label(o.order_type).toUpperCase())}</h4><p>${e(o.customer_name||'')}${o.phone?' · '+e(o.phone):''}${o.table_number?'<br>Table '+e(o.table_number):''}${o.delivery_address?'<br>'+e(o.delivery_address):''}</p></section>
+   ${live?'<p class="track-live"><span></span> Updates automatically while this screen is open</p>':''}
+   <p class="track-help">Questions? Call <a href="tel:7593881112">7593 881 112</a></p>`;
   if($('payOrderBtn'))$('payOrderBtn').onclick=run(()=>pay(o));
-  if($('cashReceivedBtn'))$('cashReceivedBtn').onclick=run(async()=>{if(!confirm('Confirm you have received '+money(o.total)+' in cash?'))return;await api('cash',{id});await refreshDetail();});
-  if($('sendWhatsAppOrder'))$('sendWhatsAppOrder').href='https://wa.me/917593881112?text='+encodeURIComponent(`NEWFORM ORDER #${o.id.slice(0,8)}\n${o.items.map(i=>`${i.quantity} × ${i.name} (${i.portion||'single'})`).join('\n')}\nTotal: ${money(o.total)}\n${o.customer_name}, ${o.phone}\n${o.delivery_address||o.order_type}`);
+  if($('sendWhatsAppOrder'))$('sendWhatsAppOrder').href='https://wa.me/917593881112?text='+encodeURIComponent(`NEWFORM ORDER #${o.id.slice(0,8)}\n${o.items.map(i=>`${i.quantity} × ${i.name} (${i.portion||'single'})`).join('\n')}\nTotal: ${money(o.total)}\n${o.customer_name}, ${o.phone}\n${o.delivery_address||label(o.order_type)}`);
   // Keep unsent messages and keyboard focus intact during realtime refreshes.
   const support=$('orderSupport');
   if(['kitchen','delivery'].includes(role)){support.replaceChildren();return;}
@@ -306,54 +311,5 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
    });
   } finally{paying=false;}
  }
- async function renderDashboard() {
-  if(!staff()){$('ordersContent').textContent='Restaurant staff access required.';return;}
-  dashboardMode=role==='kitchen'?'kitchen':role==='delivery'?'delivery':dashboardMode;
-  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-  $('ordersContent').innerHTML=`<nav class="oms-actions" aria-label="Dashboard views">${(role==='kitchen'?['kitchen']:role==='delivery'?['delivery']:['orders','kitchen','delivery','tickets']).map(v=>`<button class="btn-minimal" data-view="${v}">${v.toUpperCase()}</button>`).join('')}</nav><form id="orderFilters" class="oms-filters"><label>From<input type="date" id="ordersFrom" class="form-control" value="${today}"></label><label>To<input type="date" id="ordersTo" class="form-control" value="${today}"></label><label>Status<select id="ordersStatus" class="form-control"><option value="">All statuses</option>${['new','confirmed','preparing','ready','out_for_delivery','completed','cancelled','awaiting_payment'].map(s=>`<option value="${s}">${label(s)}</option>`).join('')}</select></label><label>Payment<select id="ordersPayment" class="form-control"><option value="">All payments</option>${['pending','paid','failed','refunded','not_required'].map(s=>`<option>${s}</option>`).join('')}</select></label><label>Type<select id="ordersType" class="form-control"><option value="">All types</option><option value="delivery">Delivery</option><option value="takeaway">Takeaway</option><option value="dine_in">Dine in</option></select></label><label>Search<input id="ordersSearch" class="form-control" placeholder="Name or full order ID"></label><button type="submit" class="btn-minimal">APPLY FILTERS</button><button type="button" id="allOrderHistory" class="btn-minimal">ALL DATES</button></form><div id="orderAnalytics"></div><p id="ordersLiveStatus" role="status"></p><div id="dashboardOrders"></div><div class="oms-actions"><button id="ordersPrev" class="btn-minimal">PREVIOUS</button><span id="ordersPage"></span><button id="ordersNext" class="btn-minimal">NEXT</button></div>`;
-  if(role==='admin') {
-   const next=await api('config');config={...config,codEnabled:next.codEnabled};
-   const control=document.createElement('button');control.className='btn-minimal';control.type='button';control.id='adminCodToggle';
-   const update=()=>{control.textContent=config.codEnabled?'COD ON · Disable':'COD OFF · Enable';control.setAttribute('aria-pressed',String(config.codEnabled));};
-   update();control.onclick=run(async()=>{const result=await api('set_cod',{enabled:!config.codEnabled});config.codEnabled=result.codEnabled;update();updateCheckout();toast(config.codEnabled?'COD enabled':'COD disabled');});
-   $('ordersContent').prepend(control);
-  }
-  $('ordersContent').querySelectorAll('[data-view]').forEach(b=>b.onclick=run(async()=>{dashboardMode=b.dataset.view;page=0;await refreshDashboard();}));
-  $('orderFilters').onsubmit=event=>{event.preventDefault();page=0;refreshDashboard().catch(error=>toast(error.message));};
-  $('allOrderHistory').onclick=run(async()=>{$('ordersFrom').value='';$('ordersTo').value='';page=0;await refreshDashboard();});
-  $('ordersPrev').onclick=run(async()=>{page=Math.max(0,page-1);await refreshDashboard();});
-  $('ordersNext').onclick=run(async()=>{page++;await refreshDashboard();});
-  await refreshDashboard();
- }
- async function refreshDashboard() {
-  if(!$('dashboardOrders'))return;
-  const version=++listVersion;
-  $('ordersContent').querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('btn-primary-minimal',b.dataset.view===dashboardMode));
-  if(dashboardMode==='tickets') {
-   const {tickets}=await api('ticket_list');if(version!==listVersion)return;
-   $('orderAnalytics').replaceChildren();$('ordersLiveStatus').textContent='Open support tickets';
-   $('dashboardOrders').innerHTML=tickets.map(t=>`<article class="order-history-item"><strong>${e(t.subject)}</strong><span>${e(label(t.status))}</span><small>#${e(t.id.slice(0,8))}</small><button class="btn-minimal" data-track="${e(t.order_id)}">OPEN CONVERSATION</button></article>`).join('')||'<p>No open tickets.</p>';
-   bindTracking($('dashboardOrders'));$('ordersPrev').disabled=true;$('ordersNext').disabled=true;$('ordersPage').textContent='';return;
-  }
-  const start=$('ordersFrom').value?indiaDayRange($('ordersFrom').value).start:null;
-  const end=$('ordersTo').value?indiaDayRange($('ordersTo').value).end:null;
-  const {orders,count}=await api('list',{mode:dashboardMode,page,start,end,status:$('ordersStatus').value,payment:$('ordersPayment').value,type:$('ordersType').value,search:$('ordersSearch').value.trim()});
-  if(version!==listVersion||!$('dashboardOrders'))return;
-  $('ordersLiveStatus').textContent=count+' orders · Auto-updating · '+new Date().toLocaleTimeString();
-  if(dashboardMode==='kitchen') {
-   $('dashboardOrders').innerHTML='<div class="kitchen-board">'+[['NEW',['new','confirmed']],['COOKING',['preparing']],['READY',['ready']]].map(([title,statuses])=>`<section><h4>${title}</h4>${orders.filter(o=>statuses.includes(o.order_status)).map(o=>orderCard(o)).join('')||'<p>No orders</p>'}</section>`).join('')+'</div>';
-  } else $('dashboardOrders').innerHTML=orders.map(o=>orderCard(o)).join('')||'<p>No matching orders.</p>';
-  bindTracking($('dashboardOrders'));
-  $('dashboardOrders').querySelectorAll('[data-status]').forEach(b=>b.onclick=run(async()=>{
-   if(b.dataset.status==='cancelled'&&!confirm('Cancel this order? Paid orders may still require a refund through Razorpay.'))return;
-   await api('transition',{id:b.dataset.order,status:b.dataset.status});await refreshDashboard();
-  }));
-  $('ordersPrev').disabled=page===0;$('ordersNext').disabled=(page+1)*30>=count;$('ordersPage').textContent='Page '+(page+1);
-  $('orderAnalytics').replaceChildren();
-  if(['admin','staff'].includes(role)&&start&&end&&(+new Date(end)-+new Date(start))<=366*86400000) {
-   const a=await api('analytics',{start,end});if(version!==listVersion||!$('orderAnalytics'))return;
-   $('orderAnalytics').innerHTML=`<p>Overview for selected dates (all order types)</p><div class="oms-stats">${[['Orders',a.orders],['Received',money(a.revenue)],['New',a.new],['Cooking',a.preparing],['Ready',a.ready],['Completed',a.completed],['Cancelled',a.cancelled]].map(([title,value])=>`<div><small>${title}</small><strong>${e(value)}</strong></div>`).join('')}</div><p>Top items: ${a.top_items.map(i=>`${e(i.name)} × ${e(i.quantity)}`).join(' · ')||'No items yet'}</p>`;
-  }
- }
- return {init,sessionChanged,renderAccount,renderDashboard,placeOrder,updateCheckout,closeTracking,openDetail,getRole:()=>role};
+ return {init,sessionChanged,renderAccount,placeOrder,updateCheckout,closeTracking,openDetail,getRole:()=>role};
 }
