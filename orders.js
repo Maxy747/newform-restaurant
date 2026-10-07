@@ -45,9 +45,11 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   $('saveDeliveryBtn').hidden=!getSession();
   $('deliverySummaryTitle').textContent=kind==='delivery'?'DELIVERING TO':'ORDERING FOR';
   $('deliverySummaryText').textContent=profile?[profile.full_name,profile.phone,kind==='delivery'?profile.default_address:null].filter(Boolean).join('\n'):'';
-  const cash=$('codPayment');cash.value=kind==='delivery'?'cod':'cash';cash.disabled=true;
-  $('cashMethodText').innerHTML=kind==='delivery'?'COD<small>Available from ₹799 onwards</small>':'Cash<small>Unavailable</small>';
-  if(cash.checked||$('razorpayPayment').checked)document.querySelector('[name="paymentMethod"][value="whatsapp"]').checked=true;
+  const cash=$('codPayment');cash.value=kind==='delivery'?'cod':'cash';
+  cash.disabled=kind!=='delivery'||!config.codEnabled||totals().total<799;
+  cash.closest('.checkout-method').classList.toggle('is-disabled',cash.disabled);
+  $('cashMethodText').innerHTML=kind==='delivery'?`COD<small>${!config.codEnabled?'Currently unavailable':totals().total<799?'Available from ₹799 onwards':'Pay on delivery'}</small>`:'Cash<small>Unavailable</small>';
+  if((cash.checked&&cash.disabled)||$('razorpayPayment').checked)document.querySelector('[name="paymentMethod"][value="whatsapp"]').checked=true;
   $('razorpayPayment').disabled=true;
   $('razorpayMethod').hidden=true;
   $('razorpayHint').textContent=config.payments?(config.testMode?'Test mode':'Pay securely'):'Setup pending';
@@ -91,6 +93,9 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
  }
  async function refreshVisible() {
   if(document.hidden)return;
+  if(active('cartDrawer')) {
+   try {const next=await api('config');config={...config,codEnabled:next.codEnabled};updateCheckout();}catch { /* Server rechecks COD at checkout. */ }
+  }
   if(active('trackingModal')&&detailId)await refreshDetail().catch(()=>{});
   if(active('accountModal')&&getSession())await refreshHistory().catch(()=>{});
   if(active('ordersModal')&&staff())await refreshDashboard().catch(()=>{});
@@ -306,6 +311,13 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   dashboardMode=role==='kitchen'?'kitchen':role==='delivery'?'delivery':dashboardMode;
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   $('ordersContent').innerHTML=`<nav class="oms-actions" aria-label="Dashboard views">${(role==='kitchen'?['kitchen']:role==='delivery'?['delivery']:['orders','kitchen','delivery','tickets']).map(v=>`<button class="btn-minimal" data-view="${v}">${v.toUpperCase()}</button>`).join('')}</nav><form id="orderFilters" class="oms-filters"><label>From<input type="date" id="ordersFrom" class="form-control" value="${today}"></label><label>To<input type="date" id="ordersTo" class="form-control" value="${today}"></label><label>Status<select id="ordersStatus" class="form-control"><option value="">All statuses</option>${['new','confirmed','preparing','ready','out_for_delivery','completed','cancelled','awaiting_payment'].map(s=>`<option value="${s}">${label(s)}</option>`).join('')}</select></label><label>Payment<select id="ordersPayment" class="form-control"><option value="">All payments</option>${['pending','paid','failed','refunded','not_required'].map(s=>`<option>${s}</option>`).join('')}</select></label><label>Type<select id="ordersType" class="form-control"><option value="">All types</option><option value="delivery">Delivery</option><option value="takeaway">Takeaway</option><option value="dine_in">Dine in</option></select></label><label>Search<input id="ordersSearch" class="form-control" placeholder="Name or full order ID"></label><button type="submit" class="btn-minimal">APPLY FILTERS</button><button type="button" id="allOrderHistory" class="btn-minimal">ALL DATES</button></form><div id="orderAnalytics"></div><p id="ordersLiveStatus" role="status"></p><div id="dashboardOrders"></div><div class="oms-actions"><button id="ordersPrev" class="btn-minimal">PREVIOUS</button><span id="ordersPage"></span><button id="ordersNext" class="btn-minimal">NEXT</button></div>`;
+  if(role==='admin') {
+   const next=await api('config');config={...config,codEnabled:next.codEnabled};
+   const control=document.createElement('button');control.className='btn-minimal';control.type='button';control.id='adminCodToggle';
+   const update=()=>{control.textContent=config.codEnabled?'COD ON · Disable':'COD OFF · Enable';control.setAttribute('aria-pressed',String(config.codEnabled));};
+   update();control.onclick=run(async()=>{const result=await api('set_cod',{enabled:!config.codEnabled});config.codEnabled=result.codEnabled;update();updateCheckout();toast(config.codEnabled?'COD enabled':'COD disabled');});
+   $('ordersContent').prepend(control);
+  }
   $('ordersContent').querySelectorAll('[data-view]').forEach(b=>b.onclick=run(async()=>{dashboardMode=b.dataset.view;page=0;await refreshDashboard();}));
   $('orderFilters').onsubmit=event=>{event.preventDefault();page=0;refreshDashboard().catch(error=>toast(error.message));};
   $('allOrderHistory').onclick=run(async()=>{$('ordersFrom').value='';$('ordersTo').value='';page=0;await refreshDashboard();});

@@ -24,7 +24,16 @@ Deno.serve(async req=>{
   const identity=userId||req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()||'anonymous';
   const bucket=await sha256(identity+':'+(body.action==='create'?'checkout':'api'));
   if(!await rpc('oms_rate_limit',{p_bucket:bucket,p_limit:body.action==='create'?10:120})) return json({error:'Too many requests. Please wait a minute.'},429);
-  if(body.action==='config') return json({role,payments:paymentConfigured(),deliveryRouting:Boolean(Deno.env.get('ORS_API_KEY')),testMode:!(Deno.env.get('RAZORPAY_KEY_ID')||'').startsWith('rzp_live_')});
+  if(body.action==='config') {
+   const settings=checked(await db.from('checkout_settings').select('cod_enabled').eq('id',true).single());
+   return json({role,codEnabled:settings.cod_enabled,payments:paymentConfigured(),deliveryRouting:Boolean(Deno.env.get('ORS_API_KEY')),testMode:!(Deno.env.get('RAZORPAY_KEY_ID')||'').startsWith('rzp_live_')});
+  }
+  if(body.action==='set_cod') {
+   if(role!=='admin') return json({error:'Admin access required'},403);
+   if(typeof body.enabled!=='boolean') throw new Error('Invalid COD setting');
+   const settings=checked(await db.from('checkout_settings').update({cod_enabled:body.enabled}).eq('id',true).select('cod_enabled').single());
+   return json({codEnabled:settings.cod_enabled});
+  }
   if(body.action==='delivery_address') {
    if(!await rpc('oms_rate_limit',{p_bucket:await sha256(identity+':geocoding'),p_limit:8})) throw new Error('Please wait a minute before searching again.');
    return json({matches:await addressLocation(body.address,Deno.env.get('ORS_API_KEY'))});

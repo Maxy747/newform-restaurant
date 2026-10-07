@@ -150,5 +150,25 @@ test('PostgreSQL migration and order/payment/RLS lifecycle',async t=>{
   customer.order_type='takeaway';assert.ok((await call())[0].id);
   await db.exec('reset role');
  });
+ await t.test('COD respects Rs799 threshold and persistent disable setting',async()=>{
+  await db.exec(await readFile(new URL('../supabase/migrations/20261008000100_cod_settings.sql',import.meta.url),'utf8'));
+  await db.exec('set role authenticated');
+  await assert.rejects(q('update public.checkout_settings set cod_enabled=false'),/permission denied/);
+  await db.exec('reset role');
+  await q(`insert into public.menu_items(id,name,category,diet,"portionType",price) values('cod-boundary','Test','veg','veg','single',761)`);
+  const place=async()=>{
+   const quote=(await q('insert into public.delivery_quotes(user_id,latitude,longitude,distance_m,fee) values($1,11,76,1000,100) returning id',[user]))[0].id;
+   return q('select public.oms_create_order($1,$2,$3,$4,$5,$6) id',[user,crypto.randomUUID(),'d'.repeat(64),JSON.stringify({name:'Test Customer',phone:'9999999999',address:'Test Road',order_type:'delivery',quote_id:quote}),JSON.stringify([{id:'cod-boundary',quantity:1}]),'cod']);
+  };
+  const id=(await place())[0].id;
+  assert.equal(Number((await q('select total from public.orders where id=$1',[id]))[0].total),899);
+  await q("update public.menu_items set price=760 where id='cod-boundary'");
+  await assert.rejects(place(),/799/);
+  await q("update public.menu_items set price=761 where id='cod-boundary'");
+  await q('update public.checkout_settings set cod_enabled=false');
+  await assert.rejects(place(),/currently unavailable/);
+  await q('update public.checkout_settings set cod_enabled=true');
+  assert.ok((await place())[0].id);
+ });
  } finally {await db.close();}
 });
