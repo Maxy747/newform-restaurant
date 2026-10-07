@@ -4,7 +4,7 @@ import {createOmsApi} from './oms-client.js';
 
 export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAll,supabase=defaultSupabase,isSupabaseConfigured=defaultConfigured}) {
  let role='customer',profile=null,channel=null,poll=null,detailId=null,detailVersion=0;
- let config={payments:false,testMode:true},placing=false,paying=false,addressEditing=false,methodChosen=false;
+ let config={payments:false,testMode:true},placing=false,paying=false,addressEditing=false,methodChosen=false,staffLoginRedirect=false;
  let historyPage=0,realtimeTimer;
  const lastStatus=new Map();
  let deliveryQuote=null,quoteVersion=0;
@@ -78,6 +78,8 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
    profile=result.data;
   }
   try{const next=await api('config');role=next.role;config=next;}catch { /* Site remains browseable if backend isn't deployed. */ }
+  // Staff who just signed in here go straight to the admin console.
+  if(staffLoginRedirect&&user){staffLoginRedirect=false;if(staff()){location.assign('admin.html');return;}}
   fillCheckout();
   $('ordersBtn').hidden=!staff();
   if(user)channel=supabase.channel('newform-orders-'+user.id).on('postgres_changes',{event:'*',schema:'public',table:'order_signals'},()=>{
@@ -197,8 +199,9 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   const email=$('accountEmail').value.trim(),password=$('accountPassword').value;
   if(!email||!$('accountEmail').checkValidity()||!password)throw new Error('Enter a valid email and password.');
   if(signUp&&password.length<6)throw new Error('Use at least 6 characters for your password.');
+  staffLoginRedirect=!signUp;
   const {data,error}=signUp?await supabase.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}}):await supabase.auth.signInWithPassword({email,password});
-  if(error) { $('authStatus').textContent=error.message;throw error; }
+  if(error) { staffLoginRedirect=false;$('authStatus').textContent=error.message;throw error; }
   if(signUp&&!data.session)$('authStatus').textContent='Verification email requested. Check your inbox and spam folder. If it does not arrive, the restaurant must check its email delivery configuration.';
   else toast('Signed in.');
  }

@@ -341,9 +341,31 @@ body:has(#gate:not([hidden])) { padding-bottom: 0; }
   .adm-category { grid-template-columns: 1fr auto auto; }
   .adm-category-actions { grid-column: auto; }
 }
+/* Desktop app shell: the page itself never scrolls; long lists scroll inside their own panel. */
 @media (min-width: 1100px) {
-  .adm-board { grid-template-columns: repeat(var(--board-cols, 4), minmax(0, 1fr)); align-items: start; }
-  .adm-column-body { max-height: calc(100vh - 290px); overflow-y: auto; padding-right: 2px; }
+  body { height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+  .adm-top, .adm-nav { position: static; flex: none; }
+  .adm-nav a { padding: 11px 14px; }
+  .adm-main { flex: 1; min-height: 0; width: 100%; display: flex; flex-direction: column; padding: 14px 24px 16px; }
+  .adm-gate { flex: 1; min-height: 0; }
+  .adm-section:not([hidden]) { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px; }
+  .adm-section-head { flex: none; }
+  h2 { font-size: 1.3rem; }
+
+  #ordersBoardView:not([hidden]), #ordersHistoryView:not([hidden]) { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px; }
+  .adm-stat-row { flex: none; }
+  .adm-stat { padding: 8px 14px; grid-template-columns: 1fr auto; align-items: center; }
+  .adm-stat strong { font-size: 1.2rem; }
+  .adm-board { flex: 1; min-height: 0; grid-template-columns: repeat(var(--board-cols, 4), minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr); }
+  .adm-column { min-height: 0; display: flex; flex-direction: column; }
+  .adm-column h3 { flex: none; }
+  .adm-column-body { flex: 1; min-height: 0; overflow-y: auto; align-content: start; padding-right: 2px; }
+  .adm-finished { flex: none; padding: 8px 14px; }
+  .adm-finished[open] #finishedList { max-height: 26vh; overflow-y: auto; }
+
+  .adm-menu-filters, .adm-filters, .adm-pager, #menuSummary { flex: none; }
+  #historyList, #menuList, #ticketList, #reportBody { flex: 1; min-height: 0; overflow-y: auto; align-content: start; padding-right: 2px; }
+  #reportBody { display: grid; gap: 12px; }
 }
 @media (max-width: 520px) {
   .adm-brand small { display: none; }
