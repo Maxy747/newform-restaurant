@@ -1166,6 +1166,14 @@ function calculateCartTotals() {
 }
 
 function setupFeaturedDishOrder() {
+  const logo = document.querySelector('.hero-shop-logo');
+  let logoTapTimer;
+  logo?.addEventListener('click', () => {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    clearTimeout(logoTapTimer);
+    logo.classList.add('is-tapped');
+    logoTapTimer = setTimeout(() => logo.classList.remove('is-tapped'), 650);
+  });
   const orderButton = document.getElementById('heroOrderNowBtn');
   const portionButtons = document.querySelectorAll('[data-hero-portion]');
   portionButtons.forEach(button => button.addEventListener('click', () => {
