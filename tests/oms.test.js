@@ -170,5 +170,30 @@ test('PostgreSQL migration and order/payment/RLS lifecycle',async t=>{
   await q('update public.checkout_settings set cod_enabled=true');
   assert.ok((await place())[0].id);
  });
+ await t.test('delivery switch blocks new delivery orders and reports include breakdowns',async()=>{
+  const migration=await readFile(new URL('../supabase/migrations/20261008000200_delivery_toggle_and_reports.sql',import.meta.url),'utf8');
+  await db.exec(migration);await db.exec(migration); // safe to re-run
+  await db.exec('set role authenticated');
+  await assert.rejects(q('update public.checkout_settings set delivery_enabled=false'),/permission denied/);
+  await db.exec('reset role');
+  const place=async type=>{
+   const quote=type==='delivery'?(await q('insert into public.delivery_quotes(user_id,latitude,longitude,distance_m,fee) values($1,11,76,1000,100) returning id',[user]))[0].id:undefined;
+   return q('select public.oms_create_order($1,$2,$3,$4,$5,$6) id',[user,crypto.randomUUID(),'e'.repeat(64),JSON.stringify({name:'Test Customer',phone:'9999999999',address:'Test Road',order_type:type,quote_id:quote}),JSON.stringify([{id:'cod-boundary',quantity:1}]),'cash'].map((x,i)=>i===5&&type==='delivery'?'cod':x));
+  };
+  await q('update public.checkout_settings set delivery_enabled=false');
+  await db.exec('set role service_role');
+  await assert.rejects(place('delivery'),/delivery is currently unavailable/);
+  assert.ok((await place('takeaway'))[0].id);
+  await db.exec('reset role');
+  await q('update public.checkout_settings set delivery_enabled=true');
+  await db.exec('set role service_role');
+  assert.ok((await place('delivery'))[0].id);
+  const a=(await q("select public.oms_analytics(now()-interval '1 day',now()+interval '1 day') a"))[0].a;
+  await db.exec('reset role');
+  for(const key of ['orders','revenue','sales','avg_order','completed','cancelled','top_items','daily','hourly','by_type','by_payment'])assert.ok(key in a,key);
+  assert.ok(a.sales>0&&a.avg_order>0);
+  assert.equal(a.daily.reduce((s,d)=>s+d.orders,0),a.hourly.reduce((s,h)=>s+h.orders,0));
+  assert.ok(a.by_type.some(b=>b.key==='takeaway')&&a.by_payment.some(b=>b.key==='cod'));
+ });
  } finally {await db.close();}
 });

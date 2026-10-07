@@ -25,10 +25,15 @@ let orders = [
   mk(7, 'completed', 95, 'dine_in', [line('Chicken Biriyani', 2, 160)], { payment_status: 'paid' }),
   mk(8, 'cancelled', 120, 'delivery', [line('Prawns Varattu', 1, 300)]),
 ];
+// Older completed orders so 7/30-day reports have shape.
+for (let day = 1; day <= 29; day++) for (let k = 0; k < 2 + (day * 7) % 5; k++) {
+  const n = 100 + day * 10 + k, type = ['delivery', 'takeaway', 'dine_in'][(day + k) % 3];
+  orders.push(mk(n, day % 9 === 0 && k === 0 ? 'cancelled' : 'completed', day * 1440 + ((k * 137 + day * 53) % 600) - 200, type, [line(['Chicken Mandhi', 'Alfaham Chicken', 'Beef Fry', 'Porotta'][(day + k) % 4], 1 + k % 3, [260, 248, 180, 15][(day + k) % 4])], { payment_status: 'paid' }));
+}
 const events = {};
 orders.forEach(order => { events[order.id] = [{ id: 1, event_type: 'order.created', detail: 'Order placed', created_at: order.created_at }]; });
 let tickets = [{ id: uuid(90), order_id: uuid(4), subject: 'Can you add extra mayo?', status: 'open', created_at: iso(20), updated_at: iso(20), ticket_messages: [{ id: 1, author_role: 'customer', message: 'Please add extra mayonnaise and no onions.', created_at: iso(20) }] }];
-let codEnabled = true, counter = 50;
+let codEnabled = true, deliveryEnabled = (() => { try { return localStorage.getItem('mock_delivery') !== 'off'; } catch { return true; } })(), counter = 50;
 const listeners = new Set();
 const signal = () => listeners.forEach(fn => setTimeout(fn, 50));
 const kitchenRedact = order => { const { phone, delivery_address, customer_name, delivery_latitude, delivery_longitude, ...rest } = order; return rest; };
@@ -37,8 +42,9 @@ async function oms(body) {
   const r = role();
   const view = order => r === 'kitchen' ? kitchenRedact(order) : order;
   switch (body.action) {
-    case 'config': return { role: signedIn() ? r : 'customer', codEnabled, payments: false, testMode: true, deliveryRouting: true };
+    case 'config': return { role: signedIn() ? r : 'customer', codEnabled, deliveryEnabled, payments: false, testMode: true, deliveryRouting: true };
     case 'set_cod': codEnabled = body.enabled; return { codEnabled };
+    case 'set_delivery': deliveryEnabled = body.enabled; try { localStorage.setItem('mock_delivery', body.enabled ? 'on' : 'off'); } catch { /* ignore */ } return { deliveryEnabled };
     case 'list': {
       let rows = [...orders].sort((a, b) => b.created_at.localeCompare(a.created_at));
       const mode = r === 'kitchen' ? 'kitchen' : r === 'delivery' ? 'delivery' : body.mode;
@@ -57,8 +63,16 @@ async function oms(body) {
       const count = s => rows.filter(o => o.order_status === s).length;
       const top = {};
       rows.filter(o => o.order_status !== 'cancelled').forEach(o => o.items.forEach(i => { top[i.name] = (top[i.name] || 0) + i.quantity; }));
-      return { orders: rows.length, revenue: rows.filter(o => o.payment_status === 'paid').reduce((s, o) => s + o.total, 0), new: count('new'), preparing: count('preparing'), ready: count('ready'), completed: count('completed'), cancelled: count('cancelled'),
-        top_items: Object.entries(top).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name, quantity]) => ({ name, quantity })) };
+      const live = rows.filter(o => o.order_status !== 'cancelled');
+      const ist = o => new Date(Date.parse(o.created_at) + 5.5 * 3600000);
+      const group = key => Object.values(live.reduce((acc, o) => { const k = key(o); acc[k] ??= { key: k, orders: 0, sales: 0 }; acc[k].orders++; acc[k].sales += o.total; return acc; }, {}));
+      const sales = live.reduce((s, o) => s + o.total, 0);
+      return { orders: rows.length, revenue: rows.filter(o => o.payment_status === 'paid').reduce((s, o) => s + o.total, 0), sales, avg_order: live.length ? Math.round(sales / live.length * 100) / 100 : 0,
+        new: count('new'), preparing: count('preparing'), ready: count('ready'), completed: count('completed'), cancelled: count('cancelled'),
+        top_items: Object.entries(top).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([name, quantity]) => ({ name, quantity })),
+        daily: group(o => ist(o).toISOString().slice(0, 10)).map(g => ({ day: g.key, orders: g.orders, sales: g.sales })),
+        hourly: group(o => ist(o).getUTCHours()).map(g => ({ hour: Number(g.key), orders: g.orders, sales: g.sales })),
+        by_type: group(o => o.order_type).sort((a, b) => b.orders - a.orders), by_payment: group(o => o.payment_method).sort((a, b) => b.orders - a.orders) };
     }
     case 'ticket_list': return { tickets: tickets.filter(t => t.status !== 'resolved') };
     case 'detail': {

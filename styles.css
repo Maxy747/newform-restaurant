@@ -1670,6 +1670,8 @@ html { scroll-behavior: smooth; }
 .track-help { font-size: .82rem; color: var(--text-muted); }
 .track-help a { color: var(--gold-primary); font-weight: 700; }
 .admin-link-btn { padding: 8px 16px; text-decoration: none; }
+.delivery-off-note { margin: 0 0 12px; padding: 10px 12px; border-radius: 12px; border: 1px solid #f59e0b55; background: #f59e0b14; color: var(--text-main); font-size: .85rem; font-weight: 600; }
+.delivery-off-note[hidden] { display: none; }
 .admin-link-btn[hidden] { display: none; }
 #orderSupport { margin-top: 24px; }
 #orderSupport form { display: grid; gap: 10px; margin: 12px 0; }

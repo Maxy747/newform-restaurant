@@ -18,7 +18,7 @@ const $ = id => document.getElementById(id);
 const api = createOmsApi(supabase, isSupabaseConfigured);
 const state = { role: null, config: {}, section: 'orders', ordersView: 'board', historyPage: 0, detailId: null, reportDays: 1 };
 const seenOrders = new Set();
-let primed = false, arrived = new Set(), lastBoardHTML = '', channel = null, pollTimer = null, refreshTimer = null, boardVersion = 0, detailVersion = 0, authVersion = 0;
+let primed = false, arrived = new Set(), boardOrders = [], lastBoardHTML = '', channel = null, pollTimer = null, refreshTimer = null, boardVersion = 0, detailVersion = 0, authVersion = 0;
 const baseTitle = document.title;
 
 // ---------- small UI helpers ----------
@@ -59,15 +59,21 @@ $('themeBtn').onclick = () => {
 
 // ---------- alerts: sound, title, notifications ----------
 let audio = null;
-let soundOn = (() => { try { return localStorage.getItem(SOUND_KEY) === 'on'; } catch { return false; } })();
+// On by default; only an explicit "off" from this device disables it.
+let soundOn = (() => { try { return localStorage.getItem(SOUND_KEY) !== 'off'; } catch { return true; } })();
 function syncSoundButton() {
   $('soundBtn').setAttribute('aria-pressed', String(soundOn));
   $('soundBtn').setAttribute('aria-label', soundOn ? 'Turn off new-order sound' : 'Turn on new-order sound');
   $('soundBtn').querySelector('i').className = soundOn ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark';
 }
+function syncSoundPrompt() {
+  // Browsers block audio until the page is clicked once; say so instead of failing silently.
+  $('soundUnlock').hidden = !soundOn || audio?.state === 'running' || !state.role;
+}
 function unlockAudio() {
   if (!audio) { try { audio = new AudioContext(); } catch { return; } }
-  if (audio.state === 'suspended') audio.resume().catch(() => {});
+  if (audio.state === 'suspended') audio.resume().then(syncSoundPrompt, () => {});
+  syncSoundPrompt();
 }
 function chime() {
   if (!soundOn || !audio || audio.state !== 'running') return;
@@ -88,9 +94,10 @@ $('soundBtn').onclick = () => {
   soundOn = !soundOn;
   try { localStorage.setItem(SOUND_KEY, soundOn ? 'on' : 'off'); } catch { /* storage blocked */ }
   if (soundOn) { unlockAudio(); setTimeout(chime, 50); }
-  syncSoundButton();
+  syncSoundButton(); syncSoundPrompt();
   toast(soundOn ? 'New-order sound on' : 'New-order sound off');
 };
+$('soundUnlock').onclick = () => { unlockAudio(); setTimeout(chime, 80); };
 syncSoundButton();
 
 function syncNotifyButton() {
@@ -106,6 +113,7 @@ syncNotifyButton();
 function announce(orders) {
   if (!orders.length) return;
   chime();
+  if (soundOn && audio?.state !== 'running') $('soundUnlock').classList.add('is-urgent');
   navigator.vibrate?.([200, 100, 200]);
   const first = orders[0];
   const summary = orders.length > 1 ? `${orders.length} new orders` : `New ${typeName(first.order_type).toLowerCase()} order ${shortId(first.id)}`;
@@ -158,7 +166,9 @@ async function evaluateSession(session) {
   // Kitchen and delivery only work the live board.
   document.querySelector('[data-orders-view="history"]').hidden = !isManager();
   $('codSwitch').setAttribute('aria-checked', String(Boolean(config.codEnabled)));
+  $('deliverySwitch').setAttribute('aria-checked', String(config.deliveryEnabled !== false));
   primed = false; seenOrders.clear();
+  syncSoundPrompt();
   startLive(session.user.id);
   route();
 }
@@ -250,15 +260,16 @@ function actionButtons(order, compact = false) {
   return nextStatuses(order, state.role).map(status => {
     const cancel = status === 'cancelled';
     if (compact && cancel) return '';
-    return `<button type="button" class="adm-btn ${cancel ? 'adm-btn-danger' : 'adm-btn-primary'}" data-order="${e(order.id)}" data-status="${e(status)}">${cancel ? 'Cancel order' : 'Mark ' + e(label(status).toLowerCase())}</button>`;
+    return `<button type="button" class="adm-btn ${cancel ? 'adm-btn-danger' : 'adm-step-btn'}" data-order="${e(order.id)}" data-status="${e(status)}">${cancel ? 'Cancel order' : 'Mark ' + e(label(status).toLowerCase())}</button>`;
   }).join('');
 }
 
 function orderCard(order) {
+  order = withPending(order);
   const waiting = minutesSince(order.created_at);
   const late = ['new', 'confirmed', 'preparing'].includes(order.order_status) && waiting >= 20;
   const payment = order.payment_status === 'paid' ? '<span class="adm-chip adm-chip-ok">Paid</span>' : `<span class="adm-chip">${e(paymentName(order.payment_method))}</span>`;
-  return `<article class="adm-order${late ? ' is-late' : ''}${order.order_status === 'new' ? ' is-new' : ''}${arrived.has(order.id) ? ' just-arrived' : ''}" data-open="${e(order.id)}" tabindex="0" aria-label="Order ${e(shortId(order.id))}">
+  return `<article class="adm-order${late ? ' is-late' : ''}${order.order_status === 'new' ? ' is-new' : ''}${arrived.has(order.id) ? ' just-arrived' : ''}${pending.has(order.id) ? ' is-pending' : ''}" data-open="${e(order.id)}" tabindex="0" aria-label="Order ${e(shortId(order.id))}">
     <header><strong>${e(shortId(order.id))}</strong><span class="adm-age" title="${e(time(order.created_at))}"><i class="fa-regular fa-clock"></i> ${e(ageLabel(order.created_at))}</span></header>
     <div class="adm-order-meta"><span><i class="fa-solid ${TYPE_ICON[order.order_type] || 'fa-receipt'}"></i> ${e(typeName(order.order_type))}${order.table_number ? ' · Table ' + e(order.table_number) : ''}</span>${payment}</div>
     ${order.customer_name ? `<p class="adm-order-name">${e(order.customer_name)}</p>` : ''}
@@ -268,6 +279,7 @@ function orderCard(order) {
 }
 
 function finishedRow(order) {
+  order = withPending(order);
   return `<button type="button" class="adm-row" data-open="${e(order.id)}"><strong>${e(shortId(order.id))}</strong><span>${e(order.customer_name || typeName(order.order_type))}</span><span class="adm-badge adm-badge-${e(order.order_status)}">${e(label(order.order_status))}</span><strong>${money(order.total)}</strong></button>`;
 }
 
@@ -275,13 +287,18 @@ async function refreshBoard() {
   const version = ++boardVersion;
   const orders = await fetchBoardOrders();
   if (version !== boardVersion) return;
-  const unique = [...new Map(orders.map(order => [order.id, order])).values()];
-  const fresh = findNewOrders(seenOrders, unique, primed);
+  boardOrders = [...new Map(orders.map(order => [order.id, order])).values()];
+  const fresh = findNewOrders(seenOrders, boardOrders, primed);
   announce(fresh);
   // Only genuinely new arrivals get the slide-in animation, once.
   arrived = new Set(fresh.map(order => order.id));
   primed = true;
-  const { columns, finished } = groupOrders(unique);
+  renderBoard();
+  if (isManager() && state.section === 'orders' && state.ordersView === 'board') await refreshTodayStats(version);
+}
+
+function renderBoard() {
+  const { columns, finished } = groupOrders(boardOrders.map(withPending));
   setNewCount(columns.new.filter(order => order.order_status === 'new').length);
   if (state.section !== 'orders' || state.ordersView !== 'board') return;
   // Delivery staff only act on ready / out-for-delivery orders; kitchen never sees out-for-delivery.
@@ -296,14 +313,13 @@ async function refreshBoard() {
   $('finishedCount').textContent = `(${finished.length})`;
   $('finishedList').innerHTML = finished.map(finishedRow).join('') || '<p class="adm-empty">No finished orders yet today.</p>';
   $('finishedWrap').hidden = !isManager() && state.role !== 'delivery';
-  if (isManager()) await refreshTodayStats(version);
 }
 
 async function refreshTodayStats(version) {
   const range = indiaDayRange(todayIST());
   const stats = await api('analytics', { start: range.start, end: range.end });
   if (version !== boardVersion) return;
-  $('todayStats').innerHTML = [['Orders today', stats.orders], ['Received', money(stats.revenue)], ['Completed', stats.completed], ['Cancelled', stats.cancelled]]
+  $('todayStats').innerHTML = [['Orders today', stats.orders], ...(stats.sales != null ? [['Sales', money(stats.sales)]] : []), ['Received', money(stats.revenue)], ['Completed', stats.completed], ['Cancelled', stats.cancelled]]
     .map(([title, value]) => `<div class="adm-stat"><small>${e(title)}</small><strong>${e(value)}</strong></div>`).join('');
 }
 
@@ -352,8 +368,9 @@ async function openOrder(id) {
 
 async function refreshDetail() {
   const id = state.detailId, version = ++detailVersion;
-  const { order: o, events, tickets } = await api('detail', { id });
+  const { order: fetched, events, tickets } = await api('detail', { id });
   if (version !== detailVersion || id !== state.detailId) return;
+  const o = withPending(fetched);
   const body = $('orderDialogBody');
   // Keep a half-written ticket reply intact during live refreshes.
   if (body.contains(document.activeElement) && document.activeElement.matches('textarea, input, select')) return;
@@ -381,13 +398,8 @@ async function refreshDetail() {
     </section>
     <details class="adm-detail-block"><summary>Activity (${events.length})</summary><ul class="adm-events">${events.map(event => `<li><small>${e(time(event.created_at))}</small> ${e(label(event.detail))}</li>`).join('')}</ul></details>
     <div id="orderTickets"></div>`;
-  body.querySelectorAll('[data-status]').forEach(button => button.onclick = run(() => changeStatus(button.dataset.order, button.dataset.status)));
-  if ($('cashBtn')) $('cashBtn').onclick = run(async () => {
-    if (!confirm(`Confirm you received ${money(o.total)} for ${shortId(o.id)}?`)) return;
-    await api('cash', { id: o.id });
-    toast('Payment marked as received', 'success');
-    await refreshDetail(); queueRefresh(0);
-  });
+  body.querySelectorAll('[data-status]').forEach(button => button.onclick = run(() => requestStatus(o, button.dataset.status)));
+  if ($('cashBtn')) $('cashBtn').onclick = run(() => requestCash(o));
   if (isManager()) renderTickets(o, tickets);
 }
 
@@ -413,12 +425,116 @@ function renderTickets(order, tickets) {
   });
 }
 
-async function changeStatus(id, status) {
-  if (status === 'cancelled' && !confirm(`Cancel order ${shortId(id)}? The customer will see it as cancelled.`)) return;
-  await api('transition', { id, status });
-  toast(`${shortId(id)} → ${label(status)}`, 'success');
-  queueRefresh(0);
-  if (state.detailId === id && $('orderDialog').open) await refreshDetail();
+// ---------- undoable actions ----------
+// Changes wait a few seconds before reaching the server so any of them can be undone.
+const UNDO_MS = 6000;
+const pending = new Map(); // order id -> { status, cash, timer, note }
+
+function withPending(order) {
+  const change = pending.get(order.id);
+  if (!change) return order;
+  return { ...order, ...(change.status ? { order_status: change.status } : {}), ...(change.cash ? { payment_status: 'paid' } : {}) };
+}
+
+function findOrder(id) {
+  return boardOrders.find(order => order.id === id);
+}
+
+function rerender() {
+  renderBoard();
+  if (state.detailId && $('orderDialog').open) refreshDetail().catch(error => toast(error.message, 'error'));
+}
+
+function undoToast(message, onUndo) {
+  const item = document.createElement('div');
+  item.className = 'adm-toast adm-toast-undo';
+  item.setAttribute('role', 'status');
+  item.style.setProperty('--undo-ms', UNDO_MS + 'ms');
+  item.innerHTML = `<span>${e(message)}</span><button type="button" class="adm-undo-btn"><i class="fa-solid fa-rotate-left"></i> Undo</button><i class="adm-undo-bar" aria-hidden="true"></i>`;
+  item.querySelector('button').onclick = () => { item.remove(); onUndo(); };
+  $('toasts').append(item);
+  return item;
+}
+
+async function commit(id) {
+  const change = pending.get(id);
+  if (!change || change.sending) return;
+  change.sending = true;
+  clearTimeout(change.timer);
+  change.note?.remove();
+  try {
+    if (change.cash) await api('cash', { id });
+    if (change.status) await api('transition', { id, status: change.status });
+  } catch (error) {
+    toast(`${shortId(id)}: ${error.message}`, 'error');
+  } finally {
+    pending.delete(id);
+    queueRefresh(0);
+  }
+}
+
+async function queueChange(order, change, message) {
+  // A second change to the same order sends the first one now, so steps stay in order.
+  if (pending.has(order.id)) await commit(order.id);
+  const entry = { ...change };
+  entry.note = undoToast(message, () => {
+    if (entry.sending) return;
+    clearTimeout(entry.timer);
+    pending.delete(order.id);
+    toast(`Undone: ${message}`);
+    rerender();
+  });
+  entry.timer = setTimeout(() => commit(order.id), UNDO_MS);
+  pending.set(order.id, entry);
+  rerender();
+}
+
+const flushPending = () => Promise.all([...pending.keys()].map(commit));
+document.addEventListener('visibilitychange', () => { if (document.hidden && pending.size) flushPending(); });
+window.addEventListener('beforeunload', event => {
+  if (!pending.size) return;
+  flushPending();
+  event.preventDefault();
+});
+
+// Small in-page confirm with explicit choices (replaces the browser's confirm()).
+function ask({ title, message, choices }) {
+  const dialog = $('askDialog');
+  $('askTitle').textContent = title;
+  $('askMessage').textContent = message;
+  $('askChoices').innerHTML = choices.map((choice, index) => `<button type="button" class="adm-btn ${choice.tone === 'danger' ? 'adm-btn-danger' : choice.tone === 'primary' ? 'adm-btn-primary' : ''}" data-choice="${index}">${e(choice.label)}</button>`).join('');
+  return new Promise(resolve => {
+    let settled = false;
+    const finish = value => { if (settled) return; settled = true; if (dialog.open) dialog.close(); resolve(value); };
+    dialog.addEventListener('close', () => finish(null), { once: true });
+    $('askChoices').querySelectorAll('[data-choice]').forEach(button => button.onclick = () => finish(choices[Number(button.dataset.choice)].value));
+    dialog.showModal();
+    $('askChoices').querySelector('.adm-btn-primary, .adm-btn-danger, .adm-btn')?.focus();
+  });
+}
+
+const unpaidCash = order => order.payment_status !== 'paid' && order.payment_method !== 'razorpay' && state.role !== 'kitchen';
+
+async function requestStatus(order, status) {
+  order = withPending(order);
+  if (status === 'cancelled') {
+    const choice = await ask({ title: `Cancel ${shortId(order.id)}?`, message: 'The customer will see this order as cancelled.', choices: [{ label: 'Cancel order', value: 'yes', tone: 'danger' }, { label: 'Keep order', value: null }] });
+    if (!choice) return;
+    return queueChange(order, { status }, `${shortId(order.id)} cancelled`);
+  }
+  if (status === 'completed' && unpaidCash(order)) {
+    // Double-check the money before closing an unpaid cash / COD / WhatsApp order.
+    const choice = await ask({ title: `Did you receive ${money(order.total)}?`, message: `${shortId(order.id)} · ${paymentName(order.payment_method)} · not marked paid yet.`,
+      choices: [{ label: `Yes, ${money(order.total)} received`, value: 'paid', tone: 'primary' }, { label: 'Not yet, complete anyway', value: 'unpaid' }, { label: 'Go back', value: null }] });
+    if (!choice) return;
+    return queueChange(order, { status, cash: choice === 'paid' }, `${shortId(order.id)} completed · ${choice === 'paid' ? 'paid' : 'unpaid'}`);
+  }
+  return queueChange(order, { status }, `${shortId(order.id)} → ${label(status)}`);
+}
+
+async function requestCash(order) {
+  const choice = await ask({ title: `Did you receive ${money(order.total)}?`, message: `${shortId(order.id)} will be marked as paid.`, choices: [{ label: 'Yes, received', value: 'paid', tone: 'primary' }, { label: 'Go back', value: null }] });
+  if (choice) await queueChange(withPending(order), { cash: true }, `${shortId(order.id)} marked paid`);
 }
 
 $('orderDialog').addEventListener('close', () => { state.detailId = null; detailVersion++; });
@@ -426,7 +542,12 @@ $('orderDialog').addEventListener('close', () => { state.detailId = null; detail
 // One delegated handler for every order card/row in the page.
 document.addEventListener('click', event => {
   const action = event.target.closest('[data-status]');
-  if (action && !action.closest('#orderDialog')) { event.stopPropagation(); run(() => changeStatus(action.dataset.order, action.dataset.status))({ currentTarget: action }); return; }
+  if (action && !action.closest('#orderDialog')) {
+    event.stopPropagation();
+    const order = findOrder(action.dataset.order);
+    if (order) run(() => requestStatus(order, action.dataset.status))({ currentTarget: action });
+    return;
+  }
   const opener = event.target.closest('[data-open]');
   if (opener) openOrder(opener.dataset.open).catch(error => toast(error.message, 'error'));
 });
@@ -444,22 +565,153 @@ async function refreshTickets() {
 }
 
 // ---------- reports ----------
+const rupees = value => '₹' + Math.round(Number(value) || 0).toLocaleString('en-IN');
+const compactRupees = value => { const n = Number(value) || 0; return n >= 100000 ? `₹${(n / 100000).toFixed(n >= 1000000 ? 0 : 1)}L` : n >= 1000 ? `₹${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : `₹${Math.round(n)}`; };
+const hourName = hour => `${hour % 12 || 12}${hour < 12 ? 'am' : 'pm'}`;
+
+// Rounded "nice" axis maximum so gridlines land on clean numbers.
+function niceMax(value) {
+  if (value <= 0) return 1;
+  const magnitude = 10 ** Math.floor(Math.log10(value));
+  return [1, 2, 2.5, 5, 10].map(step => step * magnitude).find(step => step >= value);
+}
+
+// Single-series column chart: thin bars with rounded tops, recessive grid, peak labelled, hover tooltip per bar.
+function columnChart({ points, format, axisFormat, title, width = 720 }) {
+  width = Math.max(280, Math.round(width));
+  const height = width < 520 ? 200 : 240, left = 48, right = 8, top = 22, bottom = 26;
+  const max = niceMax(Math.max(0, ...points.map(point => point.value)));
+  const plotW = width - left - right, plotH = height - top - bottom;
+  const slot = plotW / Math.max(points.length, 1), barW = Math.max(3, Math.min(28, slot * 0.62));
+  const y = value => top + plotH - (value / max) * plotH;
+  const peak = points.reduce((best, point, index) => point.value > (points[best]?.value ?? -1) ? index : best, 0);
+  const every = Math.ceil(points.length / 12);
+  const grid = [0, 0.5, 1].map(f => `<line x1="${left}" x2="${width - right}" y1="${y(max * f)}" y2="${y(max * f)}" class="adm-grid"/><text x="${left - 6}" y="${y(max * f) + 4}" class="adm-axis" text-anchor="end">${e(axisFormat(max * f))}</text>`).join('');
+  const bars = points.map((point, index) => {
+    const x = left + index * slot + (slot - barW) / 2, h = Math.max(point.value ? 2 : 0, top + plotH - y(point.value));
+    const r = Math.min(4, barW / 2, h);
+    // Path rounds only the data end (top) and stays square on the baseline.
+    const path = h ? `M${x},${top + plotH} V${top + plotH - h + r} Q${x},${top + plotH - h} ${x + r},${top + plotH - h} H${x + barW - r} Q${x + barW},${top + plotH - h} ${x + barW},${top + plotH - h + r} V${top + plotH} Z` : '';
+    return `<g class="adm-bar-g" data-tip="${e(point.tip ?? `${point.label}: ${format(point.value)}`)}">
+      <rect x="${left + index * slot}" y="${top}" width="${slot}" height="${plotH}" class="adm-hit"/>
+      ${path ? `<path d="${path}" class="adm-col"/>` : ''}
+      ${index === peak && point.value ? `<text x="${x + barW / 2}" y="${top + plotH - h - 6}" class="adm-peak" text-anchor="middle">${e(format(point.value))}</text>` : ''}
+      ${index % every === 0 ? `<text x="${x + barW / 2}" y="${height - 8}" class="adm-axis" text-anchor="middle">${e(point.short ?? point.label)}</text>` : ''}
+    </g>`;
+  }).join('');
+  return `<svg viewBox="0 0 ${width} ${height}" class="adm-chart" role="img" aria-label="${e(title)}">${grid}<line x1="${left}" x2="${width - right}" y1="${top + plotH}" y2="${top + plotH}" class="adm-baseline"/>${bars}</svg>`;
+}
+
+// Horizontal bars with direct labels: used for categories (order type, payment, dishes).
+function barList(rows, format) {
+  const max = Math.max(1, ...rows.map(row => row.value));
+  return `<ul class="adm-bars">${rows.map(row => `<li data-tip="${e(row.tip ?? `${row.label}: ${format(row.value)}`)}"><span>${e(row.label)}</span><span class="adm-bar"><i style="width:${Math.max(2, (row.value / max) * 100)}%"></i></span><strong>${e(format(row.value))}</strong></li>`).join('')}</ul>`;
+}
+
+function tableView(headers, rows) {
+  return `<details class="adm-table-view"><summary>Show as table</summary><table><thead><tr>${headers.map(h => `<th>${e(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr>${row.map(cell => `<td>${e(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table></details>`;
+}
+
+function dayList(startISO, days) {
+  // India-time calendar days in the range, so days with no orders still show as zero.
+  const first = new Date(Date.parse(startISO) + 5.5 * 3600000);
+  return Array.from({ length: days }, (_, index) => new Date(first.getTime() + index * 86400000).toISOString().slice(0, 10));
+}
+
 document.querySelectorAll('#reportRange [data-range]').forEach(button => button.onclick = () => {
   state.reportDays = Number(button.dataset.range);
   document.querySelectorAll('#reportRange [data-range]').forEach(other => other.setAttribute('aria-selected', String(other === button)));
   refreshReports().catch(error => toast(error.message, 'error'));
 });
+
 async function refreshReports() {
   if (!isManager()) return;
   const end = indiaDayRange(todayIST()).end;
   const start = new Date(Date.parse(end) - state.reportDays * 86400000).toISOString();
-  const stats = await api('analytics', { start, end });
-  const max = Math.max(1, ...stats.top_items.map(item => item.quantity));
-  $('reportBody').innerHTML = `<div class="adm-stat-row">${[['Orders', stats.orders], ['Received', money(stats.revenue)], ['Completed', stats.completed], ['Cancelled', stats.cancelled], ['In progress', Number(stats.new) + Number(stats.preparing) + Number(stats.ready)]]
-      .map(([title, value]) => `<div class="adm-stat"><small>${e(title)}</small><strong>${e(value)}</strong></div>`).join('')}</div>
-    <div class="adm-card"><h3>Top dishes</h3>${stats.top_items.length ? `<ul class="adm-bars">${stats.top_items.map(item => `<li><span>${e(item.name)}</span><span class="adm-bar"><i style="width:${(item.quantity / max) * 100}%"></i></span><strong>${e(item.quantity)}</strong></li>`).join('')}</ul>` : '<p class="adm-empty">No orders in this period.</p>'}</div>
-    <p class="adm-muted">"Received" counts orders marked paid. Days follow India time.</p>`;
+  lastReport = { stats: await api('analytics', { start, end }), start };
+  renderReports();
 }
+
+let lastReport = null, resizeTimer = null;
+// Charts are drawn at the card's real pixel width so text stays crisp and heights stay fixed.
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => { if (state.section === 'reports' && lastReport) renderReports(); }, 150);
+});
+
+function renderReports() {
+  const { stats, start } = lastReport;
+  const today = state.reportDays === 1;
+  const bodyWidth = $('reportBody').clientWidth, twoColumns = bodyWidth >= 868;
+  $('reportBody').style.gridTemplateColumns = twoColumns ? 'repeat(2, minmax(0, 1fr))' : 'minmax(0, 1fr)';
+  const full = bodyWidth - 34, half = twoColumns ? (bodyWidth - 14) / 2 - 34 : full;
+  const kpis = [
+    ['Sales', rupees(stats.sales ?? stats.revenue), 'All orders except cancelled'],
+    ['Received', rupees(stats.revenue), 'Marked paid'],
+    ['Orders', stats.orders, `${stats.completed} completed`],
+    ['Average order', rupees(stats.avg_order ?? 0), 'Per non-cancelled order'],
+    ['Cancelled', stats.cancelled, stats.orders ? `${Math.round((stats.cancelled / stats.orders) * 100)}% of orders` : '—'],
+  ];
+  const cards = `<div class="adm-kpis">${kpis.map(([title, value, note]) => `<div class="adm-kpi"><small>${e(title)}</small><strong>${e(value)}</strong><span>${e(note)}</span></div>`).join('')}</div>`;
+  if (!stats.daily) {
+    $('reportBody').innerHTML = cards + '<p class="adm-muted">Charts appear once the latest server update is installed.</p>';
+    return;
+  }
+  const hourly = new Map(stats.hourly.map(row => [row.hour, row]));
+  const hours = Array.from({ length: 24 }, (_, hour) => ({ hour, orders: Number(hourly.get(hour)?.orders || 0), sales: Number(hourly.get(hour)?.sales || 0) }));
+  const daily = new Map(stats.daily.map(row => [row.day, row]));
+  const days = dayList(start, state.reportDays).map(day => ({ day, orders: Number(daily.get(day)?.orders || 0), sales: Number(daily.get(day)?.sales || 0) }));
+  const dayLabel = day => new Date(day + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  const salesPoints = today
+    ? hours.map(h => ({ label: hourName(h.hour), value: h.sales, tip: `${hourName(h.hour)} · ${rupees(h.sales)} · ${h.orders} orders` }))
+    : days.map(d => ({ label: dayLabel(d.day), short: new Date(d.day + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric' }), value: d.sales, tip: `${dayLabel(d.day)} · ${rupees(d.sales)} · ${d.orders} orders` }));
+  const busiest = hours.reduce((best, h) => h.orders > best.orders ? h : best, hours[0]);
+  const typeNames = { delivery: 'Delivery', takeaway: 'Takeaway', dine_in: 'Dine in' };
+  const payNames = { cod: 'Cash on delivery', cash: 'Pay at counter', whatsapp: 'WhatsApp', razorpay: 'Online' };
+  $('reportBody').innerHTML = `${cards}
+    <section class="adm-card adm-chart-card adm-chart-wide">
+      <header><h3>${today ? 'Sales by hour today' : `Sales per day · last ${state.reportDays} days`}</h3><span class="adm-muted">Excludes cancelled orders</span></header>
+      ${columnChart({ points: salesPoints, format: rupees, axisFormat: compactRupees, title: today ? 'Sales by hour' : 'Sales per day', width: full })}
+      ${tableView([today ? 'Hour' : 'Day', 'Orders', 'Sales'], today ? hours.filter(h => h.orders).map(h => [hourName(h.hour), h.orders, rupees(h.sales)]) : days.map(d => [dayLabel(d.day), d.orders, rupees(d.sales)]))}
+    </section>
+    <section class="adm-card adm-chart-card">
+      <header><h3>Busiest hours</h3><span class="adm-muted">${busiest.orders ? `Peak ${hourName(busiest.hour)} · ${busiest.orders} orders` : 'No orders yet'}</span></header>
+      ${columnChart({ points: hours.map(h => ({ label: hourName(h.hour), value: h.orders, tip: `${hourName(h.hour)} · ${h.orders} orders` })), format: value => `${value}`, axisFormat: value => `${Math.round(value)}`, title: 'Orders by hour of day', width: half })}
+    </section>
+    <section class="adm-card adm-chart-card">
+      <header><h3>Top dishes</h3><span class="adm-muted">Portions sold</span></header>
+      ${stats.top_items.length ? barList(stats.top_items.map(item => ({ label: item.name, value: Number(item.quantity) })), value => `${value}`) : '<p class="adm-empty">No orders in this period.</p>'}
+    </section>
+    <section class="adm-card adm-chart-card">
+      <header><h3>Order types</h3><span class="adm-muted">Orders · sales</span></header>
+      ${stats.by_type.length ? barList(stats.by_type.map(row => ({ label: typeNames[row.key] || row.key, value: Number(row.orders), tip: `${typeNames[row.key] || row.key}: ${row.orders} orders · ${rupees(row.sales)}` })), value => `${value}`) : '<p class="adm-empty">No orders in this period.</p>'}
+    </section>
+    <section class="adm-card adm-chart-card">
+      <header><h3>Payment methods</h3><span class="adm-muted">Orders · sales</span></header>
+      ${stats.by_payment.length ? barList(stats.by_payment.map(row => ({ label: payNames[row.key] || row.key, value: Number(row.orders), tip: `${payNames[row.key] || row.key}: ${row.orders} orders · ${rupees(row.sales)}` })), value => `${value}`) : '<p class="adm-empty">No orders in this period.</p>'}
+    </section>
+    <p class="adm-muted adm-chart-wide">Days and hours follow India time. "Received" counts orders marked paid.</p>`;
+}
+
+// One floating tooltip for every chart mark.
+(() => {
+  const tip = document.createElement('div');
+  tip.className = 'adm-tooltip';
+  tip.hidden = true;
+  document.body.append(tip);
+  const body = $('reportBody');
+  body.addEventListener('pointermove', event => {
+    const target = event.target.closest('[data-tip]');
+    body.querySelectorAll('.is-hover').forEach(node => node !== target && node.classList.remove('is-hover'));
+    if (!target) { tip.hidden = true; return; }
+    target.classList.add('is-hover');
+    tip.textContent = target.dataset.tip;
+    tip.hidden = false;
+    const x = Math.min(event.clientX + 14, innerWidth - tip.offsetWidth - 8), y = Math.max(8, event.clientY - tip.offsetHeight - 12);
+    tip.style.transform = `translate(${x}px, ${y}px)`;
+  });
+  body.addEventListener('pointerleave', () => { tip.hidden = true; body.querySelectorAll('.is-hover').forEach(node => node.classList.remove('is-hover')); });
+})();
 
 // ---------- settings ----------
 $('codSwitch').onclick = run(async () => {
@@ -467,6 +719,17 @@ $('codSwitch').onclick = run(async () => {
   const result = await api('set_cod', { enabled });
   $('codSwitch').setAttribute('aria-checked', String(result.codEnabled));
   toast(result.codEnabled ? 'Cash on delivery turned on' : 'Cash on delivery turned off', 'success');
+});
+
+$('deliverySwitch').onclick = run(async () => {
+  const enabled = $('deliverySwitch').getAttribute('aria-checked') !== 'true';
+  if (!enabled) {
+    const choice = await ask({ title: 'Pause home delivery?', message: 'Customers will only be able to order takeaway or dine in until you turn it back on.', choices: [{ label: 'Pause delivery', value: 'yes', tone: 'danger' }, { label: 'Keep delivery on', value: null }] });
+    if (!choice) return;
+  }
+  const result = await api('set_delivery', { enabled });
+  $('deliverySwitch').setAttribute('aria-checked', String(result.deliveryEnabled));
+  toast(result.deliveryEnabled ? 'Home delivery is on' : 'Home delivery paused', 'success');
 });
 
 // ---------- dialogs ----------

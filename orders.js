@@ -23,6 +23,11 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   try{await fn(event);}catch(error){toast(error.message);}finally{if(button)button.disabled=false;}
  };
  function updateCheckout() {
+  // Admin can pause home delivery; the server rejects delivery orders while it is off.
+  const deliveryOff=config.deliveryEnabled===false,deliveryOption=$('orderType').querySelector('option[value="delivery"]');
+  deliveryOption.disabled=deliveryOff;deliveryOption.textContent=deliveryOff?'Delivery (paused)':'Delivery';
+  if(deliveryOff&&$('orderType').value==='delivery'){$('orderType').value='takeaway';quoteVersion++;}
+  $('deliveryUnavailable').hidden=!deliveryOff;
   const kind=$('orderType').value;
   $('deliveryLocation').hidden=kind!=='delivery';
   if(deliveryQuote && (Date.parse(deliveryQuote.expires_at)<=Date.now() || deliveryQuote.distance_m>6000))deliveryQuote=null;
@@ -90,7 +95,7 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
  async function refreshVisible() {
   if(document.hidden)return;
   if(active('cartDrawer')) {
-   try {const next=await api('config');config={...config,codEnabled:next.codEnabled};updateCheckout();}catch { /* Server rechecks COD at checkout. */ }
+   try {const next=await api('config');config={...config,codEnabled:next.codEnabled,deliveryEnabled:next.deliveryEnabled};updateCheckout();}catch { /* Server rechecks COD at checkout. */ }
   }
   if(active('trackingModal')&&detailId)await refreshDetail().catch(()=>{});
   if(active('accountModal')&&getSession())await refreshHistory().catch(()=>{});

@@ -24,9 +24,12 @@ Deno.serve(async req=>{
   const identity=userId||req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()||'anonymous';
   const bucket=await sha256(identity+':'+(body.action==='create'?'checkout':'api'));
   if(!await rpc('oms_rate_limit',{p_bucket:bucket,p_limit:body.action==='create'?10:120})) return json({error:'Too many requests. Please wait a minute.'},429);
+  // select('*') keeps this working before and after the delivery_enabled column exists.
+  const settings=async()=>checked(await db.from('checkout_settings').select('*').eq('id',true).single());
+  const deliveryOn=(row:any)=>row.delivery_enabled!==false;
   if(body.action==='config') {
-   const settings=checked(await db.from('checkout_settings').select('cod_enabled').eq('id',true).single());
-   return json({role,codEnabled:settings.cod_enabled,payments:paymentConfigured(),deliveryRouting:Boolean(Deno.env.get('ORS_API_KEY')),testMode:!(Deno.env.get('RAZORPAY_KEY_ID')||'').startsWith('rzp_live_')});
+   const current=await settings();
+   return json({role,codEnabled:current.cod_enabled,deliveryEnabled:deliveryOn(current),payments:paymentConfigured(),deliveryRouting:Boolean(Deno.env.get('ORS_API_KEY')),testMode:!(Deno.env.get('RAZORPAY_KEY_ID')||'').startsWith('rzp_live_')});
   }
   if(body.action==='set_cod') {
    if(role!=='admin') return json({error:'Admin access required'},403);
@@ -34,6 +37,13 @@ Deno.serve(async req=>{
    const settings=checked(await db.from('checkout_settings').update({cod_enabled:body.enabled}).eq('id',true).select('cod_enabled').single());
    return json({codEnabled:settings.cod_enabled});
   }
+  if(body.action==='set_delivery') {
+   if(role!=='admin') return json({error:'Admin access required'},403);
+   if(typeof body.enabled!=='boolean') throw new Error('Invalid delivery setting');
+   const updated=checked(await db.from('checkout_settings').update({delivery_enabled:body.enabled}).eq('id',true).select('delivery_enabled').single());
+   return json({deliveryEnabled:updated.delivery_enabled});
+  }
+  if(['delivery_address','delivery_quote'].includes(body.action)&&!deliveryOn(await settings())) throw new Error('Home delivery is currently unavailable. Please choose takeaway or dine in.');
   if(body.action==='delivery_address') {
    if(!await rpc('oms_rate_limit',{p_bucket:await sha256(identity+':geocoding'),p_limit:8})) throw new Error('Please wait a minute before searching again.');
    return json({matches:await addressLocation(body.address,Deno.env.get('ORS_API_KEY'))});

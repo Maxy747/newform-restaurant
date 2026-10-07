@@ -17,6 +17,7 @@
       <span>NEWFORM <small>Admin</small></span>
     </a>
     <div class="adm-top-actions" id="topActions" hidden>
+      <button type="button" class="adm-btn adm-sound-unlock" id="soundUnlock" title="Browsers need one click before they can play sound" hidden><i class="fa-solid fa-bell"></i><span>Click to enable order sound</span><span class="adm-short">Enable sound</span></button>
       <span class="adm-live" id="liveStatus" title="Live updates"><i></i><span>Live</span></span>
       <button type="button" class="adm-icon-btn" id="soundBtn" aria-pressed="false" title="New-order sound" aria-label="Turn on new-order sound"><i class="fa-solid fa-volume-xmark"></i></button>
       <button type="button" class="adm-icon-btn" id="themeBtn" title="Switch theme" aria-label="Switch theme"><i class="fa-solid fa-circle-half-stroke"></i></button>
@@ -86,6 +87,7 @@
           <button type="button" class="adm-btn adm-btn-primary" id="addDishBtn"><i class="fa-solid fa-plus"></i> Add dish</button>
         </div>
       </div>
+      <div class="adm-menu-top" id="menuTop"></div>
       <div class="adm-filters adm-menu-filters">
         <label class="adm-grow">Search<input id="menuSearch" placeholder="Dish name"></label>
         <label>Category<select id="menuCategoryFilter"><option value="">All categories</option></select></label>
@@ -107,6 +109,7 @@
           <button type="button" data-range="1" aria-selected="true">Today</button>
           <button type="button" data-range="7" aria-selected="false">7 days</button>
           <button type="button" data-range="30" aria-selected="false">30 days</button>
+          <button type="button" data-range="90" aria-selected="false">90 days</button>
         </div>
       </div>
       <div id="reportBody"></div>
@@ -123,8 +126,15 @@
       </div>
       <div class="adm-card adm-setting">
         <div>
+          <h3>Home delivery</h3>
+          <p class="adm-muted" id="deliveryHelp">Turn off when no delivery staff are available. Customers can still order takeaway and dine in; the server refuses new delivery orders while this is off.</p>
+        </div>
+        <button type="button" class="adm-switch" id="deliverySwitch" role="switch" aria-checked="true" aria-label="Home delivery"><span></span></button>
+      </div>
+      <div class="adm-card adm-setting">
+        <div>
           <h3>New-order alerts on this device</h3>
-          <p class="adm-muted" id="notifyHelp">Sound plays while this page is open. Desktop notifications also show when this tab is in the background.</p>
+          <p class="adm-muted" id="notifyHelp">The order sound is on by default (speaker icon at the top). Desktop notifications also show when this tab is in the background.</p>
         </div>
         <button type="button" class="adm-btn" id="notifyBtn">Enable notifications</button>
       </div>
@@ -196,6 +206,12 @@
       <p class="adm-muted">Removing a category hides it from customers; its dishes still show under All. You can restore it anytime.</p>
       <div id="categoryList" class="adm-list"></div>
     </div>
+  </dialog>
+
+  <dialog id="askDialog" class="adm-ask" aria-labelledby="askTitle">
+    <h2 id="askTitle"></h2>
+    <p id="askMessage" class="adm-muted"></p>
+    <div id="askChoices" class="adm-ask-choices"></div>
   </dialog>
 
   <div class="adm-toasts" id="toasts" aria-live="polite"></div>

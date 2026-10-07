@@ -44,7 +44,22 @@ export function createMenuAdmin({ supabase, toast, run, isAdmin }) {
     return prices ? `Q ${rupees(prices.quarter)} · H ${rupees(prices.half)} · F ${rupees(prices.full)}` : rupees(item.price);
   }
 
+  // Summary cards above the list; out-of-stock dishes can be restocked straight from here.
+  function renderTop() {
+    const out = items.filter(item => item.available === false);
+    const stock = $('menuStockFilter').value;
+    const tiles = [['Dishes', items.length, ''], ['In stock', items.length - out.length, 'in'], ['Out of stock', out.length, 'out'], ['Categories', categories.filter(row => !row.archived).length, null]];
+    $('menuTop').innerHTML = `<div class="adm-stat-row">${tiles.map(([title, value, filter]) => filter === null
+        ? `<div class="adm-stat"><small>${e(title)}</small><strong>${e(value)}</strong></div>`
+        : `<button type="button" class="adm-stat adm-stat-btn${filter === 'out' && value ? ' is-alert' : ''}" data-stock-filter="${filter}" aria-pressed="${stock === filter}"><small>${e(title)}</small><strong>${e(value)}</strong></button>`).join('')}</div>
+      <div class="adm-card adm-out-card${out.length ? '' : ' is-clear'}">
+        <h3><i class="fa-solid ${out.length ? 'fa-circle-exclamation' : 'fa-circle-check'}"></i> ${out.length ? `Out of stock now (${out.length})` : 'Everything is in stock'}</h3>
+        ${out.length ? `<div class="adm-out-list">${out.map(item => `<span class="adm-out-chip">${e(item.name)}<button type="button" class="adm-btn" data-restock="${e(item.id)}"><i class="fa-solid fa-rotate"></i> Restock</button></span>`).join('')}</div>` : ''}
+      </div>`;
+  }
+
   function render() {
+    renderTop();
     const query = $('menuSearch').value.trim().toLowerCase();
     const category = $('menuCategoryFilter').value, stock = $('menuStockFilter').value;
     const visible = items.filter(item => (!query || item.name.toLowerCase().includes(query))
@@ -219,6 +234,12 @@ export function createMenuAdmin({ supabase, toast, run, isAdmin }) {
   $('menuCategoryFilter').addEventListener('change', render);
   $('menuStockFilter').addEventListener('change', render);
   $('addDishBtn').onclick = () => openEditor();
+  $('menuTop').addEventListener('click', event => {
+    const restock = event.target.closest('[data-restock]');
+    if (restock) { run(() => toggleStock(restock.dataset.restock, restock))({ currentTarget: restock }); return; }
+    const filter = event.target.closest('[data-stock-filter]');
+    if (filter) { $('menuStockFilter').value = $('menuStockFilter').value === filter.dataset.stockFilter ? '' : filter.dataset.stockFilter; render(); }
+  });
   $('menuList').addEventListener('click', event => {
     const stock = event.target.closest('[data-stock]');
     if (stock) { run(() => toggleStock(stock.dataset.stock, stock))({ currentTarget: stock }); return; }
