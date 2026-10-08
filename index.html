@@ -61,10 +61,10 @@
 
       <!-- Minimalist Navigation Bar -->
       <nav class="nav-links">
-        <a href="#" class="nav-link active">HOME</a>
-        <a href="#menuSection" class="nav-link">MENU</a>
-        <button id="contactBtnNav" class="nav-link" style="background:none; border:none; cursor:pointer;">CONTACT</button>
-        <button id="aboutBtnNav" class="nav-link" style="background:none; border:none; cursor:pointer;">ABOUT</button>
+        <a href="#" class="nav-link active" data-spy="home">HOME</a>
+        <a href="#menuSection" class="nav-link" data-spy="menu">MENU</a>
+        <a href="#aboutSection" class="nav-link" data-spy="about">ABOUT</a>
+        <a href="#contactSection" class="nav-link" data-spy="contact">CONTACT</a>
       </nav>
 
       <div class="nav-actions">
@@ -199,71 +199,88 @@
     </div>
   </main>
 
-  <!-- Minimalist Info Highlights Section -->
-  <section class="info-section">
-    <div class="info-card" role="button" tabindex="0" aria-label="Delivery information">
-      <div class="info-icon"><i class="fa-solid fa-truck-fast"></i></div>
-      <div class="info-text">
-        <h3 style="font-family:var(--font-heading); font-weight:700;">HOME DELIVERY</h3>
-        <p style="font-size:0.85rem; color:var(--text-muted);">Flat ₹100 · within 6 km by road.</p>
+  <!-- About -->
+  <section id="aboutSection" class="site-section about-section" aria-labelledby="aboutTitle">
+    <div class="section-wrap about-grid">
+      <div class="about-copy">
+        <span class="section-kicker">ABOUT NEWFORM</span>
+        <h2 id="aboutTitle" class="section-title">Arabian grills and Kerala classics, made for every table.</h2>
+        <p>NEWFORM is a multi-cuisine restaurant on Main Road, Kalpetta. Come in for Mandhi and charcoal-grilled Alfaham, Kerala-style beef and seafood, Chinese favourites, and fresh juices, shakes and falooda, or order them home.</p>
+        <ul class="about-facts" aria-label="Ways to eat">
+          <li><i class="fa-solid fa-chair" aria-hidden="true"></i> Dine in</li>
+          <li><i class="fa-solid fa-car-side" aria-hidden="true"></i> Takeaway &amp; drive-through</li>
+          <li><i class="fa-solid fa-motorcycle" aria-hidden="true"></i> Home delivery</li>
+          <li><i class="fa-solid fa-indian-rupee-sign" aria-hidden="true"></i> About ₹200–400 per person</li>
+        </ul>
+      </div>
+      <div class="about-highlights">
+        <div class="info-card" role="button" tabindex="0" aria-label="Delivery information">
+          <div class="info-icon"><i class="fa-solid fa-truck-fast"></i></div>
+          <div class="info-text"><h3>HOME DELIVERY</h3><p>Flat ₹100 · within 6 km by road.</p></div>
+        </div>
+        <div class="info-card" role="button" tabindex="0" aria-label="Outdoor catering information">
+          <div class="info-icon"><i class="fa-solid fa-utensils"></i></div>
+          <div class="info-text"><h3>OUTDOOR CATERING</h3><p>Tour packages, events and functions.</p></div>
+        </div>
+        <div class="info-card" role="button" tabindex="0" aria-label="Hotline orders information">
+          <div class="info-icon"><i class="fa-solid fa-phone"></i></div>
+          <div class="info-text"><h3>HOTLINE ORDERS</h3><p>Call 7593 881 112 / 7593 881 113.</p></div>
+        </div>
       </div>
     </div>
+  </section>
 
-    <div class="info-card" role="button" tabindex="0" aria-label="Outdoor catering information">
-      <div class="info-icon"><i class="fa-solid fa-utensils"></i></div>
-      <div class="info-text">
-        <h3 style="font-family:var(--font-heading); font-weight:700;">OUTDOOR CATERING</h3>
-        <p style="font-size:0.85rem; color:var(--text-muted);">Specially undertaken for tour packages, events, and functions.</p>
-      </div>
-    </div>
-
-    <div class="info-card" role="button" tabindex="0" aria-label="Hotline orders information">
-      <div class="info-icon"><i class="fa-solid fa-phone"></i></div>
-      <div class="info-text">
-        <h3 style="font-family:var(--font-heading); font-weight:700;">HOTLINE ORDERS</h3>
-        <p style="font-size:0.85rem; color:var(--text-muted);">Call <strong>7593 881 112</strong> / <strong>7593 881 113</strong> for quick orders.</p>
+  <!-- Contact -->
+  <section id="contactSection" class="site-section contact-section" aria-labelledby="contactTitle">
+    <div class="section-wrap">
+      <span class="section-kicker">CONTACT</span>
+      <h2 id="contactTitle" class="section-title">Visit, call or message us</h2>
+      <div class="contact-grid">
+        <article class="contact-card">
+          <h3><i class="fa-regular fa-clock" aria-hidden="true"></i> Opening hours</h3>
+          <p class="contact-big">Every day · 11 am – 11 pm</p>
+          <p class="open-status" id="openStatus" role="status"></p>
+        </article>
+        <article class="contact-card">
+          <h3><i class="fa-solid fa-location-dot" aria-hidden="true"></i> Find us</h3>
+          <p class="contact-big">Main Rd, Mandayapuram,<br>Kalpetta, Kerala 673121</p>
+          <div class="contact-actions">
+            <a class="contact-btn contact-btn-primary" href="https://www.google.com/maps/dir/?api=1&amp;destination=11.6137653,76.0828979" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-diamond-turn-right" aria-hidden="true"></i> Directions</a>
+            <a class="contact-btn" href="https://www.google.com/maps/search/?api=1&amp;query=Newform+Restaurant+Kalpetta" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-google" aria-hidden="true"></i> Google Maps</a>
+          </div>
+          <p class="contact-note">★ 4.0 on Google · 3,300+ reviews</p>
+        </article>
+        <article class="contact-card">
+          <h3><i class="fa-solid fa-phone" aria-hidden="true"></i> Call to order</h3>
+          <div class="contact-actions contact-actions-stack">
+            <a class="contact-btn contact-btn-primary" href="tel:7593881112"><i class="fa-solid fa-phone" aria-hidden="true"></i> 7593 881 112</a>
+            <a class="contact-btn" href="tel:7593881113"><i class="fa-solid fa-phone" aria-hidden="true"></i> 7593 881 113</a>
+          </div>
+          <p class="contact-note">Delivery within 6 km · flat ₹100</p>
+        </article>
+        <article class="contact-card">
+          <h3><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> WhatsApp &amp; events</h3>
+          <div class="contact-actions contact-actions-stack">
+            <a class="contact-btn contact-btn-whatsapp" href="https://wa.me/917593881112" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Chat on WhatsApp</a>
+            <a class="contact-btn" href="https://wa.me/917593881112?text=Hi%20NEWFORM%2C%20I%27d%20like%20to%20enquire%20about%20catering%20for%20an%20event." target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-champagne-glasses" aria-hidden="true"></i> Catering &amp; events</a>
+          </div>
+          <p class="contact-note">Weddings, functions and tour groups</p>
+        </article>
       </div>
     </div>
   </section>
 
   <!-- Footer with Official NEWFORM Logo Image -->
   <footer>
-    <img src="assets/newform_logo.png" alt="NEWFORM Multi Cuisine Restaurant Logo" style="width:70px; height:70px; margin-bottom:12px; display:inline-block;">
+    <img src="assets/newform_logo.png" alt="NEWFORM Multi Cuisine Restaurant Logo" style="width:56px; height:56px; margin-bottom:10px; display:inline-block;">
     <p style="font-family:var(--font-heading); font-weight:700; letter-spacing:2px;">NEWFORM MULTI CUISINE RESTAURANT</p>
-    <p>Kakkavayal, Kalpetta, Wayanad, Kerala | Contact: 7593881112, 7593881113</p>
+    <p>Main Rd, Mandayapuram, Kalpetta, Kerala 673121 · 7593 881 112</p>
     <p style="margin-top:8px; font-size:0.75rem; color:var(--text-dim);">&copy; 2026 NEWFORM Restaurant.</p>
     <small class="routing-credit">Routing by <a href="https://openrouteservice.org/" target="_blank" rel="noopener noreferrer">openrouteservice / HeiGIT</a> · Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a></small>
   </footer>
 
   <!-- Modal Overlay -->
   <div class="overlay" id="overlay"></div>
-
-  <!-- About Restaurant Modal -->
-  <div class="modal" id="aboutModal">
-    <div class="modal-header">
-      <h3 style="font-family:var(--font-heading); font-weight:700; letter-spacing:1px;">ABOUT NEWFORM</h3>
-      <button class="cart-icon-btn" id="closeAboutModalBtn" aria-label="Close about"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    <div class="modal-body about-contact-body">
-      <img src="./assets/newform_logo.png" alt="NEWFORM logo" class="about-contact-logo">
-      <p>NEWFORM Multi Cuisine Restaurant brings together authentic Arabian and Kerala flavours, including Mandhi, Alfaham, and freshly made multi-cuisine favourites.</p>
-      <p><strong>Kakkavayal, Kalpetta, Wayanad, Kerala</strong></p>
-    </div>
-  </div>
-
-  <!-- Contact Modal -->
-  <div class="modal" id="contactModal">
-    <div class="modal-header">
-      <h3 style="font-family:var(--font-heading); font-weight:700; letter-spacing:1px;">CONTACT NEWFORM</h3>
-      <button class="cart-icon-btn" id="closeContactModalBtn" aria-label="Close contact"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    <div class="modal-body about-contact-body">
-      <p>For orders, delivery, catering, and events, reach our team directly.</p>
-      <a class="contact-action" href="tel:7593881112"><i class="fa-solid fa-phone"></i><span><strong>Call us</strong>7593 881 112</span></a>
-      <a class="contact-action" href="tel:7593881113"><i class="fa-solid fa-phone"></i><span><strong>Call us</strong>7593 881 113</span></a>
-      <a class="contact-action whatsapp" href="https://wa.me/917593881112" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i><span><strong>Message on WhatsApp</strong>+91 75938 81112</span></a>
-    </div>
-  </div>
 
   <!-- Cart Drawer -->
   <aside class="cart-drawer" id="cartDrawer">
@@ -358,17 +375,17 @@
 
   <!-- Mobile Bottom Navigation (For Android & Touch Devices) -->
   <nav class="mobile-nav">
-    <a href="#" class="nav-item active">
+    <a href="#" class="nav-item active" data-spy="home">
       <i class="fa-solid fa-house"></i>
       <span>Home</span>
     </a>
-    <a href="#menuSection" class="nav-item">
+    <a href="#menuSection" class="nav-item" data-spy="menu">
       <i class="fa-solid fa-utensils"></i>
       <span>Menu</span>
     </a>
-    <button id="contactBtnMobile" type="button" class="nav-item" aria-label="Contact restaurant">
+    <a href="#contactSection" class="nav-item" data-spy="contact" aria-label="Contact restaurant">
       <i class="fa-solid fa-phone"></i><span>Contact</span>
-    </button>
+    </a>
     <button id="accountBtnMobile" type="button" class="nav-item" aria-label="Open user account">
       <i class="fa-solid fa-user"></i><span>Account</span>
     </button>

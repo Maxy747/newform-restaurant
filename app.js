@@ -366,26 +366,6 @@ async function refreshAdminState(session) {
   await ordering.sessionChanged();
 }
 
-function openAboutModal() {
-  document.getElementById('overlay').classList.add('active');
-  document.getElementById('aboutModal').classList.add('active');
-}
-
-function closeAboutModal() {
-  document.getElementById('aboutModal').classList.remove('active');
-  document.getElementById('overlay').classList.remove('active');
-}
-
-function openContactModal() {
-  document.getElementById('overlay').classList.add('active');
-  document.getElementById('contactModal').classList.add('active');
-}
-
-function closeContactModal() {
-  document.getElementById('contactModal').classList.remove('active');
-  document.getElementById('overlay').classList.remove('active');
-}
-
 // Load Menu Data from Supabase
 async function loadMenuData() {
   if (!isSupabaseConfigured) {
@@ -447,21 +427,11 @@ function setupEventListeners() {
 
   if (themeToggleBtn) themeToggleBtn.addEventListener('click', toggleTheme);
 
-  const aboutBtnNav = document.getElementById('aboutBtnNav');
-  const contactBtnNav = document.getElementById('contactBtnNav');
-  const contactBtnMobile = document.getElementById('contactBtnMobile');
   const accountBtn = document.getElementById('accountBtn');
   const accountBtnMobile = document.getElementById('accountBtnMobile');
   const closeAccountModalBtn = document.getElementById('closeAccountModalBtn');
-  const closeAboutModalBtn = document.getElementById('closeAboutModalBtn');
-  const closeContactModalBtn = document.getElementById('closeContactModalBtn');
 
-  if (aboutBtnNav) aboutBtnNav.addEventListener('click', openAboutModal);
-  if (contactBtnNav) contactBtnNav.addEventListener('click', openContactModal);
-  if (contactBtnMobile) contactBtnMobile.addEventListener('click', openContactModal);
   if (accountBtn) accountBtn.addEventListener('click', openAccountModal);
-  if (closeAboutModalBtn) closeAboutModalBtn.addEventListener('click', closeAboutModal);
-  if (closeContactModalBtn) closeContactModalBtn.addEventListener('click', closeContactModal);
   if (accountBtnMobile) accountBtnMobile.addEventListener('click', openAccountModal);
   if (closeAccountModalBtn) closeAccountModalBtn.addEventListener('click', closeAccountModal);
 
@@ -539,6 +509,9 @@ function setupEventListeners() {
   startSearchPlaceholderAnimation(searchInput);
   setupCategoryVisibility();
   setupMenuReveal();
+  setupSectionNav();
+  updateOpenStatus();
+  setInterval(updateOpenStatus, 60000);
   setupImageParallax();
   setupFeaturedDishOrder();
 
@@ -982,8 +955,6 @@ function closeCart() {
 
 function closeAllModals() {
   closeCart();
-  closeAboutModal();
-  closeContactModal();
   closeAccountModal();
   ordering.closeTracking();
 }
@@ -1071,6 +1042,60 @@ function setupMenuReveal() {
       smoothScrollTo(Math.max(0, target));
     });
   });
+}
+
+// ABOUT / CONTACT links glide to their sections (same easing as the menu link), and the
+// top nav + phone bar highlight whichever part of the page is on screen.
+function setupSectionNav() {
+  const header = document.querySelector('.header');
+  const sections = { about: document.getElementById('aboutSection'), contact: document.getElementById('contactSection') };
+  document.querySelectorAll('a[href="#aboutSection"], a[href="#contactSection"]').forEach(link => {
+    link.addEventListener('click', event => {
+      const section = document.querySelector(link.getAttribute('href'));
+      if (!section) return;
+      event.preventDefault();
+      const offset = (header?.offsetHeight || 0) + 12;
+      smoothScrollTo(Math.max(0, section.getBoundingClientRect().top + window.scrollY - offset));
+    });
+  });
+
+  const spyLinks = [...document.querySelectorAll('[data-spy]')];
+  const setActive = key => spyLinks.forEach(link => link.classList.toggle('active', link.dataset.spy === key));
+  const menu = document.getElementById('menuSection');
+  const pick = () => {
+    // The section crossing a line ~40% down the screen wins; the page bottom counts as Contact.
+    const line = window.innerHeight * 0.4;
+    const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
+    let key = 'home';
+    if (menu && menu.getBoundingClientRect().top <= line) key = 'menu';
+    if (sections.about && sections.about.getBoundingClientRect().top <= line) key = 'about';
+    if ((sections.contact && sections.contact.getBoundingClientRect().top <= line) || atBottom) key = 'contact';
+    setActive(key);
+    // Hide the sticky search / category bar once the whole menu is above it.
+    const controls = document.querySelector('.controls-wrapper');
+    if (controls && menu) {
+      const past = menu.getBoundingClientRect().bottom < (header?.offsetHeight || 0) + controls.offsetHeight + 24;
+      controls.classList.toggle('past-menu', past && !controls.contains(document.activeElement));
+    }
+  };
+  let queued = false;
+  window.addEventListener('scroll', () => {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(() => { queued = false; pick(); });
+  }, { passive: true });
+  pick();
+}
+
+// "Open now" line in Contact, from the 11 am – 11 pm daily hours in India time.
+function updateOpenStatus() {
+  const target = document.getElementById('openStatus');
+  if (!target) return;
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date());
+  const minutes = Number(parts.find(part => part.type === 'hour').value) * 60 + Number(parts.find(part => part.type === 'minute').value);
+  const open = minutes >= 11 * 60 && minutes < 23 * 60;
+  target.classList.toggle('is-open', open);
+  target.textContent = open ? 'Open now · closes 11 pm' : 'Closed now · opens 11 am';
 }
 
 let smoothScrollFrame = 0;
