@@ -647,12 +647,40 @@ function renderMenu(animate = false) {
       </div>
     `;
   }).join('');
+  balanceSpecialsGrid();
   setupDescriptionScroll(container);
   if (animate && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
     [...container.querySelectorAll('.food-card')].slice(0,12).forEach((card,index) => {
       card.animate([{opacity:0,transform:'translateY(14px) scale(.98)'},{opacity:1,transform:'translateY(0) scale(1)'}],
         {duration:350,delay:Math.min(index,5)*35,easing:'cubic-bezier(.22,1,.36,1)',fill:'backwards'});
     });
+  }
+}
+
+// Specials is a curated showcase: trim leftover cards so the grid always ends on a
+// full row (5/4/3 across on desktop, 2 on phones). Other tabs and searches show
+// every dish, since hiding one there would make it unorderable.
+let balanceGridObserver = null;
+
+function balanceSpecialsGrid() {
+  const container = document.getElementById('foodGrid');
+  const countEl = document.getElementById('itemCount');
+  if (!container) return;
+  const cards = [...container.querySelectorAll('.food-card')];
+  const columns = getComputedStyle(container).gridTemplateColumns.split(' ').filter(Boolean).length || 1;
+  const balance = activeCategory === 'specials' && !searchQuery && cards.length > columns;
+  const keep = balance ? cards.length - (cards.length % columns) : cards.length;
+  cards.forEach((card, index) => { card.hidden = index >= keep; });
+  if (countEl) countEl.textContent = `${keep} DISHES`;
+
+  if (!balanceGridObserver) {
+    // Column count changes with the window width; rebalance when it does.
+    let lastColumns = columns;
+    balanceGridObserver = new ResizeObserver(() => {
+      const now = getComputedStyle(container).gridTemplateColumns.split(' ').filter(Boolean).length || 1;
+      if (now !== lastColumns) { lastColumns = now; balanceSpecialsGrid(); }
+    });
+    balanceGridObserver.observe(container);
   }
 }
 
