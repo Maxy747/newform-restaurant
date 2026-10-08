@@ -15,8 +15,41 @@
   <!-- Custom Design System matching Minimalist Reference Template -->
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="dark-theme.css">
+  <link rel="preload" as="image" href="assets/newform-logo-splash.webp" type="image/webp">
+  <!-- Welcome splash: once per browser visit. Decided before first paint so the site never flashes first.
+       Skipped for deep links (#…) and for anyone who already has items in their cart. -->
+  <script>
+    (function () {
+      var show = true;
+      try {
+        if (sessionStorage.getItem('newform_splash_seen_v1')) show = false;
+        if (location.hash) show = false;
+        if ((JSON.parse(localStorage.getItem('newform_cart_v1') || '[]') || []).length) show = false;
+        if (show) sessionStorage.setItem('newform_splash_seen_v1', '1');
+      } catch (error) { /* storage blocked: still show once on this load */ }
+      document.documentElement.classList.add(show ? 'splash-open' : 'no-splash');
+    })();
+  </script>
 </head>
 <body>
+
+  <!-- Welcome splash (first view of a visit) -->
+  <section id="splash" class="splash" role="dialog" aria-modal="true" aria-labelledby="splashTitle">
+    <div class="splash-glow splash-glow-a" aria-hidden="true"></div>
+    <div class="splash-glow splash-glow-b" aria-hidden="true"></div>
+    <div class="splash-inner">
+      <div class="splash-logo"><img src="assets/newform-logo-splash.webp" alt="NEWFORM Restaurant logo" width="220" height="220" decoding="async" fetchpriority="high"></div>
+      <span class="splash-place">KAKKAVAYAL · KALPETTA · WAYANAD</span>
+      <h2 id="splashTitle" class="splash-title">NEWFORM<strong>MADE FOR EVERY TABLE</strong></h2>
+      <p class="splash-tags" aria-label="Cuisines"><span>Arabian</span><span>Kerala</span><span>Multi cuisine</span></p>
+      <button type="button" id="splashEnter" class="btn-minimal hero-explore-btn splash-cta">EXPLORE MENU <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>
+      <p class="splash-meta">
+        <a href="tel:7593881112"><i class="fa-solid fa-phone" aria-hidden="true"></i> 7593 881 112</a>
+        <span aria-hidden="true">·</span>
+        <span><i class="fa-solid fa-motorcycle" aria-hidden="true"></i> Delivery within 6 km</span>
+      </p>
+    </div>
+  </section>
 
   <!-- Top Minimalist Navigation Header -->
   <header class="header">
@@ -353,6 +386,7 @@
   <div class="toast-container" id="toastContainer"></div>
 
   <!-- JavaScript -->
+  <script type="module" src="/splash.js"></script>
   <script type="module" src="/app.js"></script>
 </body>
 </html>
