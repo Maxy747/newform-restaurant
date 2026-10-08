@@ -1897,3 +1897,65 @@ footer {
   /* Centre within the space between the header and the fixed bottom nav (54px). */
   .hero-minimal { padding-top: 20px; padding-bottom: 24px; min-height: calc(100svh - var(--header-h) - 54px); }
 }
+
+/* EXPLORE MENU: the hero's main call to action. Brand orange from the logo with the
+   logo's black text (high contrast), a breathing glow and a periodic shine.
+   The glow is a blurred pseudo-element animating only opacity/scale, so it
+   stays on the compositor instead of repainting box-shadows every frame. */
+#heroExploreBtn {
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+  min-height: 48px;
+  padding: 13px 30px;
+  font-size: .82rem;
+  letter-spacing: 2px;
+  color: #1a0f00;
+  background: linear-gradient(120deg, #ffb340 0%, #ff8a00 55%, #ff6b00 100%);
+  border: 0;
+  box-shadow: 0 6px 18px rgba(255, 122, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .45);
+}
+#heroExploreBtn::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  z-index: -1;
+  border-radius: inherit;
+  background: radial-gradient(closest-side, rgba(255, 138, 0, .75), rgba(255, 107, 0, 0));
+  filter: blur(10px);
+  opacity: .55;
+  pointer-events: none;
+  animation: order-glow 2.6s ease-in-out infinite;
+}
+#heroExploreBtn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, .55) 50%, transparent 65%) no-repeat;
+  background-size: 250% 100%;
+  background-position: 150% 0;
+  pointer-events: none;
+  animation: order-shine 4.5s ease-in-out infinite 1s;
+}
+#heroExploreBtn:hover {
+  transform: translateY(-2px);
+  color: #1a0f00;
+  box-shadow: 0 10px 26px rgba(255, 122, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .5);
+}
+#heroExploreBtn:hover::before { opacity: .9; animation-play-state: paused; }
+#heroExploreBtn:active { transform: translateY(0) scale(.97); }
+#heroExploreBtn:focus-visible { outline: 3px solid #1a0f00; outline-offset: 3px; }
+
+@keyframes order-glow {
+  0%, 100% { opacity: .4; transform: scale(.94); }
+  50% { opacity: .95; transform: scale(1.1); }
+}
+@keyframes order-shine {
+  0%, 55% { background-position: 150% 0; }
+  85%, 100% { background-position: -60% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #heroExploreBtn::before { animation: none; opacity: .75; }
+  #heroExploreBtn::after { animation: none; display: none; }
+}
