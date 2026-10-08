@@ -1969,3 +1969,14 @@ footer {
   .hero-center-col { flex-direction: column; gap: 22px; }
   .center-dish-wrapper { max-width: clamp(96px, calc(100svh - 600px), 250px); }
 }
+
+/* "MADE FOR EVERY TABLE" always sits on one line: its size follows the text
+   column's width (the line is ~12.9x its font size at .04em tracking), capped
+   at the title size. vw fallback for browsers without container units. */
+.hero-left-col { container-type: inline-size; }
+.hero-main-title strong {
+  white-space: nowrap;
+  letter-spacing: .04em;
+  font-size: min(1em, 6.6vw);
+  font-size: min(1em, 7.6cqi);
+}
