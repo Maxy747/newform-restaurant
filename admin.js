@@ -1,6 +1,6 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient.js';
 import { createOmsApi } from './oms-client.js';
-import { escapeHTML as e, money, statusLabel as label, nextStatuses, indiaDayRange, stepTimes } from './oms-policy.js';
+import { escapeHTML as e, money, statusLabel as label, nextStatuses, indiaDayRange, stepTimes, orderNumber, orderRef } from './oms-policy.js';
 import { BOARD_COLUMNS, groupOrders, findNewOrders, ageLabel, minutesSince } from './admin-policy.js';
 import { createMenuAdmin } from './admin-menu.js';
 
@@ -117,11 +117,11 @@ function announce(orders) {
   if (soundOn && audio?.state !== 'running') $('soundUnlock').classList.add('is-urgent');
   navigator.vibrate?.([200, 100, 200]);
   const first = orders[0];
-  const summary = orders.length > 1 ? `${orders.length} new orders` : `New ${typeName(first.order_type).toLowerCase()} order ${shortId(first.id)}`;
+  const summary = orders.length > 1 ? `${orders.length} new orders` : `New ${typeName(first.order_type).toLowerCase()} order ${orderNumber(first)}`;
   toast(summary, 'success');
   if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
     try {
-      const note = new Notification('NEWFORM · ' + summary, { body: orders.map(o => `${shortId(o.id)} · ${money(o.total)}`).join('\n'), icon: 'assets/newform_logo.png', tag: 'newform-new-order' });
+      const note = new Notification('NEWFORM · ' + summary, { body: orders.map(o => `${orderNumber(o)} · ${money(o.total)}`).join('\n'), icon: 'assets/newform_logo.png', tag: 'newform-new-order' });
       note.onclick = () => { window.focus(); note.close(); };
     } catch { /* some mobile browsers only allow notifications from a service worker */ }
   }
@@ -273,8 +273,8 @@ function orderCard(order) {
   // New arrivals flash for FLASH_MS; a negative delay keeps the flash continuous across re-renders.
   const flashAge = arrivedAt.has(order.id) ? Date.now() - arrivedAt.get(order.id) : Infinity;
   const flash = flashAge < FLASH_MS ? ` style="animation-delay:-${flashAge}ms"` : '';
-  return `<article class="adm-order${late ? ' is-late' : ''}${order.order_status === 'new' ? ' is-new' : ''}${flash ? ' just-arrived' : ''}${pending.has(order.id) ? ' is-pending' : ''}"${flash} data-open="${e(order.id)}" tabindex="0" aria-label="Order ${e(shortId(order.id))}">
-    <header><strong>${e(shortId(order.id))}</strong><span class="adm-age" title="${e(time(order.created_at))}"><i class="fa-regular fa-clock"></i> ${e(ageLabel(order.created_at))}</span></header>
+  return `<article class="adm-order${late ? ' is-late' : ''}${order.order_status === 'new' ? ' is-new' : ''}${flash ? ' just-arrived' : ''}${pending.has(order.id) ? ' is-pending' : ''}"${flash} data-open="${e(order.id)}" tabindex="0" aria-label="Order ${e(orderNumber(order))}">
+    <header><strong class="adm-order-no">${e(orderNumber(order))}</strong><span class="adm-age" title="${e(time(order.created_at))}"><i class="fa-regular fa-clock"></i> ${e(ageLabel(order.created_at))}</span></header>
     <div class="adm-order-meta"><span><i class="fa-solid ${TYPE_ICON[order.order_type] || 'fa-receipt'}"></i> ${e(typeName(order.order_type))}${order.table_number ? ' · Table ' + e(order.table_number) : ''}</span>${payment}</div>
     ${order.customer_name ? `<p class="adm-order-name">${e(order.customer_name)}</p>` : ''}
     ${itemList(order)}
@@ -284,7 +284,7 @@ function orderCard(order) {
 
 function finishedRow(order) {
   order = withPending(order);
-  return `<button type="button" class="adm-row" data-open="${e(order.id)}"><strong>${e(shortId(order.id))}</strong><span>${e(order.customer_name || typeName(order.order_type))}</span><span class="adm-badge adm-badge-${e(order.order_status)}">${e(label(order.order_status))}</span><strong>${money(order.total)}</strong></button>`;
+  return `<button type="button" class="adm-row" data-open="${e(order.id)}"><strong>${e(orderNumber(order))}</strong><span>${e(order.customer_name || typeName(order.order_type))}</span><span class="adm-badge adm-badge-${e(order.order_status)}">${e(label(order.order_status))}</span><strong>${money(order.total)}</strong></button>`;
 }
 
 async function refreshBoard() {
@@ -363,7 +363,7 @@ async function refreshHistory() {
   const end = $('histTo').value ? indiaDayRange($('histTo').value).end : null;
   const { orders, count } = await api('list', { mode: 'orders', page: state.historyPage, start, end, status: $('histStatus').value, type: $('histType').value, search: $('histSearch').value.trim() });
   $('historyList').innerHTML = orders.map(order => `<button type="button" class="adm-row" data-open="${e(order.id)}">
-      <strong>${e(shortId(order.id))}</strong><span>${e(time(order.created_at))}</span><span>${e(order.customer_name || '')}</span>
+      <strong>${e(orderNumber(order))}</strong><span>${e(time(order.created_at))}</span><span>${e(order.customer_name || '')}</span>
       <span class="adm-badge adm-badge-${e(order.order_status)}">${e(label(order.order_status))}</span><strong>${money(order.total)}</strong></button>`).join('')
     || '<p class="adm-empty">No orders match these filters.</p>';
   $('histPrev').disabled = state.historyPage === 0;
@@ -385,6 +385,7 @@ async function refreshDetail() {
   const { order: fetched, events, tickets } = await api('detail', { id });
   if (version !== detailVersion || id !== state.detailId) return;
   const o = withPending(fetched);
+  $('orderDialogTitle').textContent = `Order ${orderNumber(o)}`;
   const body = $('orderDialogBody');
   // Keep a half-written ticket reply intact during live refreshes.
   if (body.contains(document.activeElement) && document.activeElement.matches('textarea, input, select')) return;
@@ -395,7 +396,7 @@ async function refreshDetail() {
   const canCash = state.role !== 'kitchen' && o.payment_method !== 'razorpay' && o.payment_status !== 'paid' && o.order_status !== 'cancelled';
   const deliveryPin = o.delivery_latitude != null && o.delivery_longitude != null ? `https://www.google.com/maps?q=${Number(o.delivery_latitude)},${Number(o.delivery_longitude)}` : null;
   body.innerHTML = `
-    <div class="adm-detail-status"><span class="adm-badge adm-badge-${e(o.order_status)}">${e(label(o.order_status))}</span><span class="adm-muted">Placed ${e(time(o.created_at))} · ${e(ageLabel(o.created_at))} ago</span></div>
+    <div class="adm-detail-status"><span class="adm-badge adm-badge-${e(o.order_status)}">${e(label(o.order_status))}</span><span class="adm-muted">Placed ${e(time(o.created_at))} · ${e(ageLabel(o.created_at))} ago · Ref ${e(orderRef(o))}</span></div>
     ${o.order_status === 'cancelled' ? '' : `<ol class="adm-steps">${steps.map((step, index) => `<li class="${index < current ? 'done' : index === current ? 'current' : ''}"><span>${e(label(step))}</span>${reached.has(step) ? `<small>${e(new Date(reached.get(step)).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }))}</small>` : ''}</li>`).join('')}</ol>`}
     <div class="adm-detail-actions">${actionButtons(o)}${canCash ? '<button type="button" class="adm-btn" id="cashBtn"><i class="fa-solid fa-money-bill-wave"></i> Cash received</button>' : ''}</div>
     <section class="adm-detail-block"><h3>Items</h3>
@@ -480,7 +481,7 @@ async function commit(id) {
     if (change.cash) await api('cash', { id });
     if (change.status) await api('transition', { id, status: change.status });
   } catch (error) {
-    toast(`${shortId(id)}: ${error.message}`, 'error');
+    toast(`${orderNumber(findOrder(id) || { id })}: ${error.message}`, 'error');
   } finally {
     pending.delete(id);
     queueRefresh(0);
@@ -532,23 +533,23 @@ const unpaidCash = order => order.payment_status !== 'paid' && order.payment_met
 async function requestStatus(order, status) {
   order = withPending(order);
   if (status === 'cancelled') {
-    const choice = await ask({ title: `Cancel ${shortId(order.id)}?`, message: 'The customer will see this order as cancelled.', choices: [{ label: 'Cancel order', value: 'yes', tone: 'danger' }, { label: 'Keep order', value: null }] });
+    const choice = await ask({ title: `Cancel ${orderNumber(order)}?`, message: 'The customer will see this order as cancelled.', choices: [{ label: 'Cancel order', value: 'yes', tone: 'danger' }, { label: 'Keep order', value: null }] });
     if (!choice) return;
-    return queueChange(order, { status }, `${shortId(order.id)} cancelled`);
+    return queueChange(order, { status }, `${orderNumber(order)} cancelled`);
   }
   if (status === 'completed' && unpaidCash(order)) {
     // Double-check the money before closing an unpaid cash / COD / WhatsApp order.
-    const choice = await ask({ title: `Did you receive ${money(order.total)}?`, message: `${shortId(order.id)} · ${paymentName(order.payment_method)} · not marked paid yet.`,
+    const choice = await ask({ title: `Did you receive ${money(order.total)}?`, message: `${orderNumber(order)} · ${paymentName(order.payment_method)} · not marked paid yet.`,
       choices: [{ label: `Yes, ${money(order.total)} received`, value: 'paid', tone: 'primary' }, { label: 'Not yet, complete anyway', value: 'unpaid' }, { label: 'Go back', value: null }] });
     if (!choice) return;
-    return queueChange(order, { status, cash: choice === 'paid' }, `${shortId(order.id)} completed · ${choice === 'paid' ? 'paid' : 'unpaid'}`);
+    return queueChange(order, { status, cash: choice === 'paid' }, `${orderNumber(order)} completed · ${choice === 'paid' ? 'paid' : 'unpaid'}`);
   }
-  return queueChange(order, { status }, `${shortId(order.id)} → ${label(status)}`);
+  return queueChange(order, { status }, `${orderNumber(order)} → ${label(status)}`);
 }
 
 async function requestCash(order) {
-  const choice = await ask({ title: `Did you receive ${money(order.total)}?`, message: `${shortId(order.id)} will be marked as paid.`, choices: [{ label: 'Yes, received', value: 'paid', tone: 'primary' }, { label: 'Go back', value: null }] });
-  if (choice) await queueChange(withPending(order), { cash: true }, `${shortId(order.id)} marked paid`);
+  const choice = await ask({ title: `Did you receive ${money(order.total)}?`, message: `${orderNumber(order)} will be marked as paid.`, choices: [{ label: 'Yes, received', value: 'paid', tone: 'primary' }, { label: 'Go back', value: null }] });
+  if (choice) await queueChange(withPending(order), { cash: true }, `${orderNumber(order)} marked paid`);
 }
 
 $('orderDialog').addEventListener('close', () => { state.detailId = null; detailVersion++; });

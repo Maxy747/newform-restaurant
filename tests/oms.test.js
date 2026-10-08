@@ -195,5 +195,25 @@ test('PostgreSQL migration and order/payment/RLS lifecycle',async t=>{
   assert.equal(a.daily.reduce((s,d)=>s+d.orders,0),a.hourly.reduce((s,h)=>s+h.orders,0));
   assert.ok(a.by_type.some(b=>b.key==='takeaway')&&a.by_payment.some(b=>b.key==='cod'));
  });
+ await t.test('orders get daily numbers that restart each India day',async()=>{
+  const migration=await readFile(new URL('../supabase/migrations/20261008080000_daily_order_numbers.sql',import.meta.url),'utf8');
+  await db.exec(migration);await db.exec(migration); // safe to re-run
+  const unnumbered=(await q('select count(*)::int n from public.orders where daily_number is null'))[0].n;
+  assert.equal(unnumbered,0,'existing orders are backfilled');
+  const before=(await q("select coalesce(max(daily_number),0) n from public.orders where order_day=(now() at time zone 'Asia/Kolkata')::date"))[0].n;
+  await db.exec('set role service_role');
+  const place=()=>q('select public.oms_create_order($1,$2,$3,$4,$5,$6) id',[user,crypto.randomUUID(),'f'.repeat(64),JSON.stringify({name:'Test Customer',phone:'9999999999',order_type:'takeaway'}),JSON.stringify([{id:'cod-boundary',quantity:1}]),'cash']);
+  const first=(await place())[0].id,second=(await place())[0].id;
+  await db.exec('reset role');
+  const rows=await q('select id,daily_number,order_day from public.orders where id=any($1) order by daily_number',[[first,second]]);
+  assert.deepEqual(rows.map(r=>r.daily_number),[before+1,before+2]);
+  // A new India day starts again at #1.
+  const tomorrow=(await q(`insert into public.orders select (jsonb_populate_record(null::public.orders,
+   to_jsonb(o)-'daily_number'-'order_day'||jsonb_build_object('id',gen_random_uuid(),'request_id',gen_random_uuid(),'created_at','2030-01-02T00:30:00+05:30'))).*
+   from public.orders o where o.id=$1 returning daily_number,order_day`,[first]))[0];
+  assert.equal(tomorrow.daily_number,1);
+  assert.equal(String(tomorrow.order_day instanceof Date?tomorrow.order_day.toISOString().slice(0,10):tomorrow.order_day),'2030-01-02');
+  await assert.rejects(q('update public.orders set daily_number=$1, order_day=$2 where id=$3',[rows[0].daily_number,rows[0].order_day,second]),/duplicate key/);
+ });
  } finally {await db.close();}
 });

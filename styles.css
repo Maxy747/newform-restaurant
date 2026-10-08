@@ -1681,6 +1681,7 @@ body:has(.cart-drawer.active) .mobile-cart-cta { display: none; }
 .track-steps li.current { border-color: var(--gold-primary); color: var(--gold-primary); }
 .track-steps small { font-weight: 500; color: var(--text-muted); font-size: .68rem; }
 .track-card { margin: 14px 0; padding: 16px; border-radius: 16px; border: 1px solid var(--glass-border); background: var(--card-bg); }
+.track-ref { margin-left: 6px; font-size: .68rem; font-weight: 600; letter-spacing: .04em; color: var(--text-muted); opacity: .8; }
 .track-card h4 { margin: 0 0 6px; font-size: .8rem; letter-spacing: .08em; color: var(--text-muted); }
 .track-card p { margin: 0; line-height: 1.55; overflow-wrap: anywhere; white-space: pre-line; }
 .track-totals { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 8px 0 0; padding-top: 10px; border-top: 1px dashed var(--glass-border); font-size: .88rem; }

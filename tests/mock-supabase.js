@@ -9,7 +9,7 @@ const line = (name, quantity, price, portion = 'single') => ({ name, quantity, p
 const mk = (n, status, minutesAgo, type, items, extra = {}) => {
   const subtotal = items.reduce((sum, item) => sum + item.quantity * item.price, 0), tax = Math.round(subtotal * 5) / 100;
   const delivery_fee = type === 'delivery' ? 100 : 0;
-  return { id: uuid(n), order_status: status, order_type: type, created_at: iso(minutesAgo), updated_at: iso(Math.max(0, minutesAgo - 3)), items, subtotal, tax, delivery_fee, total: subtotal + tax + delivery_fee,
+  return { id: uuid(n), daily_number: n < 100 ? n : null, order_status: status, order_type: type, created_at: iso(minutesAgo), updated_at: iso(Math.max(0, minutesAgo - 3)), items, subtotal, tax, delivery_fee, total: subtotal + tax + delivery_fee,
     customer_name: ['Anjali R', 'Faisal K', 'Meera S', 'Rahul P', 'Shabeer M', 'Nisha T'][n % 6], phone: '+91 98470 1' + String(1000 + n).slice(-4),
     delivery_address: type === 'delivery' ? 'Green Villa, Near Bus Stand\nKalpetta, Wayanad' : null, table_number: type === 'dine_in' ? String(n % 9 + 1) : null,
     delivery_latitude: type === 'delivery' ? 11.61 : null, delivery_longitude: type === 'delivery' ? 76.08 : null, delivery_distance_m: type === 'delivery' ? 3400 : null,

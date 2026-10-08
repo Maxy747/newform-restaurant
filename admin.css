@@ -212,6 +212,7 @@ body:has(#gate:not([hidden])) { padding-bottom: 0; }
 @keyframes adm-flash { 0%, 100% { background: var(--surface-2); box-shadow: none; } 50% { background: color-mix(in srgb, var(--orange) 26%, var(--surface-2)); box-shadow: 0 0 0 2px var(--orange), 0 0 18px color-mix(in srgb, var(--orange) 55%, transparent); } }
 .adm-order header, .adm-order footer, .adm-order-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .adm-order header strong { font-family: var(--font-head); letter-spacing: .04em; }
+.adm-order-no { font-size: 1.15rem; }
 .adm-age { color: var(--muted); font-size: .8rem; }
 .adm-order-meta { font-size: .82rem; color: var(--muted); }
 .adm-order-name { font-weight: 700; }

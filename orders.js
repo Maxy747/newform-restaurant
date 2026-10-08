@@ -1,5 +1,5 @@
 import {supabase as defaultSupabase,isSupabaseConfigured as defaultConfigured} from './supabaseClient.js';
-import {escapeHTML as e,money,statusLabel as label,hasDeliveryDetails,cashOption,stepTimes,trackingCopy} from './oms-policy.js';
+import {escapeHTML as e,money,statusLabel as label,hasDeliveryDetails,cashOption,stepTimes,trackingCopy,orderNumber,orderRef} from './oms-policy.js';
 import {createOmsApi} from './oms-client.js';
 
 export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAll,supabase=defaultSupabase,isSupabaseConfigured=defaultConfigured}) {
@@ -31,8 +31,8 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   const kind=$('orderType').value;
   $('deliveryLocation').hidden=kind!=='delivery';
   if(deliveryQuote && (Date.parse(deliveryQuote.expires_at)<=Date.now() || deliveryQuote.distance_m>6000))deliveryQuote=null;
-  const deliveryFee=kind==='delivery'?(deliveryQuote?.fee||0):0;
-  $('cartTotal').textContent=money(totals().total+Number(deliveryFee))+(kind==='delivery'&&!deliveryQuote?' + ₹100 delivery':'');
+  const deliveryFee=kind==='delivery'?(deliveryQuote?.fee??100):0;
+  $('cartTotal').textContent=money(totals().total+Number(deliveryFee));
   $('deliveryQuoteStatus').textContent=deliveryQuote?`Delivery ₹${Number(deliveryQuote.fee)} · ${(deliveryQuote.distance_m/1000).toFixed(1)} km`:'Delivery ₹100';
   // Once a quote exists the locate button and privacy note step aside.
   $('deliveryLocation').classList.toggle('has-quote',Boolean(deliveryQuote));
@@ -226,7 +226,7 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
  const bindTracking=element=>element.querySelectorAll('[data-track]').forEach(b=>b.onclick=run(()=>openDetail(b.dataset.track)));
  const itemsHTML=order=>`<ul class="oms-items">${order.items.map(i=>`<li><span>${e(i.quantity)} × ${e(i.name)}${i.portion&&i.portion!=='single'?` <small>(${e(i.portion)})</small>`:''}</span><strong>${money(i.quantity*i.price)}</strong></li>`).join('')}</ul>`;
  function orderCard(o) {
-  return `<article class="order-history-item"><div class="oms-card-heading"><strong>#${e(o.id.slice(0,8))}</strong><strong>${money(o.total)}</strong></div><span class="oms-badge ${e(o.order_status)}">${e(label(o.order_status))}</span><small>${e(new Date(o.created_at).toLocaleString())} · ${e(label(o.order_type))}</small><span>Payment: <strong>${e(label(o.payment_status))}</strong> · ${e(paymentName(o.payment_method))}</span><div class="oms-actions"><button class="btn-minimal" data-track="${e(o.id)}">TRACK / REPORT ISSUE</button></div></article>`;
+  return `<article class="order-history-item"><div class="oms-card-heading"><strong>${e(orderNumber(o))}</strong><strong>${money(o.total)}</strong></div><span class="oms-badge ${e(o.order_status)}">${e(label(o.order_status))}</span><small>${e(new Date(o.created_at).toLocaleString())} · ${e(label(o.order_type))}</small><span>Payment: <strong>${e(label(o.payment_status))}</strong> · ${e(paymentName(o.payment_method))}</span><div class="oms-actions"><button class="btn-minimal" data-track="${e(o.id)}">TRACK / REPORT ISSUE</button></div></article>`;
  }
  const paymentName=method=>({cash:'Pay at counter',cod:'Cash on delivery',whatsapp:'WhatsApp',razorpay:'Online'})[method]||method;
  async function placeOrder() {
@@ -254,7 +254,7 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
    localStorage.setItem(receiptKey,JSON.stringify([{id:order.id,token:pending.token},...receipts().filter(r=>r.id!==order.id)].slice(0,20)));
    localStorage.removeItem(pendingKey);onPlaced();
    await openDetail(order.id);
-   toast('Order #'+order.id.slice(0,8)+' saved.');
+   toast(`Order ${orderNumber(order)} placed.`);
    // Customer chooses Send WhatsApp from confirmation; no automatic external message.
   } catch(error){toast(error.message);}finally{placing=false;button.disabled=false;button.innerHTML='<i class="fa-solid fa-bag-shopping"></i> PLACE ORDER';}
  }
@@ -283,7 +283,7 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
    ${o.order_status==='cancelled'?'':`<ol class="track-steps">${steps.map((s,i)=>`<li class="${i<index?'done':i===index?'current':''}"><span>${e(label(s))}</span><small>${times.has(s)&&i<=index?e(clock(times.get(s))):''}</small></li>`).join('')}</ol>`}
    ${o.payment_method==='whatsapp'&&live?'<div class="track-whatsapp"><p>Want to confirm on WhatsApp too? Your order is already saved.</p><a id="sendWhatsAppOrder" class="btn-minimal" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-whatsapp"></i> SEND ON WHATSAPP</a></div>':''}
    ${o.payment_method==='razorpay'&&!['paid','refunded'].includes(o.payment_status)&&live?'<button id="payOrderBtn" class="btn-minimal btn-primary-minimal">PAY / RETRY PAYMENT</button>':''}
-   <section class="track-card"><div class="oms-card-heading"><h4>ORDER #${e(o.id.slice(0,8).toUpperCase())}</h4><small>${e(new Date(o.created_at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}))}</small></div>
+   <section class="track-card"><div class="oms-card-heading"><h4>ORDER ${e(orderNumber(o))} <span class="track-ref">Ref ${e(orderRef(o))}</span></h4><small>${e(new Date(o.created_at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}))}</small></div>
    ${itemsHTML(o)}
    <dl class="track-totals"><dt>Subtotal</dt><dd>${money(o.subtotal)}</dd><dt>GST</dt><dd>${money(o.tax)}</dd>${o.order_type==='delivery'?`<dt>Delivery${o.delivery_distance_m!=null?' · '+(o.delivery_distance_m/1000).toFixed(1)+' km':''}</dt><dd>${money(o.delivery_fee||0)}</dd>`:''}<dt class="track-total">Total</dt><dd class="track-total">${money(o.total)}</dd></dl>
    <p class="track-pay${unpaid?'':' is-paid'}"><i class="fa-solid ${unpaid?'fa-wallet':'fa-circle-check'}"></i> ${e(payNote)}</p></section>
@@ -291,7 +291,7 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
    ${live?'<p class="track-live"><span></span> Updates automatically while this screen is open</p>':''}
    <p class="track-help">Questions? Call <a href="tel:7593881112">7593 881 112</a></p>`;
   if($('payOrderBtn'))$('payOrderBtn').onclick=run(()=>pay(o));
-  if($('sendWhatsAppOrder'))$('sendWhatsAppOrder').href='https://wa.me/917593881112?text='+encodeURIComponent(`NEWFORM ORDER #${o.id.slice(0,8)}\n${o.items.map(i=>`${i.quantity} × ${i.name} (${i.portion||'single'})`).join('\n')}\nTotal: ${money(o.total)}\n${o.customer_name}, ${o.phone}\n${o.delivery_address||label(o.order_type)}`);
+  if($('sendWhatsAppOrder'))$('sendWhatsAppOrder').href='https://wa.me/917593881112?text='+encodeURIComponent(`NEWFORM ORDER ${orderNumber(o)} (Ref ${orderRef(o)})\n${o.items.map(i=>`${i.quantity} × ${i.name} (${i.portion||'single'})`).join('\n')}\nTotal: ${money(o.total)}\n${o.customer_name}, ${o.phone}\n${o.delivery_address||label(o.order_type)}`);
   // Keep unsent messages and keyboard focus intact during realtime refreshes.
   const support=$('orderSupport');
   if(['kitchen','delivery'].includes(role)){support.replaceChildren();return;}
@@ -313,7 +313,7 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
    if(settings.paid){toast('Payment already received.');await refreshDetail();return;}
    await loadRazorpay();
    await new Promise(resolve=>{
-    const checkout=new window.Razorpay({...settings,name:'NEWFORM Restaurant',description:'Order #'+order.id.slice(0,8),prefill:{name:order.customer_name,contact:order.phone,email:getSession()?.user.email},modal:{ondismiss:()=>{toast('Checkout closed. Your order is saved; you can retry payment.');resolve();}},handler:async response=>{
+    const checkout=new window.Razorpay({...settings,name:'NEWFORM Restaurant',description:'Order '+orderNumber(order),prefill:{name:order.customer_name,contact:order.phone,email:getSession()?.user.email},modal:{ondismiss:()=>{toast('Checkout closed. Your order is saved; you can retry payment.');resolve();}},handler:async response=>{
      try{const verified=await api('verify',{id:order.id,token:tokenFor(order.id),...response});toast(verified.paid?'Payment verified and received.':'Payment is awaiting confirmation. We will update this order automatically.');await refreshDetail();}catch(error){toast(error.message);}finally{resolve();}
     }});
     checkout.on('payment.failed',()=>toast('Payment failed. You can retry; this order has not been marked paid.'));

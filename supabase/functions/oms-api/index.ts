@@ -84,7 +84,13 @@ Deno.serve(async req=>{
    if(body.type) query=query.eq('order_type',body.type);
    if(body.start) query=query.gte('created_at',new Date(body.start).toISOString());
    if(body.end) query=query.lt('created_at',new Date(body.end).toISOString());
-   if(body.search) { if(/^[a-f0-9-]{36}$/i.test(body.search)) query=query.eq('id',body.search); else query=query.ilike('customer_name','%'+String(body.search).replace(/[%_]/g,'').slice(0,80)+'%'); }
+   if(body.search) {
+    const search=String(body.search).trim();
+    // "#12" / "12" = daily order number (combine with a date range for a specific day).
+    if(/^#?\d{1,5}$/.test(search)) query=query.eq('daily_number',Number(search.replace('#','')));
+    else if(/^[a-f0-9-]{36}$/i.test(search)) query=query.eq('id',search);
+    else query=query.ilike('customer_name','%'+search.replace(/[%_]/g,'').slice(0,80)+'%');
+   }
    const page=Math.min(10000,Math.max(0,Number(body.page)||0));
    const result=await query.range(page*30,page*30+29); checked(result);
    return json({orders:result.data.map((o:any)=>publicOrder(o,role)),count:result.count});

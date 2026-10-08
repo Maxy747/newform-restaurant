@@ -39,3 +39,6 @@ export function trackingCopy(order) {
    cancelled:['Order cancelled','Contact the restaurant if this was unexpected.'],
   })[order.order_status]||[statusLabel(order.order_status),''];
 }
+// Daily order number (#1, #2… restarting each India day); short unique ref as fallback and for lookups.
+export const orderRef=order=>String(order?.id||'').slice(0,8).toUpperCase();
+export const orderNumber=order=>order?.daily_number?`#${order.daily_number}`:`#${orderRef(order)}`;
