@@ -1892,8 +1892,8 @@ footer {
 
 @media (max-width: 768px) {
   :root { --header-h: 63px; }
-  /* The header already shows the logo; dropping the large copy lets the hero fit one phone screen. */
-  .hero-center-col { display: none; }
+  /* Text (with Explore Menu) stays first so the button is on the first screen;
+     the logo follows below it. */
   /* Centre within the space between the header and the fixed bottom nav (54px). */
   .hero-minimal { padding-top: 20px; padding-bottom: 24px; min-height: calc(100svh - var(--header-h) - 54px); }
 }
