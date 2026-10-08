@@ -1853,3 +1853,21 @@ footer {
 .theme-switching *::after { transition: none !important; }
 ::view-transition-old(root),
 ::view-transition-new(root) { animation-duration: .45s; animation-timing-function: cubic-bezier(.4, 0, .2, 1); }
+
+/* Search & category bar: hidden over the hero, slides in after the first scroll.
+   Space stays reserved so revealing it never shifts the page. */
+.controls-wrapper {
+  transition: transform .42s cubic-bezier(.22, 1, .36, 1), padding-left .42s cubic-bezier(.22, 1, .36, 1),
+    opacity .4s ease, translate .5s cubic-bezier(.22, 1, .36, 1), visibility 0s;
+}
+.controls-wrapper.awaiting-scroll {
+  opacity: 0;
+  translate: 0 18px;
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform .42s cubic-bezier(.22, 1, .36, 1), padding-left .42s cubic-bezier(.22, 1, .36, 1),
+    opacity .3s ease, translate .3s ease, visibility 0s linear .3s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .controls-wrapper, .controls-wrapper.awaiting-scroll { translate: none; transition: opacity .2s linear, visibility 0s; }
+}

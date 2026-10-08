@@ -173,7 +173,8 @@ const ordering = createOrdering({
   totals: () => calculateCartTotals(),
   toast: message => showToast(message),
   closeAll: () => closeAllModals(),
-  onPlaced: () => { cart = []; lastClearedCart = null; saveCartData(); updateCartBadge(); renderMenu(); closeCart(); }
+  onPlaced: () => { cart = []; lastClearedCart = null; saveCartData(); updateCartBadge(); renderMenu(); closeCart(); },
+  onStaffChange: isStaff => syncStaffTheme(isStaff)
 });
 
 // LocalStorage Keys
@@ -186,25 +187,39 @@ const CART_STORAGE_KEY = 'newform_cart_v1';
 const THEME_STORAGE_KEY = 'newform_theme_v1';
 
 // Theme Management Functions
+// Customers always get the light theme; dark mode is a staff-only preference
+// (shared with the admin console through THEME_STORAGE_KEY).
+let staffThemeEnabled = false;
+
+function readSavedTheme() {
+  try { return localStorage.getItem(THEME_STORAGE_KEY) === 'light' ? 'light' : 'dark'; } catch { return 'dark'; }
+}
+
 function initTheme() {
-  const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) || 'dark';
-  setTheme(savedTheme);
+  applyTheme('light');
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  const themeIcon = document.getElementById('themeIcon');
+  if (themeIcon) themeIcon.className = theme === 'light' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
 }
 
 function setTheme(theme) {
-  document.documentElement.setAttribute('data-theme', theme);
-  localStorage.setItem(THEME_STORAGE_KEY, theme);
-  
-  const themeIcon = document.getElementById('themeIcon');
-  
-  if (theme === 'light') {
-    if (themeIcon) themeIcon.className = 'fa-solid fa-sun';
-  } else {
-    if (themeIcon) themeIcon.className = 'fa-solid fa-moon';
-  }
+  applyTheme(theme);
+  try { localStorage.setItem(THEME_STORAGE_KEY, theme); } catch { /* storage blocked */ }
+}
+
+function syncStaffTheme(isStaff) {
+  if (isStaff === staffThemeEnabled) return;
+  staffThemeEnabled = isStaff;
+  const toggle = document.getElementById('themeToggleBtn');
+  if (toggle) toggle.hidden = !isStaff;
+  applyTheme(isStaff ? readSavedTheme() : 'light');
 }
 
 function toggleTheme() {
+  if (!staffThemeEnabled) return;
   const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
   const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
   const root = document.documentElement;
@@ -517,6 +532,7 @@ function setupEventListeners() {
 
   startSearchPlaceholderAnimation(searchInput);
   setupCategoryVisibility();
+  setupMenuReveal();
   setupImageParallax();
   setupFeaturedDishOrder();
 
@@ -989,6 +1005,76 @@ function setupCategoryVisibility() {
     }
     lastScrollY = currentY;
   }, { passive: true });
+}
+
+// The search & category bar stays hidden while the hero is in view and slides
+// in after the first scroll. Menu links glide down to it with an eased scroll.
+const MENU_REVEAL_SCROLL_Y = 40;
+
+function setupMenuReveal() {
+  const controls = document.querySelector('.controls-wrapper');
+  const menu = document.getElementById('menuSection');
+  if (!controls || !menu) return;
+
+  const searchInput = document.getElementById('searchInput');
+  const update = () => {
+    const canScrollPast = document.documentElement.scrollHeight - window.innerHeight > MENU_REVEAL_SCROLL_Y;
+    // Never hide the bar while someone is using it or has an active search.
+    const inUse = controls.contains(document.activeElement) || Boolean(searchInput?.value);
+    controls.classList.toggle('awaiting-scroll', canScrollPast && !inUse && window.scrollY <= MENU_REVEAL_SCROLL_Y);
+  };
+  update();
+  window.addEventListener('scroll', update, { passive: true });
+  controls.addEventListener('focusout', update);
+
+  document.querySelectorAll('a[href="#menuSection"]').forEach(link => {
+    link.addEventListener('click', event => {
+      event.preventDefault();
+      controls.classList.remove('awaiting-scroll');
+      // Land the menu heading just below the sticky search bar (its real height, not a guess).
+      const stickyBottom = (parseFloat(getComputedStyle(controls).top) || 0) + controls.offsetHeight;
+      const target = menu.getBoundingClientRect().top + window.scrollY - stickyBottom - 16;
+      smoothScrollTo(Math.max(0, target));
+    });
+  });
+}
+
+let smoothScrollFrame = 0;
+
+function smoothScrollTo(targetY) {
+  cancelAnimationFrame(smoothScrollFrame);
+  const startY = window.scrollY;
+  const distance = targetY - startY;
+  if (Math.abs(distance) < 2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    window.scrollTo({ top: targetY, behavior: 'instant' });
+    return;
+  }
+
+  // Longer trips get a little more time, capped so it never feels sluggish.
+  const duration = Math.min(1100, 520 + Math.abs(distance) * 0.35);
+  const easeInOutCubic = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  const categories = document.querySelector('.category-scroll-shell');
+  // Stop the mobile scroll handler from collapsing the tabs mid-glide.
+  if (categories) categories.dataset.revealUntil = String(performance.now() + duration + 150);
+
+  const stop = () => {
+    cancelAnimationFrame(smoothScrollFrame);
+    window.removeEventListener('wheel', stop);
+    window.removeEventListener('touchstart', stop);
+  };
+  // Hand control back immediately if the user scrolls during the glide.
+  window.addEventListener('wheel', stop, { passive: true, once: true });
+  window.addEventListener('touchstart', stop, { passive: true, once: true });
+
+  const startTime = performance.now();
+  const step = now => {
+    const progress = Math.min(1, (now - startTime) / duration);
+    // 'instant' bypasses the CSS scroll-behavior: smooth, which would fight each frame.
+    window.scrollTo({ top: startY + distance * easeInOutCubic(progress), behavior: 'instant' });
+    if (progress < 1) smoothScrollFrame = requestAnimationFrame(step);
+    else stop();
+  };
+  smoothScrollFrame = requestAnimationFrame(step);
 }
 
 function setupImageParallax() {

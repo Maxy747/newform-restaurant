@@ -2,7 +2,7 @@ import {supabase as defaultSupabase,isSupabaseConfigured as defaultConfigured} f
 import {escapeHTML as e,money,statusLabel as label,hasDeliveryDetails,cashOption,stepTimes,trackingCopy,orderNumber,orderRef} from './oms-policy.js';
 import {createOmsApi} from './oms-client.js';
 
-export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAll,supabase=defaultSupabase,isSupabaseConfigured=defaultConfigured}) {
+export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAll,onStaffChange=()=>{},supabase=defaultSupabase,isSupabaseConfigured=defaultConfigured}) {
  let role='customer',profile=null,channel=null,poll=null,detailId=null,detailVersion=0;
  let config={payments:false,testMode:true},placing=false,paying=false,addressEditing=false,methodChosen=false,staffLoginRedirect=false;
  let historyPage=0,realtimeTimer;
@@ -89,6 +89,7 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   if(staffLoginRedirect&&user){staffLoginRedirect=false;if(staff()){location.assign('admin.html');return;}}
   fillCheckout();
   $('ordersBtn').hidden=!staff();
+  onStaffChange(staff());
   if(user)channel=supabase.channel('newform-orders-'+user.id).on('postgres_changes',{event:'*',schema:'public',table:'order_signals'},()=>{
    clearTimeout(realtimeTimer);realtimeTimer=setTimeout(refreshVisible,200);
   }).subscribe();
