@@ -5,6 +5,12 @@ import { createCategories } from './categories.js';
 import { createSpecials } from './specials.js';
 import { createFeaturedSelector, featuredPrice } from './featured-dish.js';
 
+// Always open at the top: stop the browser restoring the old scroll position on
+// refresh, and drop a leftover #section from the address so it can't jump there.
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+if (location.hash) history.replaceState(history.state, '', location.pathname + location.search);
+window.scrollTo({ top: 0, behavior: 'instant' });
+
 // Default Menu Dataset extracted directly from Newform Multi Cuisine Restaurant Menu Cards
 const DEFAULT_MENU = [
   // --- MANDHI & RICE ---
