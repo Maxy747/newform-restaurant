@@ -1871,3 +1871,29 @@ footer {
 @media (prefers-reduced-motion: reduce) {
   .controls-wrapper, .controls-wrapper.awaiting-scroll { translate: none; transition: opacity .2s linear, visibility 0s; }
 }
+
+/* Hero owns the first screen: it fills the viewport under the header, its
+   artwork and title scale with the window height, and the search bar + menu
+   start below the fold. */
+:root { --header-h: 81px; }
+.hero-minimal { min-height: calc(100svh - var(--header-h)); }
+
+@media (min-width: 900px) {
+  .hero-minimal { padding-top: clamp(24px, 4vh, 56px); padding-bottom: clamp(32px, 6vh, 72px); }
+  .hero-main-title { font-size: clamp(2.4rem, min(4.2vw, 7.2vh), 4.4rem); }
+  .center-dish-wrapper { max-width: clamp(300px, 50vh, 520px); }
+  /* Equal side columns keep the logo on the page's centre line. */
+  .hero-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 1fr); }
+  /* Edge-align the side columns with the header (logo left, cart right). */
+  .hero-right-col { justify-self: end; width: min(100%, 340px); padding-left: 0; }
+  .hero-right-col .current-dish-desc { max-width: none; }
+  .hero-right-col .hero-portion-selector { width: 100%; }
+}
+
+@media (max-width: 768px) {
+  :root { --header-h: 63px; }
+  /* The header already shows the logo; dropping the large copy lets the hero fit one phone screen. */
+  .hero-center-col { display: none; }
+  /* Centre within the space between the header and the fixed bottom nav (54px). */
+  .hero-minimal { padding-top: 20px; padding-bottom: 24px; min-height: calc(100svh - var(--header-h) - 54px); }
+}
