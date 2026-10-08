@@ -1967,7 +1967,6 @@ footer {
   .hero-explore-desktop { display: none; }
   .hero-explore-mobile { display: inline-flex; }
   .hero-center-col { flex-direction: column; gap: 22px; }
-  .center-dish-wrapper { max-width: clamp(96px, calc(100svh - 600px), 250px); }
 }
 
 /* "MADE FOR EVERY TABLE" always sits on one line: its size follows the text
@@ -2029,4 +2028,34 @@ footer {
 @media (prefers-reduced-motion: reduce) {
   .splash-logo, .splash-inner > * { animation: none; }
   .splash.is-leaving { animation: none; opacity: 0; visibility: hidden; transition: opacity .2s; }
+}
+
+/* Phones: the first screen is exactly text + logo + Explore Menu, ending at the
+   bottom nav; the dish/price block starts below the fold. The logo column takes
+   whatever height is left (container query) and the logo fills it. */
+.hero-first-screen { display: contents; }
+@media (max-width: 768px) {
+  .hero-minimal { min-height: 0; padding-top: 16px; padding-bottom: 28px; }
+  .hero-first-screen {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    /* viewport - header - bottom nav (54px) - hero top padding - breathing room */
+    height: calc(100svh - var(--header-h) - 54px - 16px - 14px);
+    min-height: 420px;
+  }
+  .hero-first-screen .hero-left-col { flex: none; }
+  .hero-first-screen .hero-center-col {
+    flex: 1 1 0;
+    min-height: 0;
+    container-type: size;
+    justify-content: center;
+    gap: 16px;
+  }
+  .hero-first-screen .center-dish-wrapper {
+    width: min(100cqw - 24px, 100cqh - 48px - 16px - 8px, 360px);
+    max-width: none;
+  }
+  /* Clears the translucent bottom nav so nothing peeks through it. */
+  .hero-grid { gap: 76px; }
 }
