@@ -1902,7 +1902,7 @@ footer {
    logo's black text (high contrast), a breathing glow and a periodic shine.
    The glow is a blurred pseudo-element animating only opacity/scale, so it
    stays on the compositor instead of repainting box-shadows every frame. */
-#heroExploreBtn {
+.hero-explore-btn {
   position: relative;
   isolation: isolate;
   overflow: visible;
@@ -1915,7 +1915,7 @@ footer {
   border: 0;
   box-shadow: 0 6px 18px rgba(255, 122, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .45);
 }
-#heroExploreBtn::before {
+.hero-explore-btn::before {
   content: "";
   position: absolute;
   inset: -6px;
@@ -1927,7 +1927,7 @@ footer {
   pointer-events: none;
   animation: order-glow 2.6s ease-in-out infinite;
 }
-#heroExploreBtn::after {
+.hero-explore-btn::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -1938,14 +1938,14 @@ footer {
   pointer-events: none;
   animation: order-shine 4.5s ease-in-out infinite 1s;
 }
-#heroExploreBtn:hover {
+.hero-explore-btn:hover {
   transform: translateY(-2px);
   color: #1a0f00;
   box-shadow: 0 10px 26px rgba(255, 122, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .5);
 }
-#heroExploreBtn:hover::before { opacity: .9; animation-play-state: paused; }
-#heroExploreBtn:active { transform: translateY(0) scale(.97); }
-#heroExploreBtn:focus-visible { outline: 3px solid #1a0f00; outline-offset: 3px; }
+.hero-explore-btn:hover::before { opacity: .9; animation-play-state: paused; }
+.hero-explore-btn:active { transform: translateY(0) scale(.97); }
+.hero-explore-btn:focus-visible { outline: 3px solid #1a0f00; outline-offset: 3px; }
 
 @keyframes order-glow {
   0%, 100% { opacity: .4; transform: scale(.94); }
@@ -1956,6 +1956,16 @@ footer {
   85%, 100% { background-position: -60% 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-  #heroExploreBtn::before { animation: none; opacity: .75; }
-  #heroExploreBtn::after { animation: none; display: none; }
+  .hero-explore-btn::before { animation: none; opacity: .75; }
+  .hero-explore-btn::after { animation: none; display: none; }
+}
+
+/* Explore Menu sits under the logo on phones. The logo shrinks on short
+   screens so the button still lands above the fixed bottom nav. */
+.hero-explore-mobile { display: none; }
+@media (max-width: 768px) {
+  .hero-explore-desktop { display: none; }
+  .hero-explore-mobile { display: inline-flex; }
+  .hero-center-col { flex-direction: column; gap: 22px; }
+  .center-dish-wrapper { max-width: clamp(96px, calc(100svh - 600px), 250px); }
 }
