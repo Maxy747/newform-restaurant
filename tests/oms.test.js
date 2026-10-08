@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {PGlite} from '@electric-sql/pglite';
-import {validHmac,canViewOrder,nextStatuses,publicOrder,sha256} from '../supabase/functions/_shared/security.js';
+import {validHmac,canViewOrder,canClaim,nextStatuses,publicOrder,sha256} from '../supabase/functions/_shared/security.js';
 import {escapeHTML,hasDeliveryDetails,indiaDayRange} from '../oms-policy.js';
 import {createHmac} from 'node:crypto';
 
@@ -21,6 +21,20 @@ test('Payment signatures, authorization and UI helpers',async()=>{
  assert.deepEqual(nextStatuses(order,'admin'),['cancelled']);
  assert.equal(publicOrder(order,'kitchen').phone,undefined);
  assert.equal(publicOrder(order,'customer').user_id,undefined);
+ const ready={order_type:'delivery',order_status:'ready',payment_method:'cod',payment_status:'pending',assigned_driver:null,driver:{display_name:'Ravi',phone:'9999999999'}};
+ assert.equal(canViewOrder(ready,'d1','delivery'),true); // unassigned ready orders are open to every driver
+ assert.equal(canClaim(ready,'delivery','d1'),true);
+ assert.equal(canClaim(ready,'staff','d1'),false);
+ assert.deepEqual(nextStatuses(ready,'delivery','d1'),[]);
+ const mine={...ready,assigned_driver:'d1',order_status:'out_for_delivery'};
+ assert.equal(canViewOrder(mine,'d1','delivery'),true);
+ assert.equal(canViewOrder(mine,'d2','delivery'),false);
+ assert.equal(canClaim({...ready,assigned_driver:'d2'},'delivery','d1'),false);
+ assert.deepEqual(nextStatuses(mine,'delivery','d1'),['completed']);
+ assert.deepEqual(nextStatuses(mine,'delivery','d2'),[]);
+ assert.deepEqual(publicOrder(mine,'customer').driver,{display_name:'Ravi'});
+ assert.equal(publicOrder(mine,'customer').assigned_driver,undefined);
+ assert.equal(publicOrder(mine,'staff').driver.phone,'9999999999');
  assert.equal(escapeHTML('<img src="x">'), '&lt;img src=&quot;x&quot;&gt;');
  assert.equal(hasDeliveryDetails({full_name:'A',phone:'123',default_address:'Road'}),true);
  assert.equal(hasDeliveryDetails({full_name:'A',phone:'123'}),false);
@@ -214,6 +228,83 @@ test('PostgreSQL migration and order/payment/RLS lifecycle',async t=>{
   assert.equal(tomorrow.daily_number,1);
   assert.equal(String(tomorrow.order_day instanceof Date?tomorrow.order_day.toISOString().slice(0,10):tomorrow.order_day),'2030-01-02');
   await assert.rejects(q('update public.orders set daily_number=$1, order_day=$2 where id=$3',[rows[0].daily_number,rows[0].order_day,second]),/duplicate key/);
+ });
+ await t.test('drivers: roster, shifts, assignment, self-claim and per-driver report',async()=>{
+  const staff='66666666-6666-4666-8666-666666666666',driver2='77777777-7777-4777-8777-777777777777';
+  await q(`insert into auth.users values('${staff}','s@test.invalid'),('${driver2}','Driver2@test.invalid')`);
+  await q(`insert into public.restaurant_roles(user_id,role) values('${staff}','staff')`);
+  const migration=await readFile(new URL('../supabase/migrations/20261008090000_delivery_drivers.sql',import.meta.url),'utf8');
+  await db.exec(migration);await db.exec(migration); // safe to re-run
+  const existing=(await q('select display_name,active,on_shift from public.delivery_drivers where user_id=$1',[delivery]))[0];
+  assert.deepEqual(existing,{display_name:'d',active:true,on_shift:false}); // backfilled from the existing delivery role
+  await db.exec('set role authenticated');
+  await assert.rejects(q('select * from public.delivery_drivers'),/permission denied/);
+  await assert.rejects(q('select public.oms_assign_driver($1,$2,$2)',[crypto.randomUUID(),delivery]),/permission denied/);
+  await db.exec('reset role');
+
+  const save=(actor,email,name,phone=null,driverId=null)=>q('select public.oms_save_driver($1,$2,$3,$4,$5) id',[actor,driverId,email,name,phone]);
+  await assert.rejects(save(staff,'driver2@test.invalid','Ravi'),/Admin access/);
+  await assert.rejects(save(admin,'nobody@test.invalid','Nobody'),/sign up on the website/);
+  await assert.rejects(save(admin,'k@test.invalid','Kitchen'),/already has restaurant staff access/);
+  await assert.rejects(save(admin,'driver2@test.invalid','Ravi','12'),/phone/);
+  await assert.rejects(save(admin,'driver2@test.invalid',' '),/name/);
+  assert.equal((await save(admin,' DRIVER2@test.invalid ','Ravi','+91 98470 12345'))[0].id,driver2);
+  assert.equal((await q('select role from public.restaurant_roles where user_id=$1',[driver2]))[0].role,'delivery');
+
+  const status=(actor,driver,active,shift)=>q('select public.oms_set_driver_status($1,$2,$3,$4)',[actor,driver,active,shift]);
+  await assert.rejects(status(driver2,delivery,null,true),/Not allowed/);
+  await assert.rejects(status(kitchen,delivery,null,true),/Not allowed/);
+  await status(delivery,delivery,null,true);
+
+  const quote=(await q('insert into public.delivery_quotes(user_id,latitude,longitude,distance_m,fee) values($1,11,76,1000,100) returning id',[user]))[0].id;
+  const id=(await q('select public.oms_create_order($1,$2,$3,$4,$5,$6) id',[user,crypto.randomUUID(),'f'.repeat(64),JSON.stringify({name:'Test Customer',phone:'9999999999',address:'Test Road',order_type:'delivery',quote_id:quote}),JSON.stringify([{id:'cod-boundary',quantity:1}]),'whatsapp']))[0].id;
+  const change=(actor,next,cash=false)=>q('select public.oms_change_order($1,$2,$3,$4)',[id,actor,next,cash]);
+  const assign=(actor,driver)=>q('select public.oms_assign_driver($1,$2,$3)',[id,actor,driver]);
+  const assigned=async()=>(await q('select assigned_driver from public.orders where id=$1',[id]))[0].assigned_driver;
+
+  await change(admin,'confirmed');
+  await assert.rejects(assign(delivery,delivery),/once it is ready/);
+  await assert.rejects(assign(kitchen,delivery),/Staff access/);
+  await assert.rejects(assign(staff,driver2),/Ravi is off shift/);
+  await change(admin,'preparing');await change(admin,'ready');
+  await assert.rejects(change(delivery,'out_for_delivery'),/Claim this delivery/);
+  await assert.rejects(assign(driver2,driver2),/Start your shift/);
+  await assign(delivery,delivery);
+  assert.equal(await assigned(),delivery);
+  await status(staff,driver2,null,true);
+  await assert.rejects(assign(driver2,driver2),/Another driver already took/);
+  await assert.rejects(assign(driver2,null),/not your delivery/);
+  await assert.rejects(assign(delivery,driver2),/only claim orders for themselves/);
+  await assign(delivery,null); // hand back before leaving
+  await assign(driver2,driver2);
+  await assert.rejects(change(delivery,'out_for_delivery'),/Claim this delivery/);
+  await assign(staff,delivery); // staff can reassign
+  assert.equal(await assigned(),delivery);
+  await assert.rejects(change(driver2,'out_for_delivery'),/Claim this delivery/);
+  await change(delivery,'out_for_delivery');
+  await assert.rejects(assign(delivery,null),/before leaving/);
+  await assert.rejects(status(admin,delivery,false,null),/Reassign this driver's 1 active deliveries/);
+  await assert.rejects(status(staff,driver2,false,null),/Admin access/);
+  await change(delivery,null,true);await change(delivery,'completed');
+  await assert.rejects(assign(admin,driver2),/already closed/);
+  const events=(await q("select detail from public.order_events where order_id=$1 and event_type like 'driver.%' order by id",[id])).map(e=>e.detail);
+  assert.deepEqual(events,['d took this delivery','Driver removed','Ravi took this delivery','Assigned to d']);
+
+  const total=Number((await q('select total from public.orders where id=$1',[id]))[0].total);
+  const report=(await q("select public.oms_driver_report(now()-interval '1 day',now()+interval '1 day') r"))[0].r;
+  const row=report.find(r=>r.id===delivery);
+  assert.equal(row.delivered,1);assert.equal(row.active_orders,0);
+  assert.equal(Number(row.cash),504+total); // includes cash recorded in the earlier lifecycle test
+  assert.equal(report.find(r=>r.id===driver2).email,'driver2@test.invalid');
+
+  await status(admin,delivery,false,null);
+  assert.equal((await q('select * from public.restaurant_roles where user_id=$1',[delivery])).length,0);
+  await assert.rejects(change(delivery,'completed'),/Staff access/);
+  await assert.rejects(status(admin,delivery,null,true),/disabled/);
+  await status(admin,delivery,true,null);
+  assert.equal((await q('select role from public.restaurant_roles where user_id=$1',[delivery]))[0].role,'delivery');
+  await save(admin,null,'Ravi K',null,driver2);
+  assert.deepEqual((await q('select display_name,phone from public.delivery_drivers where user_id=$1',[driver2]))[0],{display_name:'Ravi K',phone:null});
  });
  } finally {await db.close();}
 });

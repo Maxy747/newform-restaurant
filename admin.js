@@ -1,6 +1,6 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient.js';
 import { createOmsApi } from './oms-client.js';
-import { escapeHTML as e, money, statusLabel as label, nextStatuses, indiaDayRange, stepTimes, orderNumber, orderRef } from './oms-policy.js';
+import { escapeHTML as e, money, statusLabel as label, nextStatuses, canClaim, indiaDayRange, stepTimes, orderNumber, orderRef } from './oms-policy.js';
 import { BOARD_COLUMNS, groupOrders, findNewOrders, ageLabel, minutesSince } from './admin-policy.js';
 import { createMenuAdmin } from './admin-menu.js';
 
@@ -8,7 +8,7 @@ const THEME_KEY = 'newform_theme_v1';
 const SOUND_KEY = 'newform_admin_sound_v1';
 const FLASH_MS = 3000;
 const ACTIVE_STATUSES = ['new', 'awaiting_payment', 'confirmed', 'preparing', 'ready', 'out_for_delivery'];
-const SECTIONS = { orders: ['admin', 'staff', 'kitchen', 'delivery'], menu: ['admin'], tickets: ['admin', 'staff'], reports: ['admin', 'staff'], settings: ['admin'] };
+const SECTIONS = { orders: ['admin', 'staff', 'kitchen', 'delivery'], menu: ['admin'], tickets: ['admin', 'staff'], drivers: ['admin', 'staff'], reports: ['admin', 'staff'], settings: ['admin'] };
 const TYPE_ICON = { delivery: 'fa-motorcycle', takeaway: 'fa-bag-shopping', dine_in: 'fa-chair' };
 const TYPE_LABEL = { delivery: 'Delivery', takeaway: 'Takeaway', dine_in: 'Dine in' };
 const PAYMENT_LABEL = { cod: 'COD', cash: 'Pay at counter', whatsapp: 'WhatsApp', razorpay: 'Online' };
@@ -17,7 +17,7 @@ const paymentName = method => PAYMENT_LABEL[method] || label(method);
 
 const $ = id => document.getElementById(id);
 const api = createOmsApi(supabase, isSupabaseConfigured);
-const state = { role: null, config: {}, section: 'orders', ordersView: 'board', historyPage: 0, detailId: null, reportDays: 1 };
+const state = { role: null, userId: null, config: {}, section: 'orders', ordersView: 'board', historyPage: 0, detailId: null, reportDays: 1, drivers: [], me: null };
 const seenOrders = new Set();
 let primed = false, arrivedAt = new Map(), boardOrders = [], lastBoardHTML = '', channel = null, pollTimer = null, refreshTimer = null, boardVersion = 0, detailVersion = 0, authVersion = 0;
 const baseTitle = document.title;
@@ -158,7 +158,9 @@ async function evaluateSession(session) {
   if (version !== authVersion) return;
   if (!SECTIONS.orders.includes(config.role)) return showGate(`${session.user.email} does not have restaurant staff access.`, { signOut: true });
   state.role = config.role;
+  state.userId = session.user.id;
   state.config = config;
+  state.drivers = []; state.me = null;
   $('gate').hidden = true;
   $('topActions').hidden = false;
   $('adminNav').hidden = false;
@@ -168,6 +170,9 @@ async function evaluateSession(session) {
   document.querySelector('[data-orders-view="history"]').hidden = !isManager();
   $('codSwitch').setAttribute('aria-checked', String(Boolean(config.codEnabled)));
   $('deliverySwitch').setAttribute('aria-checked', String(config.deliveryEnabled !== false));
+  $('addDriverBtn').hidden = state.role !== 'admin';
+  $('shiftBox').hidden = true;
+  if (state.role === 'delivery') loadMyShift(version).catch(error => toast(error.message, 'error'));
   primed = false; seenOrders.clear();
   syncSoundPrompt();
   startLive(session.user.id);
@@ -200,6 +205,7 @@ function route() {
   if (section === 'orders') refreshOrders().catch(error => toast(error.message, 'error'));
   if (section === 'menu') menuAdmin.open().catch(error => toast(error.message, 'error'));
   if (section === 'tickets') refreshTickets().catch(error => toast(error.message, 'error'));
+  if (section === 'drivers') refreshDrivers().catch(error => toast(error.message, 'error'));
   if (section === 'reports') refreshReports().catch(error => toast(error.message, 'error'));
 }
 window.addEventListener('hashchange', route);
@@ -219,6 +225,7 @@ async function refreshLive() {
   await refreshBoard();
   if (state.section === 'orders' && state.ordersView === 'history') await refreshHistory();
   if (state.section === 'tickets') await refreshTickets();
+  if (state.section === 'drivers') await refreshDrivers();
   if (state.detailId && $('orderDialog').open) await refreshDetail();
   setLive(true);
 }
@@ -258,7 +265,8 @@ function itemList(order) {
 }
 
 function actionButtons(order, compact = false) {
-  return nextStatuses(order, state.role).map(status => {
+  const claim = canClaim(order, state.role, state.userId) ? `<button type="button" class="adm-btn adm-step-btn" data-claim="${e(order.id)}"><i class="fa-solid fa-hand"></i> Take this delivery</button>` : '';
+  return claim + nextStatuses(order, state.role, state.userId).map(status => {
     const cancel = status === 'cancelled';
     if (compact && cancel) return '';
     return `<button type="button" class="adm-btn ${cancel ? 'adm-btn-danger' : 'adm-step-btn'}" data-order="${e(order.id)}" data-status="${e(status)}">${cancel ? 'Cancel order' : 'Mark ' + e(label(status).toLowerCase())}</button>`;
@@ -277,9 +285,19 @@ function orderCard(order) {
     <header><strong class="adm-order-no">${e(orderNumber(order))}</strong><span class="adm-age" title="${e(time(order.created_at))}"><i class="fa-regular fa-clock"></i> ${e(ageLabel(order.created_at))}</span></header>
     <div class="adm-order-meta"><span><i class="fa-solid ${TYPE_ICON[order.order_type] || 'fa-receipt'}"></i> ${e(typeName(order.order_type))}${order.table_number ? ' · Table ' + e(order.table_number) : ''}</span>${payment}</div>
     ${order.customer_name ? `<p class="adm-order-name">${e(order.customer_name)}</p>` : ''}
+    ${driverLine(order)}
     ${itemList(order)}
     <footer><strong>${money(order.total)}</strong>${order.order_status === 'awaiting_payment' ? '<span class="adm-chip">Awaiting payment</span>' : ''}<span class="adm-order-actions">${actionButtons(order, true)}</span></footer>
   </article>`;
+}
+
+// Who is delivering: shown on open delivery cards once a driver is assigned, or flagged when a ready order has none.
+function driverLine(order) {
+  if (order.order_type !== 'delivery' || ['completed', 'cancelled'].includes(order.order_status)) return '';
+  if (order.assigned_driver && order.assigned_driver === state.userId) return '<div class="adm-order-driver"><span class="adm-chip adm-chip-mine"><i class="fa-solid fa-motorcycle"></i>&nbsp;Your delivery</span></div>';
+  if (order.driver?.display_name) return `<div class="adm-order-driver"><span class="adm-chip"><i class="fa-solid fa-motorcycle"></i>&nbsp;${e(order.driver.display_name)}</span></div>`;
+  if (['ready', 'out_for_delivery'].includes(order.order_status)) return '<div class="adm-order-driver"><span class="adm-chip adm-chip-warn">No driver yet</span></div>';
+  return '';
 }
 
 function finishedRow(order) {
@@ -382,7 +400,8 @@ async function openOrder(id) {
 
 async function refreshDetail() {
   const id = state.detailId, version = ++detailVersion;
-  const { order: fetched, events, tickets } = await api('detail', { id });
+  // Managers need the roster for the driver picker; it is fetched once and dropped after any assignment.
+  const [{ order: fetched, events, tickets }] = await Promise.all([api('detail', { id }), isManager() && !state.drivers.length ? loadDrivers().catch(() => {}) : null]);
   if (version !== detailVersion || id !== state.detailId) return;
   const o = withPending(fetched);
   $('orderDialogTitle').textContent = `Order ${orderNumber(o)}`;
@@ -393,7 +412,7 @@ async function refreshDetail() {
   const steps = ['new', 'confirmed', 'preparing', 'ready', ...(o.order_type === 'delivery' ? ['out_for_delivery'] : []), 'completed'];
   const current = steps.indexOf(o.order_status);
   const reached = stepTimes(events);
-  const canCash = state.role !== 'kitchen' && o.payment_method !== 'razorpay' && o.payment_status !== 'paid' && o.order_status !== 'cancelled';
+  const canCash = state.role !== 'kitchen' && (state.role !== 'delivery' || o.assigned_driver === state.userId) && o.payment_method !== 'razorpay' && o.payment_status !== 'paid' && o.order_status !== 'cancelled';
   const deliveryPin = o.delivery_latitude != null && o.delivery_longitude != null ? `https://www.google.com/maps?q=${Number(o.delivery_latitude)},${Number(o.delivery_longitude)}` : null;
   body.innerHTML = `
     <div class="adm-detail-status"><span class="adm-badge adm-badge-${e(o.order_status)}">${e(label(o.order_status))}</span><span class="adm-muted">Placed ${e(time(o.created_at))} · ${e(ageLabel(o.created_at))} ago · Ref ${e(orderRef(o))}</span></div>
@@ -411,11 +430,58 @@ async function refreshDetail() {
       ${deliveryPin ? `<p><a class="adm-link" href="${e(deliveryPin)}" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-location-dot"></i> Open delivery pin in Maps</a></p>` : ''}
       <p class="adm-muted">Payment: ${e(o.payment_method === 'cod' ? 'Cash on delivery' : paymentName(o.payment_method))} · ${e(label(o.payment_status))}</p>
     </section>
+    ${driverBlock(o)}
     <details class="adm-detail-block"><summary>Activity (${events.length})</summary><ul class="adm-events">${events.map(event => `<li><small>${e(time(event.created_at))}</small> ${e(label(event.detail))}</li>`).join('')}</ul></details>
     <div id="orderTickets"></div>`;
   body.querySelectorAll('[data-status]').forEach(button => button.onclick = run(() => requestStatus(o, button.dataset.status)));
   if ($('cashBtn')) $('cashBtn').onclick = run(() => requestCash(o));
+  if ($('driverPick')) $('driverPick').onchange = run(async () => {
+    const select = $('driverPick'); select.disabled = true;
+    try { await assignDriver(o, select.value || null); } catch (error) { select.value = o.assigned_driver || ''; throw error; } finally { select.disabled = false; select.blur(); }
+  });
+  if ($('releaseBtn')) $('releaseBtn').onclick = run(() => releaseOrder(o));
   if (isManager()) renderTickets(o, tickets);
+}
+
+function driverBlock(o) {
+  if (o.order_type !== 'delivery') return '';
+  const closed = ['completed', 'cancelled'].includes(o.order_status);
+  const phone = o.driver?.phone && state.role !== 'delivery' ? ` · <a class="adm-link" href="tel:${e(o.driver.phone.replace(/[^0-9+]/g, ''))}"><i class="fa-solid fa-phone"></i> ${e(o.driver.phone)}</a>` : '';
+  const current = o.driver?.display_name ? `<p><strong>${e(o.driver.display_name)}</strong>${phone}</p>` : '<p class="adm-muted">No driver assigned yet.</p>';
+  if (isManager() && !closed) {
+    // Only active, on-shift drivers can take new work; the current driver stays listed so the select shows them.
+    const options = state.drivers.filter(d => d.active && (d.on_shift || d.id === o.assigned_driver));
+    return `<section class="adm-detail-block"><h3>Driver</h3>
+      <div class="adm-driver-pick"><select id="driverPick" aria-label="Assign driver"><option value="">No driver</option>${options.map(d => `<option value="${e(d.id)}"${d.id === o.assigned_driver ? ' selected' : ''}>${e(d.name)}${d.on_shift ? ` · ${e(d.active_orders)} active` : ' · off shift'}</option>`).join('')}</select></div>
+      ${options.length ? '' : '<p class="adm-muted">No drivers are on shift. Start a shift from the Drivers page.</p>'}
+      ${phone ? `<p class="adm-muted">Call ${e(o.driver.display_name)}${phone}</p>` : ''}</section>`;
+  }
+  if (state.role === 'delivery' && o.assigned_driver === state.userId && o.order_status === 'ready') {
+    return '<section class="adm-detail-block"><h3>Driver</h3><p>This delivery is yours.</p><div><button type="button" class="adm-btn" id="releaseBtn">Hand back to the restaurant</button></div></section>';
+  }
+  return `<section class="adm-detail-block"><h3>Driver</h3>${current}</section>`;
+}
+
+async function assignDriver(order, driverId) {
+  await api('assign', { id: order.id, driver: driverId });
+  const name = state.drivers.find(d => d.id === driverId)?.name;
+  toast(driverId ? `${orderNumber(order)} assigned to ${name || 'driver'}` : `${orderNumber(order)} has no driver now`, 'success');
+  state.drivers = [];
+  queueRefresh(0);
+}
+
+async function claimOrder(order) {
+  await api('assign', { id: order.id, driver: state.userId });
+  toast(`${orderNumber(order)} is yours. Mark it out for delivery when you leave.`, 'success');
+  queueRefresh(0);
+}
+
+async function releaseOrder(order) {
+  const choice = await ask({ title: `Hand back ${orderNumber(order)}?`, message: 'Another driver will be able to take it.', choices: [{ label: 'Hand back', value: 'yes', tone: 'danger' }, { label: 'Keep it', value: null }] });
+  if (!choice) return;
+  await api('assign', { id: order.id, driver: null });
+  toast(`${orderNumber(order)} handed back`);
+  queueRefresh(0);
 }
 
 function renderTickets(order, tickets) {
@@ -556,6 +622,13 @@ $('orderDialog').addEventListener('close', () => { state.detailId = null; detail
 
 // One delegated handler for every order card/row in the page.
 document.addEventListener('click', event => {
+  const claim = event.target.closest('[data-claim]');
+  if (claim) {
+    event.stopPropagation();
+    const order = findOrder(claim.dataset.claim);
+    if (order) run(() => claimOrder(order))({ currentTarget: claim });
+    return;
+  }
   const action = event.target.closest('[data-status]');
   if (action && !action.closest('#orderDialog')) {
     event.stopPropagation();
@@ -578,6 +651,102 @@ async function refreshTickets() {
       <strong>${e(ticket.subject)}</strong><span>Order ${e(shortId(ticket.order_id))}</span><span class="adm-badge">${e(label(ticket.status))}</span><span class="adm-muted">${e(time(ticket.updated_at || ticket.created_at))}</span></button>`).join('')
     || '<p class="adm-empty">No open tickets. Nice.</p>';
 }
+
+// ---------- delivery drivers ----------
+async function loadDrivers() {
+  const today = indiaDayRange(todayIST());
+  state.drivers = (await api('drivers', { start: today.start, end: today.end })).drivers;
+  return state.drivers;
+}
+
+async function refreshDrivers() {
+  if (!isManager()) return;
+  const drivers = await loadDrivers();
+  const admin = state.role === 'admin';
+  $('driverList').innerHTML = drivers.map(d => `<article class="adm-card adm-driver${d.active ? '' : ' is-disabled'}">
+      <header><div><h3>${e(d.name)}</h3><p>${e(d.email || '')}${d.phone ? ` · <a class="adm-link" href="tel:${e(d.phone.replace(/[^0-9+]/g, ''))}">${e(d.phone)}</a>` : ''}</p></div>
+        ${d.active ? (d.on_shift ? '<span class="adm-chip adm-chip-ok">On shift</span>' : '<span class="adm-chip">Off shift</span>') : '<span class="adm-chip">Disabled</span>'}</header>
+      <div class="adm-driver-stats"><div><small>Active now</small><strong>${e(d.active_orders)}</strong></div><div><small>Delivered today</small><strong>${e(d.delivered)}</strong></div><div><small>Cash today</small><strong>${money(d.cash)}</strong></div></div>
+      <footer>
+        ${d.active ? `<span class="adm-shift" data-on="${d.on_shift}">Shift <button type="button" class="adm-switch adm-switch-sm" role="switch" aria-checked="${d.on_shift}" aria-label="${e(d.name)} on shift" data-driver-shift="${e(d.id)}"><span></span></button></span>` : ''}
+        ${admin ? `<button type="button" class="adm-btn" data-driver-edit="${e(d.id)}"><i class="fa-solid fa-pen"></i> Edit</button>
+        <button type="button" class="adm-btn${d.active ? ' adm-btn-danger' : ''}" data-driver-active="${e(d.id)}">${d.active ? 'Disable' : 'Enable'}</button>` : ''}
+      </footer></article>`).join('')
+    || `<p class="adm-empty">No drivers yet.${admin ? ' Use Add driver once they have signed up on the website.' : ''}</p>`;
+}
+
+$('driverList').addEventListener('click', event => {
+  const shift = event.target.closest('[data-driver-shift]'), edit = event.target.closest('[data-driver-edit]'), active = event.target.closest('[data-driver-active]');
+  const driver = id => state.drivers.find(d => d.id === id);
+  if (shift) run(async () => {
+    const d = driver(shift.dataset.driverShift);
+    await api('driver_status', { driverId: d.id, onShift: !d.on_shift });
+    toast(`${d.name} is ${d.on_shift ? 'off' : 'on'} shift`, 'success');
+    await refreshDrivers();
+  })({ currentTarget: shift });
+  if (edit) openDriverForm(driver(edit.dataset.driverEdit));
+  if (active) run(async () => {
+    const d = driver(active.dataset.driverActive);
+    if (d.active) {
+      const choice = await ask({ title: `Disable ${d.name}?`, message: 'They lose driver access right away. Their past deliveries stay in the records.', choices: [{ label: 'Disable driver', value: 'yes', tone: 'danger' }, { label: 'Keep', value: null }] });
+      if (!choice) return;
+    }
+    await api('driver_status', { driverId: d.id, active: !d.active });
+    toast(`${d.name} ${d.active ? 'disabled' : 'enabled'}`, 'success');
+    await refreshDrivers();
+  })({ currentTarget: active });
+});
+
+let editingDriver = null;
+function openDriverForm(driver = null) {
+  editingDriver = driver;
+  const form = $('driverForm');
+  form.reset();
+  $('driverDialogTitle').textContent = driver ? `Edit ${driver.name}` : 'Add driver';
+  $('driverEmailField').hidden = $('driverEmailHelp').hidden = Boolean(driver);
+  form.elements.name.value = driver?.name || '';
+  form.elements.phone.value = driver?.phone || '';
+  $('driverError').hidden = true;
+  $('driverDialog').showModal();
+  (driver ? form.elements.name : form.elements.email).focus();
+}
+$('addDriverBtn').onclick = () => openDriverForm();
+$('driverForm').onsubmit = async event => {
+  event.preventDefault();
+  const form = event.currentTarget, button = $('driverSave');
+  if (button.disabled) return;
+  button.disabled = true; $('driverError').hidden = true;
+  try {
+    await api('driver_save', { driverId: editingDriver?.id, email: form.elements.email.value.trim(), name: form.elements.name.value.trim(), phone: form.elements.phone.value.trim() });
+    toast(editingDriver ? 'Driver updated' : 'Driver added. They can sign in to the admin page now.', 'success');
+    $('driverDialog').close();
+    await refreshDrivers();
+  } catch (error) { $('driverError').textContent = error.message; $('driverError').hidden = false; }
+  finally { button.disabled = false; }
+};
+
+// Drivers switch their own shift from the orders page.
+async function loadMyShift(version) {
+  const { drivers } = await api('drivers');
+  if (version !== authVersion) return;
+  state.me = drivers[0] || null;
+  syncMyShift();
+}
+function syncMyShift() {
+  const on = Boolean(state.me?.on_shift);
+  $('shiftBox').hidden = !state.me;
+  $('shiftBox').dataset.on = String(on);
+  $('shiftLabel').textContent = on ? 'On shift' : 'Off shift';
+  $('shiftSwitch').setAttribute('aria-checked', String(on));
+}
+$('shiftSwitch').onclick = run(async () => {
+  if (!state.me) return;
+  const onShift = !state.me.on_shift;
+  await api('driver_status', { driverId: state.me.id, onShift });
+  state.me.on_shift = onShift;
+  syncMyShift();
+  toast(onShift ? 'Shift started. You can take ready orders.' : 'Shift ended', 'success');
+});
 
 // ---------- reports ----------
 const rupees = value => '₹' + Math.round(Number(value) || 0).toLocaleString('en-IN');

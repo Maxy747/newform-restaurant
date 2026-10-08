@@ -319,6 +319,27 @@ body:has(#gate:not([hidden])) { padding-bottom: 0; }
 .adm-bar { height: 10px; border-radius: 5px; background: var(--surface-3); overflow: hidden; }
 .adm-bar i { display: block; height: 100%; border-radius: 5px; background: var(--accent-grad); }
 .adm-setting { grid-template-columns: 1fr auto; align-items: center; gap: 16px; }
+
+/* ---------- delivery drivers ---------- */
+.adm-chip-warn { background: var(--warn-soft); color: var(--warn); }
+.adm-chip-mine { background: var(--accent-soft); color: var(--accent-text); }
+.adm-order-driver { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: .8rem; }
+.adm-shift { display: flex; align-items: center; gap: 8px; margin-left: auto; font-weight: 700; font-size: .85rem; color: var(--muted); }
+.adm-shift[data-on="true"] { color: var(--ok); }
+.adm-driver-list { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); align-content: start; }
+.adm-driver { display: grid; gap: 10px; }
+.adm-driver.is-disabled { opacity: .62; }
+.adm-driver header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.adm-driver h3 { font-size: 1rem; }
+.adm-driver header p { color: var(--muted); font-size: .8rem; overflow-wrap: anywhere; }
+.adm-driver-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.adm-driver-stats div { display: grid; gap: 2px; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); }
+.adm-driver-stats small { color: var(--muted); font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.adm-driver-stats strong { font-family: var(--font-head); font-size: 1.05rem; }
+.adm-driver footer { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.adm-driver footer .adm-shift { margin-left: 0; margin-right: auto; }
+.adm-driver-pick { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.adm-driver-pick select { flex: 1; min-width: 180px; }
 .adm-setting > div { display: grid; gap: 4px; }
 
 /* ---------- toasts ---------- */
@@ -453,7 +474,7 @@ body:has(#gate:not([hidden])) { padding-bottom: 0; }
   .adm-out-card { gap: 6px; }
   .adm-out-list { max-height: 64px; }
   .adm-menu-filters { padding: 8px 12px; }
-  #historyList, #menuList, #ticketList, #reportBody { flex: 1; min-height: 0; overflow-y: auto; align-content: start; padding-right: 2px; }
+  #historyList, #menuList, #ticketList, #driverList, #reportBody { flex: 1; min-height: 0; overflow-y: auto; align-content: start; padding-right: 2px; }
   #reportBody { display: grid; gap: 12px; }
 }
 @media (max-width: 520px) {

@@ -1,4 +1,4 @@
-export { nextStatuses } from './supabase/functions/_shared/security.js';
+export { nextStatuses, canClaim } from './supabase/functions/_shared/security.js';
 export const escapeHTML=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export const money=value=>new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:2}).format(Number(value)||0);
 export const statusLabel=value=>({new:'Order placed',confirmed:'Confirmed',preparing:'Cooking',ready:'Ready',out_for_delivery:'Out for delivery',completed:'Completed',cancelled:'Cancelled',awaiting_payment:'Awaiting payment',not_required:'Arrange with restaurant',pending:'Pending',paid:'Paid',failed:'Failed',refunded:'Refunded',open:'Open',in_progress:'In progress',resolved:'Resolved',delivery:'Delivery',takeaway:'Takeaway',dine_in:'Dine in'}[value]||String(value||'').replaceAll('_',' '));

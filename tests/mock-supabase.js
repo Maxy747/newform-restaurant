@@ -21,7 +21,9 @@ let orders = [
   mk(3, 'confirmed', 11, 'dine_in', [line('Beef Fry', 1, 180), line('Porotta', 4, 15)]),
   mk(4, 'preparing', 24, 'delivery', [line('Pothinkal Mandhi (2 Persons)', 1, 900)], { payment_method: 'whatsapp' }),
   mk(5, 'ready', 31, 'takeaway', [line('Paneer Butter Masala', 1, 220), line('Butter Naan', 3, 35)]),
-  mk(6, 'out_for_delivery', 42, 'delivery', [line('Shawaya Chicken Mandhi', 1, 260, 'quarter')]),
+  mk(6, 'out_for_delivery', 42, 'delivery', [line('Shawaya Chicken Mandhi', 1, 260, 'quarter')], { assigned_driver: 'd2' }),
+  mk(9, 'ready', 18, 'delivery', [line('Chicken Mandhi', 1, 480, 'half'), line('Lime Juice', 1, 40)]),
+  mk(10, 'ready', 14, 'delivery', [line('Beef Fry', 2, 180), line('Porotta', 6, 15)], { assigned_driver: 'u1' }),
   mk(7, 'completed', 95, 'dine_in', [line('Chicken Biriyani', 2, 160)], { payment_status: 'paid' }),
   mk(8, 'cancelled', 120, 'delivery', [line('Prawns Varattu', 1, 300)]),
 ];
@@ -30,6 +32,14 @@ for (let day = 1; day <= 29; day++) for (let k = 0; k < 2 + (day * 7) % 5; k++) 
   const n = 100 + day * 10 + k, type = ['delivery', 'takeaway', 'dine_in'][(day + k) % 3];
   orders.push(mk(n, day % 9 === 0 && k === 0 ? 'cancelled' : 'completed', day * 1440 + ((k * 137 + day * 53) % 600) - 200, type, [line(['Chicken Mandhi', 'Alfaham Chicken', 'Beef Fry', 'Porotta'][(day + k) % 4], 1 + k % 3, [260, 248, 180, 15][(day + k) % 4])], { payment_status: 'paid' }));
 }
+// Mock signed-in user is always 'u1'; as the delivery role they are the driver "You (mock)".
+let drivers = [
+  { id: 'u1', name: 'Arun (you)', email: 'delivery@newform.test', phone: '+91 98470 22222', active: true, on_shift: true },
+  { id: 'd2', name: 'Ravi', email: 'ravi@newform.test', phone: '+91 98470 33333', active: true, on_shift: true },
+  { id: 'd3', name: 'Sameer', email: 'sameer@newform.test', phone: null, active: true, on_shift: false },
+  { id: 'd4', name: 'Old driver', email: 'old@newform.test', phone: null, active: false, on_shift: false },
+];
+const withDriver = order => { const d = drivers.find(x => x.id === order.assigned_driver); return { ...order, driver: d ? { display_name: d.name, phone: d.phone } : null }; };
 const events = {};
 orders.forEach(order => { events[order.id] = [{ id: 1, event_type: 'order.created', detail: 'Order placed', created_at: order.created_at }]; });
 let tickets = [{ id: uuid(90), order_id: uuid(4), subject: 'Can you add extra mayo?', status: 'open', created_at: iso(20), updated_at: iso(20), ticket_messages: [{ id: 1, author_role: 'customer', message: 'Please add extra mayonnaise and no onions.', created_at: iso(20) }] }];
@@ -40,7 +50,7 @@ const kitchenRedact = order => { const { phone, delivery_address, customer_name,
 
 async function oms(body) {
   const r = role();
-  const view = order => r === 'kitchen' ? kitchenRedact(order) : order;
+  const view = order => r === 'kitchen' ? kitchenRedact(withDriver(order)) : withDriver(order);
   switch (body.action) {
     case 'config': return { role: signedIn() ? r : 'customer', codEnabled, deliveryEnabled, payments: false, testMode: true, deliveryRouting: true };
     case 'set_cod': codEnabled = body.enabled; return { codEnabled };
@@ -50,6 +60,7 @@ async function oms(body) {
       const mode = r === 'kitchen' ? 'kitchen' : r === 'delivery' ? 'delivery' : body.mode;
       if (mode === 'kitchen') rows = rows.filter(o => ['new', 'confirmed', 'preparing', 'ready'].includes(o.order_status));
       if (mode === 'delivery') rows = rows.filter(o => o.order_type === 'delivery' && ['ready', 'out_for_delivery', 'completed'].includes(o.order_status));
+      if (r === 'delivery') rows = rows.filter(o => o.assigned_driver === 'u1' || (!o.assigned_driver && o.order_status === 'ready'));
       if (body.status) rows = rows.filter(o => o.order_status === body.status);
       if (body.type) rows = rows.filter(o => o.order_type === body.type);
       if (body.start) rows = rows.filter(o => o.created_at >= body.start);
@@ -73,6 +84,33 @@ async function oms(body) {
         daily: group(o => ist(o).toISOString().slice(0, 10)).map(g => ({ day: g.key, orders: g.orders, sales: g.sales })),
         hourly: group(o => ist(o).getUTCHours()).map(g => ({ hour: Number(g.key), orders: g.orders, sales: g.sales })),
         by_type: group(o => o.order_type).sort((a, b) => b.orders - a.orders), by_payment: group(o => o.payment_method).sort((a, b) => b.orders - a.orders) };
+    }
+    case 'drivers': {
+      if (r === 'delivery') return { drivers: drivers.filter(d => d.id === 'u1').map(({ id, name, phone, active, on_shift }) => ({ id, name, phone, active, on_shift })) };
+      return { drivers: drivers.map(d => ({ ...d, active_orders: orders.filter(o => o.assigned_driver === d.id && ['ready', 'out_for_delivery'].includes(o.order_status)).length,
+        delivered: orders.filter(o => o.assigned_driver === d.id && o.order_status === 'completed').length + (d.id === 'd2' ? 4 : 0), cash: d.id === 'd2' ? 2140 : 0 })) };
+    }
+    case 'driver_save': {
+      if (!body.name) throw new Error("Enter the driver's name (up to 60 characters)");
+      if (body.driverId) { Object.assign(drivers.find(d => d.id === body.driverId), { name: body.name, phone: body.phone || null }); return { id: body.driverId }; }
+      if (!body.email.includes('@')) throw new Error('Enter the email the driver signed up with');
+      if (body.email.startsWith('nobody')) throw new Error('No account uses that email. Ask the driver to sign up on the website first, then add them here.');
+      const id = 'd' + (drivers.length + 1); drivers.push({ id, name: body.name, email: body.email.toLowerCase(), phone: body.phone || null, active: true, on_shift: false }); return { id };
+    }
+    case 'driver_status': {
+      const d = drivers.find(x => x.id === body.driverId);
+      if (body.active === false && orders.some(o => o.assigned_driver === d.id && !['completed', 'cancelled'].includes(o.order_status))) throw new Error("Reassign this driver's active deliveries first");
+      if (typeof body.active === 'boolean') { d.active = body.active; if (!d.active) d.on_shift = false; }
+      if (typeof body.onShift === 'boolean') d.on_shift = body.onShift;
+      return { ok: true };
+    }
+    case 'assign': {
+      const order = orders.find(o => o.id === body.id);
+      if (r === 'delivery' && body.driver && order.assigned_driver) throw new Error('Another driver already took this order');
+      order.assigned_driver = body.driver || null;
+      const d = drivers.find(x => x.id === body.driver);
+      events[order.id].push({ id: events[order.id].length + 1, event_type: body.driver ? 'driver.assigned' : 'driver.unassigned', detail: body.driver ? (r === 'delivery' ? `${d.name} took this delivery` : `Assigned to ${d.name}`) : 'Driver removed', created_at: new Date().toISOString() });
+      signal(); return { ok: true };
     }
     case 'ticket_list': return { tickets: tickets.filter(t => t.status !== 'resolved') };
     case 'detail': {

@@ -30,6 +30,7 @@
     <a href="#orders" data-section="orders"><i class="fa-solid fa-receipt"></i><span>Orders</span><b class="adm-count" id="newCount" hidden></b></a>
     <a href="#menu" data-section="menu" data-roles="admin"><i class="fa-solid fa-utensils"></i><span>Menu</span></a>
     <a href="#tickets" data-section="tickets" data-roles="admin staff"><i class="fa-solid fa-life-ring"></i><span>Tickets</span></a>
+    <a href="#drivers" data-section="drivers" data-roles="admin staff"><i class="fa-solid fa-motorcycle"></i><span>Drivers</span></a>
     <a href="#reports" data-section="reports" data-roles="admin staff"><i class="fa-solid fa-chart-column"></i><span>Reports</span></a>
     <a href="#settings" data-section="settings" data-roles="admin"><i class="fa-solid fa-gear"></i><span>Settings</span></a>
   </nav>
@@ -52,6 +53,10 @@
     <section id="section-orders" class="adm-section" hidden>
       <div class="adm-section-head">
         <h2>Orders</h2>
+        <div class="adm-shift" id="shiftBox" hidden>
+          <span id="shiftLabel">Off shift</span>
+          <button type="button" class="adm-switch adm-switch-sm" id="shiftSwitch" role="switch" aria-checked="false" aria-label="On shift"><span></span></button>
+        </div>
         <div class="adm-segment" role="tablist" aria-label="Order view">
           <button type="button" role="tab" data-orders-view="board" aria-selected="true">Live board</button>
           <button type="button" role="tab" data-orders-view="history" aria-selected="false">History</button>
@@ -100,6 +105,15 @@
     <section id="section-tickets" class="adm-section" hidden>
       <div class="adm-section-head"><h2>Support tickets</h2></div>
       <div id="ticketList" class="adm-list"></div>
+    </section>
+
+    <section id="section-drivers" class="adm-section" hidden>
+      <div class="adm-section-head">
+        <h2>Delivery drivers</h2>
+        <button type="button" class="adm-btn adm-btn-primary" id="addDriverBtn" hidden><i class="fa-solid fa-plus"></i> Add driver</button>
+      </div>
+      <p class="adm-muted">Only drivers on shift can be assigned or claim ready orders. Today's numbers follow India time; cash is what each driver recorded as received.</p>
+      <div id="driverList" class="adm-driver-list"></div>
     </section>
 
     <section id="section-reports" class="adm-section" hidden>
@@ -206,6 +220,25 @@
       <p class="adm-muted">Removing a category hides it from customers; its dishes still show under All. You can restore it anytime.</p>
       <div id="categoryList" class="adm-list"></div>
     </div>
+  </dialog>
+
+  <dialog id="driverDialog" class="adm-drawer" aria-labelledby="driverDialogTitle">
+    <form id="driverForm" method="dialog" novalidate>
+      <div class="adm-drawer-head">
+        <h2 id="driverDialogTitle">Add driver</h2>
+        <button type="button" class="adm-icon-btn" data-close aria-label="Close driver editor"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="adm-drawer-body adm-form">
+        <p class="adm-muted" id="driverEmailHelp">The driver first creates an account on the website with their email. Enter that email here to give them driver access.</p>
+        <label id="driverEmailField">Account email<input name="email" type="email" maxlength="320" autocomplete="off" placeholder="driver@example.com"></label>
+        <label>Name<input name="name" required maxlength="60" placeholder="Shown to staff and customers"></label>
+        <label>Phone<input name="phone" type="tel" maxlength="20" inputmode="tel" placeholder="Optional"></label>
+        <p class="adm-error" id="driverError" role="alert" hidden></p>
+      </div>
+      <div class="adm-drawer-foot">
+        <button type="submit" class="adm-btn adm-btn-primary" id="driverSave">Save driver</button>
+      </div>
+    </form>
   </dialog>
 
   <dialog id="askDialog" class="adm-ask" aria-labelledby="askTitle">

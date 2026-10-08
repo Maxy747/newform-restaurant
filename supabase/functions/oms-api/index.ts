@@ -54,8 +54,10 @@ Deno.serve(async req=>{
    const quote=checked(await db.from('delivery_quotes').insert({...route,user_id:userId}).select('id,fee,distance_m,expires_at').single());
    return json({quote});
   }
+  // Requires the delivery_drivers migration (orders.assigned_driver foreign key) to be applied first.
+  const ORDER_FIELDS='*,driver:delivery_drivers(display_name,phone)';
   const access=async(id:string,allowStaff=true)=>{
-   const order=checked(await db.from('orders').select('*').eq('id',requireUUID(id)).maybeSingle());
+   const order=checked(await db.from('orders').select(ORDER_FIELDS).eq('id',requireUUID(id)).maybeSingle());
    let guest=false;
    if(typeof body.token==='string'&&/^[a-f0-9]{64}$/.test(body.token)) {
     const key=checked(await db.from('order_access').select('token_hash').eq('order_id',id).maybeSingle());
@@ -75,10 +77,11 @@ Deno.serve(async req=>{
    const requestedMode=body.mode||'customer';
    const mode=requestedMode==='customer'?'customer':role==='kitchen'?'kitchen':role==='delivery'?'delivery':requestedMode;
    if(mode!=='customer'&&role==='customer') return json({error:'Staff access required'},403);
-   let query=db.from('orders').select('*',{count:'exact'}).order('created_at',{ascending:false});
+   let query=db.from('orders').select(ORDER_FIELDS,{count:'exact'}).order('created_at',{ascending:false});
    if(mode==='customer') query=query.eq('user_id',userId);
    else if(role==='kitchen'||mode==='kitchen') query=query.in('order_status',['new','confirmed','preparing','ready']).or('payment_method.neq.razorpay,payment_status.eq.paid');
-   else if(role==='delivery'||mode==='delivery') query=query.eq('order_type','delivery').in('order_status',['ready','out_for_delivery','completed']);
+   else if(role==='delivery') query=query.eq('order_type','delivery').in('order_status',['ready','out_for_delivery','completed']).or(`assigned_driver.eq.${userId},and(assigned_driver.is.null,order_status.eq.ready)`);
+   else if(mode==='delivery') query=query.eq('order_type','delivery').in('order_status',['ready','out_for_delivery','completed']);
    if(body.status) query=query.eq('order_status',body.status);
    if(body.payment) query=query.eq('payment_status',body.payment);
    if(body.type) query=query.eq('order_type',body.type);
@@ -94,6 +97,26 @@ Deno.serve(async req=>{
    const page=Math.min(10000,Math.max(0,Number(body.page)||0));
    const result=await query.range(page*30,page*30+29); checked(result);
    return json({orders:result.data.map((o:any)=>publicOrder(o,role)),count:result.count});
+  }
+  if(body.action==='drivers') {
+   if(role==='delivery') return json({drivers:checked(await db.from('delivery_drivers').select('user_id,display_name,phone,active,on_shift').eq('user_id',userId))
+    .map((d:any)=>({id:d.user_id,name:d.display_name,phone:d.phone,active:d.active,on_shift:d.on_shift}))});
+   if(!['admin','staff'].includes(role)) return json({error:'Manager access required'},403);
+   const start=new Date(body.start),end=new Date(body.end);
+   if(!Number.isFinite(+start)||!Number.isFinite(+end)||+end<=+start||+end-+start>366*86400000) throw new Error('Choose a date range up to one year');
+   return json({drivers:await rpc('oms_driver_report',{p_start:start.toISOString(),p_end:end.toISOString()})});
+  }
+  if(body.action==='driver_save') {
+   if(role!=='admin') return json({error:'Admin access required'},403);
+   const text=(value:unknown,max:number)=>typeof value==='string'?value.slice(0,max):null;
+   const id=await rpc('oms_save_driver',{p_actor:userId,p_driver:body.driverId?requireUUID(body.driverId):null,p_email:text(body.email,320),p_name:text(body.name,120),p_phone:text(body.phone,40)});
+   return json({id});
+  }
+  if(body.action==='driver_status') {
+   if(!userId||!['admin','staff','delivery'].includes(role)) return json({error:'Staff access required'},403);
+   const flag=(value:unknown)=>typeof value==='boolean'?value:null;
+   await rpc('oms_set_driver_status',{p_actor:userId,p_driver:requireUUID(body.driverId),p_active:flag(body.active),p_on_shift:flag(body.onShift)});
+   return json({ok:true});
   }
   if(body.action==='analytics') {
    if(!['admin','staff'].includes(role)) return json({error:'Manager access required'},403);
@@ -116,6 +139,12 @@ Deno.serve(async req=>{
    if(!userId||role==='customer') return json({error:'Staff access required'},403);
    await rpc('oms_change_order',{p_id:order.id,p_actor:userId,p_status:body.status||null,p_cash:body.action==='cash'});
    console.info('order.updated',{id:order.id,action:body.action});
+   return json({ok:true});
+  }
+  if(body.action==='assign') {
+   if(!userId||!['admin','staff','delivery'].includes(role)) return json({error:'Staff access required'},403);
+   await rpc('oms_assign_driver',{p_id:order.id,p_actor:userId,p_driver:body.driver?requireUUID(body.driver):null});
+   console.info('order.assigned',{id:order.id});
    return json({ok:true});
   }
   if(body.action==='ticket') {

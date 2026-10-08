@@ -45,6 +45,8 @@ select id,'kitchen' from auth.users where email='employee@example.com'
 on conflict(user_id) do update set role=excluded.role;
 ```
 
+Delivery drivers don't need SQL. Apply `supabase/migrations/20261008090000_delivery_drivers.sql`, deploy `oms-api` **after** the migration (its order queries embed the assigned driver), then use **Admin → Drivers**. The driver first signs up on the website. An admin then adds them by email, which grants the `delivery` role. Admins can edit, disable or re-enable drivers. Disabling removes access immediately and is refused while the driver still has open deliveries. Admin, staff or the driver can switch a shift on or off. Only active, on-shift drivers can be assigned. Admin and staff can assign or reassign any open delivery order. Drivers see unassigned ready orders and their own deliveries only. They can take an unassigned ready order, hand one back before leaving, and update or collect cash only on orders assigned to them. The Drivers page shows each driver's active orders, deliveries completed today and cash recorded today.
+
 Supported employee roles: `staff`, `kitchen`, `delivery`, `admin`. Kitchen can confirm/start/ready orders and cannot read contact/address details. Delivery sees delivery orders ready/in transit/completed and can dispatch/complete them or record cash collected. Staff/admin handle support and analytics. Menu editing still uses the existing `profiles.role='admin'` permission.
 
 ## Menu categories
