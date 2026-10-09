@@ -4,7 +4,7 @@ import { placeOfSupply } from './supabase/functions/_shared/billing.js';
 export { GSTIN, normalizeBillingSettings, placeOfSupply } from './supabase/functions/_shared/billing.js';
 
 export const RECEIPTS_KEY = 'newform_order_receipts_v1'; // same device storage the customer site writes guest keys to
-const PAYMENT_NAMES = { cod: 'Cash on delivery', cash: 'Cash at counter', whatsapp: 'Arranged with restaurant', razorpay: 'Online (Razorpay)' };
+const PAYMENT_NAMES = { cod: 'Cash on delivery', cash: 'Cash', upi: 'UPI', whatsapp: 'Arranged with restaurant', razorpay: 'Online (Razorpay)' };
 
 export const rupees2 = value => '₹' + (Number(value) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 export const billDate = value => new Date(value).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });

@@ -68,6 +68,16 @@ Apply `supabase/migrations/20261009090000_billing_invoices.sql` **after** the de
 
 **Check with the restaurant's accountant before turning it on:** confirm a regular GST registration and the GSTIN (a composition-scheme restaurant must not charge GST and issues a "bill of supply"). Also confirm whether the delivery fee should carry GST, and whether the invoice format meets their requirements. Without a GSTIN, documents print as "Bill" rather than "Tax invoice".
 
+## Counter billing
+
+Apply `supabase/migrations/20261009150000_counter_billing.sql` after the billing migration, then deploy `oms-api`. It can be re-run safely.
+
+- **Admin → Counter** (admins and staff) rings up walk-in **takeaway** or **dine-in** sales. Tap dishes (Qtr/Half/Full where priced), choose cash or UPI, optionally enter cash received to see the change, and confirm the payment.
+- The server prices the sale with the same rules as online checkout (5% GST rounded to the rupee). It saves the order as `source='counter'`, confirmed for the kitchen and paid, all in one transaction. A retried request returns the same sale. Name and phone are optional; walk-ins show as "Walk-in customer".
+- Counter sales are invoiced **as soon as they're paid**. Online orders still wait until they're completed. **Print bill** opens the 80 mm receipt and the print dialog. With invoicing off, the sale is still saved, but no bill is issued.
+- Cancelling an invoiced order (counter or online) automatically issues a full credit note ("Order cancelled"). Return the money at the counter separately.
+- UPI is recorded as its own payment method (`upi`) so cash and UPI totals can be reconciled in Reports.
+
 ## Razorpay activation (credentials still required)
 
 Set these **Supabase Edge secrets**, never Vite variables or committed files:

@@ -10,15 +10,17 @@ const api = createOmsApi(supabase, isSupabaseConfigured);
 const PAGE = { a4: '@page { size: A4; margin: 14mm; }', receipt: '@page { size: 80mm auto; margin: 3mm; }' };
 const PAPER_KEY = 'newform_invoice_paper_v1';
 
-function setPaper(paper) {
+function setPaper(paper, remember = true) {
   document.body.dataset.paper = paper;
   $('pageSize').textContent = PAGE[paper];
   document.querySelectorAll('[data-paper]').forEach(button => button.setAttribute('aria-checked', String(button.dataset.paper === paper)));
-  try { localStorage.setItem(PAPER_KEY, paper); } catch { /* private mode: just don't remember */ }
+  if (remember) try { localStorage.setItem(PAPER_KEY, paper); } catch { /* private mode: just don't remember */ }
 }
 
+const params = new URLSearchParams(location.search);
+
 async function load() {
-  const id = new URLSearchParams(location.search).get('order') || '';
+  const id = params.get('order') || '';
   if (!/^[0-9a-f-]{36}$/i.test(id)) throw new Error('This invoice link is incomplete.');
   await supabase?.auth.getSession(); // make sure a stored session is restored before calling the API
   const { invoice } = await api('invoice', { id, token: guestToken(id) });
@@ -26,11 +28,14 @@ async function load() {
   // Each credit note is its own document and prints on its own page.
   $('doc').innerHTML = renderInvoice(invoice) + (invoice.credit_notes || []).sort((a, b) => a.issued_at.localeCompare(b.issued_at)).map(note => renderCreditNote(note, invoice)).join('');
   $('toolbar').hidden = false;
+  // The counter opens bills with print=1 so the print dialog comes up straight away.
+  if (params.get('print') === '1') requestAnimationFrame(() => window.print());
 }
 
 document.querySelectorAll('[data-paper]').forEach(button => button.onclick = () => setPaper(button.dataset.paper));
 $('printBtn').onclick = () => window.print();
 let saved = 'a4';
 try { saved = localStorage.getItem(PAPER_KEY) === 'receipt' ? 'receipt' : 'a4'; } catch { /* default */ }
-setPaper(saved);
+if (['a4', 'receipt'].includes(params.get('paper'))) saved = params.get('paper');
+setPaper(saved, false);
 load().catch(error => { $('doc').innerHTML = `<p class="inv-status inv-error">${e(error.message)}</p>`; });

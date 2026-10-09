@@ -527,3 +527,64 @@ body:has(#gate:not([hidden])) { padding-bottom: 0; }
   #billRange { width: 100%; }
   #billRange button { flex: 1; padding: 7px 8px; }
 }
+
+/* ---------- counter ---------- */
+.adm-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.adm-field { display: grid; gap: 5px; font-size: .78rem; font-weight: 700; color: var(--muted); }
+.adm-counter { display: grid; gap: 14px; align-items: start; }
+.adm-counter-menu { display: grid; gap: 10px; min-width: 0; }
+.adm-chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
+.adm-chips button { flex: none; border: 1px solid var(--border); background: var(--surface); color: var(--muted); border-radius: 999px; padding: 6px 12px; font-weight: 700; font-size: .82rem; cursor: pointer; }
+.adm-chips button[aria-selected="true"] { background: var(--accent-soft); color: var(--accent-text); border-color: var(--accent); }
+.adm-counter-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; align-content: start; }
+.adm-dish-tile { display: grid; gap: 6px; align-content: start; text-align: left; min-height: 84px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font: inherit; }
+button.adm-dish-tile { cursor: pointer; }
+button.adm-dish-tile:hover { border-color: var(--accent); }
+button.adm-dish-tile:active { transform: scale(.98); }
+.adm-dish-tile strong { font-size: .9rem; line-height: 1.25; }
+.adm-dish-price { color: var(--accent-text); }
+.adm-portions { display: flex; flex-wrap: wrap; gap: 4px; }
+.adm-portions .adm-btn { flex: 1 1 auto; min-height: 36px; padding: 4px 8px; font-size: .76rem; gap: 4px; }
+.adm-ticket { gap: 12px; align-content: start; }
+.adm-ticket-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.adm-ticket-head h3 { margin: 0; }
+.adm-ticket .adm-segment { display: flex; }
+.adm-ticket .adm-segment button { flex: 1; }
+.adm-ticket-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.adm-ticket-lines li:not(.adm-empty) { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; }
+.adm-ticket-lines li > span:first-child { display: grid; min-width: 0; }
+.adm-ticket-lines small { color: var(--muted); font-size: .76rem; }
+.adm-qty { display: inline-flex; align-items: center; gap: 6px; }
+.adm-qty .adm-icon-btn { width: 34px; height: 34px; }
+.adm-qty b { min-width: 20px; text-align: center; font-variant-numeric: tabular-nums; }
+.adm-line-total { min-width: 64px; text-align: right; font-variant-numeric: tabular-nums; }
+.adm-ticket-customer summary { cursor: pointer; font-weight: 700; color: var(--muted); font-size: .86rem; }
+.adm-ticket-customer[open] { display: grid; gap: 8px; }
+.adm-change { margin: 0; font-weight: 700; color: var(--ok); }
+.adm-change.is-short { color: var(--danger); }
+.adm-change:empty { display: none; }
+.adm-charge { min-height: 52px; font-size: 1rem; }
+.adm-charge:disabled { cursor: not-allowed; }
+.adm-ticket-jump { position: fixed; left: 16px; right: 16px; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 10px); z-index: 15; min-height: 48px; box-shadow: var(--shadow); }
+#counterDoneDialog .adm-ask-choices a[hidden] { display: none; }
+@media (min-width: 760px) {
+  .adm-counter { grid-template-columns: minmax(0, 1fr) 360px; }
+  .adm-ticket { position: sticky; top: 124px; }
+  .adm-ticket-jump { display: none; }
+}
+@media (min-width: 1100px) {
+  .adm-counter { flex: 1; min-height: 0; grid-template-columns: minmax(0, 1fr) 380px; grid-template-rows: minmax(0, 1fr); align-items: stretch; }
+  .adm-counter-menu { min-height: 0; grid-template-rows: auto auto minmax(0, 1fr); }
+  .adm-counter-grid { overflow-y: auto; padding-right: 2px; }
+  .adm-ticket { position: static; overflow-y: auto; }
+  .adm-charge { position: sticky; bottom: 0; box-shadow: 0 -10px 16px var(--surface); }
+  #counterNotice { flex: none; }
+}
+@media (max-width: 420px) {
+  /* Eight sections in the bottom bar: keep every label whole on small phones. */
+  .adm-nav a { font-size: .64rem; letter-spacing: -.01em; }
+  .adm-nav a i { font-size: 1rem; }
+}
+@media (max-width: 759px) {
+  #section-counter { padding-bottom: 64px; }
+}

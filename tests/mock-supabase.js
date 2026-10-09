@@ -150,6 +150,23 @@ async function oms(body) {
       if (!invoice) throw new Error('No invoice has been issued for this order yet');
       return { invoice };
     }
+    case 'counter_order': {
+      const c = body.customer || {};
+      if (!['cash', 'upi'].includes(body.method)) throw new Error('Choose cash or UPI');
+      if (c.order_type === 'dine_in' && !c.table) throw new Error('Enter a table number');
+      const priced = body.items.map(line => {
+        const item = menu.find(m => m.id === line.id);
+        if (!item || item.available === false) throw new Error('An item is unavailable. Please refresh your menu');
+        const prices = typeof item.pricesJSON === 'string' ? JSON.parse(item.pricesJSON) : item.pricesJSON;
+        return { id: item.id, name: item.name, quantity: line.quantity, portion: line.portion, price: line.portion === 'single' ? item.price : prices[line.portion] };
+      });
+      const order = mk(++counter, 'confirmed', 0, c.order_type, priced, { payment_method: body.method, payment_status: 'paid', source: 'counter', customer_name: c.name || 'Walk-in customer', phone: c.phone || '', table_number: c.table || null });
+      order.daily_number = counter - 40; order.tax = Math.round(order.subtotal * 0.05); order.total = order.subtotal + order.tax;
+      orders.push(order);
+      events[order.id] = [{ id: 1, event_type: 'order.created', detail: 'Order placed', created_at: order.created_at }, { id: 2, event_type: 'payment.updated', detail: `Paid at counter (${body.method === 'upi' ? 'UPI' : 'cash'})`, created_at: order.created_at }];
+      const invoice = issueInvoice(order);
+      signal(); return { order: view(order), invoice: invoice ? { id: invoice.id, invoice_no: invoice.invoice_no } : null };
+    }
     case 'issue_invoice': {
       const invoice = issueInvoice(orders.find(o => o.id === body.id));
       if (!invoice) throw new Error('Invoicing is turned off. An admin can turn it on in Settings → Invoices.');

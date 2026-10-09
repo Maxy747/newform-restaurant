@@ -159,6 +159,16 @@ Deno.serve(async req=>{
    console.info('invoice.credited',{invoice:body.invoiceId});
    return json({id});
   }
+  // Counter sale paid on the spot (requires the 20261009150000_counter_billing migration).
+  if(body.action==='counter_order') {
+   if(!userId||!manager) return json({error:'Manager access required'},403);
+   const customer=body.customer&&typeof body.customer==='object'?body.customer:{};
+   const id=await rpc('oms_counter_order',{p_actor:userId,p_request:requireUUID(body.requestId),p_customer:customer,p_items:Array.isArray(body.items)?body.items:[],p_method:body.method});
+   const sale=checked(await db.from('orders').select(ORDER_FIELDS).eq('id',id).single());
+   const issued=checked(await db.from('invoices').select('id,invoice_no').eq('order_id',id).maybeSingle());
+   console.info('order.counter',{id});
+   return json({order:publicOrder(sale,role),invoice:issued});
+  }
   if(body.action==='ticket_list') {
    if(!['admin','staff'].includes(role)) return json({error:'Staff access required'},403);
    const tickets=checked(await db.from('support_tickets').select('*').neq('status','resolved').order('updated_at',{ascending:false}).limit(100));

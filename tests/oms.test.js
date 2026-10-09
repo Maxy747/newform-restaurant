@@ -419,5 +419,61 @@ test('PostgreSQL migration and order/payment/RLS lifecycle',async t=>{
   await assert.rejects(q('update public.orders set delivery_fee=100 where id=$1',[order]),/Rs20 per km/);
   assert.equal(Number((await q('select public.delivery_fee_for(6000) f'))[0].f),120);
  });
+ await t.test('counter billing: paid walk-in sales are invoiced at once and cancellations are credited',async()=>{
+  const migration=await readFile(new URL('../supabase/migrations/20261009150000_counter_billing.sql',import.meta.url),'utf8');
+  await db.exec(migration);await db.exec(migration); // safe to re-run
+  const sell=(actor,{customer={order_type:'takeaway'},items=[{id:'multi',portion:'quarter',quantity:1}],method='cash',request=crypto.randomUUID()}={})=>
+   q('select public.oms_counter_order($1,$2,$3,$4,$5) id',[actor,request,JSON.stringify(customer),JSON.stringify(items),method]).then(r=>r[0].id);
+  const order=async id=>(await q('select * from public.orders where id=$1',[id]))[0];
+  const invoice=async id=>(await q('select * from public.invoices where order_id=$1',[id]))[0];
+
+  await assert.rejects(sell(kitchen),/Manager access/);
+  await assert.rejects(sell(user),/Manager access/);
+  await assert.rejects(sell(admin,{customer:{order_type:'delivery'}}),/takeaway or dine in/);
+  await assert.rejects(sell(admin,{method:'cod'}),/cash or UPI/);
+  await assert.rejects(sell(admin,{customer:{order_type:'takeaway',phone:'12'}}),/valid phone/);
+  await assert.rejects(sell(admin,{customer:{order_type:'dine_in'}}),/table number/);
+  await assert.rejects(sell(admin,{items:[{id:'multi',portion:'quarter',quantity:1,price:1}],customer:{order_type:'takeaway',name:'x'}}),/2–100/);
+
+  // Anonymous walk-in, cash: server prices, confirmed for the kitchen, paid and invoiced in one step.
+  const request=crypto.randomUUID();
+  const walkIn=await sell(admin,{request,items:[{id:'multi',portion:'quarter',quantity:1,price:1}]});
+  const o=await order(walkIn);
+  assert.deepEqual([o.source,o.user_id,o.created_by,o.customer_name,o.phone,o.order_status,o.payment_status,o.payment_method,Number(o.total)],
+   ['counter',null,admin,'Walk-in customer','','confirmed','paid','cash',252]);
+  assert.ok(o.daily_number>0);
+  const inv=await invoice(walkIn);
+  assert.equal(Number(inv.total),252);assert.equal(inv.buyer.phone,null);assert.equal(inv.payment_method,'cash');
+  assert.equal(await sell(admin,{request}),walkIn); // a retried request returns the same sale
+  await assert.rejects(sell('66666666-6666-4666-8666-666666666666',{request}),/already used/);
+  assert.deepEqual((await q("select detail from public.order_events where order_id=$1 and event_type<>'invoice.issued' order by id",[walkIn])).map(e=>e.detail),['Order placed','confirmed','Paid at counter (cash)']);
+
+  // Named dine-in paid by UPI; the kitchen finishes it without a second invoice.
+  const table=await sell('66666666-6666-4666-8666-666666666666',{method:'upi',customer:{order_type:'dine_in',table:'7',name:'Asha',phone:'+91 98470 11111'}});
+  assert.equal((await order(table)).payment_method,'upi');assert.equal((await invoice(table)).buyer.table,'7');
+  const change=(actor,status)=>q('select public.oms_change_order($1,$2,$3,false)',[table,actor,status]);
+  await change(kitchen,'preparing');await change(kitchen,'ready');await change(admin,'completed');
+  assert.equal((await order(table)).order_status,'completed');
+  assert.equal((await q('select count(*)::int n from public.invoices where order_id=$1',[table]))[0].n,1);
+
+  // Cancelling an invoiced sale credits the whole invoice automatically.
+  await q('select public.oms_change_order($1,$2,$3,false)',[walkIn,admin,'cancelled']);
+  const notes=await q('select * from public.credit_notes where invoice_id=$1',[inv.id]);
+  assert.equal(notes.length,1);assert.equal(Number(notes[0].total),252);assert.equal(notes[0].reason,'Order cancelled');
+  assert.equal(Number(notes[0].cgst),Number(inv.cgst));
+
+  // Online orders still wait for completion before invoicing.
+  const online=(await q('select public.oms_create_order($1,$2,$3,$4,$5,$6) id',[user,crypto.randomUUID(),'7'.repeat(64),JSON.stringify({name:'Online Customer',phone:'9999999999',order_type:'takeaway'}),JSON.stringify([{id:'multi',portion:'quarter',quantity:1}]),'cash']))[0].id;
+  await q('select public.oms_change_order($1,$2,null,true)',[online,admin]);
+  assert.equal(await invoice(online),undefined);
+  assert.equal((await order(online)).source,'online');
+
+  await db.exec('set role service_role');
+  assert.ok(await sell(admin,{method:'upi'})); // the Edge Function's role can ring up sales
+  await db.exec('reset role');
+  await db.exec('set role authenticated');
+  await assert.rejects(sell(admin),/permission denied/);
+  await db.exec('reset role');
+ });
  } finally {await db.close();}
 });

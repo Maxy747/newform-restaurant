@@ -28,6 +28,7 @@
 
   <nav class="adm-nav" id="adminNav" aria-label="Admin sections" hidden>
     <a href="#orders" data-section="orders"><i class="fa-solid fa-receipt"></i><span>Orders</span><b class="adm-count" id="newCount" hidden></b></a>
+    <a href="#counter" data-section="counter" data-roles="admin staff"><i class="fa-solid fa-cash-register"></i><span>Counter</span></a>
     <a href="#menu" data-section="menu" data-roles="admin"><i class="fa-solid fa-utensils"></i><span>Menu</span></a>
     <a href="#tickets" data-section="tickets" data-roles="admin staff"><i class="fa-solid fa-life-ring"></i><span>Tickets</span></a>
     <a href="#drivers" data-section="drivers" data-roles="admin staff"><i class="fa-solid fa-motorcycle"></i><span>Drivers</span></a>
@@ -83,6 +84,41 @@
         <div id="historyList" class="adm-list"></div>
         <div class="adm-pager"><button type="button" class="adm-btn" id="histPrev">Previous</button><span id="histPage"></span><button type="button" class="adm-btn" id="histNext">Next</button></div>
       </div>
+    </section>
+
+    <section id="section-counter" class="adm-section" hidden>
+      <div class="adm-section-head"><h2>Counter</h2></div>
+      <p class="adm-notice" id="counterNotice" hidden>Invoicing is off, so counter sales are saved without a printed bill. An admin can turn it on in Settings → Invoices.</p>
+      <div class="adm-counter">
+        <div class="adm-counter-menu">
+          <label class="adm-counter-search"><span class="adm-sr">Search dishes</span><input id="counterSearch" type="search" placeholder="Search dishes" autocomplete="off"></label>
+          <div class="adm-chips" id="counterCats" role="tablist" aria-label="Menu categories"></div>
+          <div class="adm-counter-grid" id="counterGrid"></div>
+        </div>
+        <aside class="adm-card adm-ticket" id="counterTicket" aria-label="Current bill">
+          <header class="adm-ticket-head"><h3>Current bill</h3><button type="button" class="adm-btn adm-btn-ghost" id="ticketClear">Clear</button></header>
+          <div class="adm-segment" id="ticketType" role="tablist" aria-label="Order type">
+            <button type="button" data-type="takeaway" aria-selected="true">Takeaway</button>
+            <button type="button" data-type="dine_in" aria-selected="false">Dine in</button>
+          </div>
+          <label id="ticketTableField" class="adm-field" hidden>Table<input id="ticketTable" maxlength="20" autocomplete="off" placeholder="e.g. 4"></label>
+          <ul class="adm-ticket-lines" id="ticketLines"></ul>
+          <details class="adm-ticket-customer">
+            <summary>Customer details (optional)</summary>
+            <label class="adm-field">Name<input id="ticketName" maxlength="100" autocomplete="off" placeholder="Walk-in customer"></label>
+            <label class="adm-field">Phone<input id="ticketPhone" type="tel" maxlength="20" inputmode="tel" autocomplete="off"></label>
+          </details>
+          <dl class="adm-totals" id="ticketTotals"></dl>
+          <div class="adm-segment" id="ticketPay" role="tablist" aria-label="Payment">
+            <button type="button" data-method="cash" aria-selected="true"><i class="fa-solid fa-money-bill-wave"></i> Cash</button>
+            <button type="button" data-method="upi" aria-selected="false"><i class="fa-solid fa-qrcode"></i> UPI</button>
+          </div>
+          <label id="cashReceivedField" class="adm-field">Cash received (₹, optional)<input id="cashReceived" type="number" min="0" step="1" inputmode="decimal" placeholder="To work out change"></label>
+          <p class="adm-change" id="changeDue" aria-live="polite"></p>
+          <button type="button" class="adm-btn adm-btn-primary adm-charge" id="chargeBtn" disabled>Charge</button>
+        </aside>
+      </div>
+      <button type="button" class="adm-btn adm-btn-primary adm-ticket-jump" id="ticketJump" hidden></button>
     </section>
 
     <section id="section-menu" class="adm-section" hidden>
@@ -306,6 +342,15 @@
         <button type="button" class="adm-btn" data-close>Cancel</button>
       </div>
     </form>
+  </dialog>
+
+  <dialog id="counterDoneDialog" class="adm-ask" aria-labelledby="counterDoneTitle">
+    <h2 id="counterDoneTitle"></h2>
+    <p id="counterDoneMessage" class="adm-muted"></p>
+    <div class="adm-ask-choices">
+      <a class="adm-btn adm-btn-primary" id="counterPrint" target="_blank" rel="noopener"><i class="fa-solid fa-print"></i> Print bill</a>
+      <button type="button" class="adm-btn" id="counterNew">New bill</button>
+    </div>
   </dialog>
 
   <dialog id="askDialog" class="adm-ask" aria-labelledby="askTitle">

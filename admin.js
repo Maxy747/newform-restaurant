@@ -3,16 +3,17 @@ import { createOmsApi } from './oms-client.js';
 import { escapeHTML as e, money, statusLabel as label, nextStatuses, canClaim, indiaDayRange, stepTimes, orderNumber, orderRef } from './oms-policy.js';
 import { BOARD_COLUMNS, groupOrders, findNewOrders, ageLabel, minutesSince } from './admin-policy.js';
 import { createMenuAdmin } from './admin-menu.js';
+import { createCounter } from './admin-counter.js';
 import { GSTIN, normalizeBillingSettings, placeOfSupply, financialYear, billingRange, invoicesCSV, creditedTotal, needsCreditNote, rupees2, billDate } from './billing.js';
 
 const THEME_KEY = 'newform_theme_v1';
 const SOUND_KEY = 'newform_admin_sound_v1';
 const FLASH_MS = 3000;
 const ACTIVE_STATUSES = ['new', 'awaiting_payment', 'confirmed', 'preparing', 'ready', 'out_for_delivery'];
-const SECTIONS = { orders: ['admin', 'staff', 'kitchen', 'delivery'], menu: ['admin'], tickets: ['admin', 'staff'], drivers: ['admin', 'staff'], reports: ['admin', 'staff'], billing: ['admin', 'staff'], settings: ['admin'] };
+const SECTIONS = { orders: ['admin', 'staff', 'kitchen', 'delivery'], counter: ['admin', 'staff'], menu: ['admin'], tickets: ['admin', 'staff'], drivers: ['admin', 'staff'], reports: ['admin', 'staff'], billing: ['admin', 'staff'], settings: ['admin'] };
 const TYPE_ICON = { delivery: 'fa-motorcycle', takeaway: 'fa-bag-shopping', dine_in: 'fa-chair' };
 const TYPE_LABEL = { delivery: 'Delivery', takeaway: 'Takeaway', dine_in: 'Dine in' };
-const PAYMENT_LABEL = { cod: 'COD', cash: 'Pay at counter', whatsapp: 'WhatsApp', razorpay: 'Online' };
+const PAYMENT_LABEL = { cod: 'COD', cash: 'Pay at counter', upi: 'UPI', whatsapp: 'WhatsApp', razorpay: 'Online' };
 const typeName = type => TYPE_LABEL[type] || label(type);
 const paymentName = method => PAYMENT_LABEL[method] || label(method);
 
@@ -207,6 +208,7 @@ function route() {
   document.querySelectorAll('#adminNav [data-section]').forEach(link => link.toggleAttribute('aria-current', link.dataset.section === section));
   if (section === 'orders') refreshOrders().catch(error => toast(error.message, 'error'));
   if (section === 'menu') menuAdmin.open().catch(error => toast(error.message, 'error'));
+  if (section === 'counter') counter.open().catch(error => toast(error.message, 'error'));
   if (section === 'tickets') refreshTickets().catch(error => toast(error.message, 'error'));
   if (section === 'drivers') refreshDrivers().catch(error => toast(error.message, 'error'));
   if (section === 'reports') refreshReports().catch(error => toast(error.message, 'error'));
@@ -858,7 +860,7 @@ function renderReports() {
     : days.map(d => ({ label: dayLabel(d.day), short: new Date(d.day + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric' }), value: d.sales, tip: `${dayLabel(d.day)} · ${rupees(d.sales)} · ${d.orders} orders` }));
   const busiest = hours.reduce((best, h) => h.orders > best.orders ? h : best, hours[0]);
   const typeNames = { delivery: 'Delivery', takeaway: 'Takeaway', dine_in: 'Dine in' };
-  const payNames = { cod: 'Cash on delivery', cash: 'Pay at counter', whatsapp: 'WhatsApp', razorpay: 'Online' };
+  const payNames = { cod: 'Cash on delivery', cash: 'Cash', upi: 'UPI', whatsapp: 'WhatsApp', razorpay: 'Online' };
   $('reportBody').innerHTML = `${cards}
     <section class="adm-card adm-chart-card adm-chart-wide">
       <header><h3>${today ? 'Sales by hour today' : `Sales per day · last ${state.reportDays} days`}</h3><span class="adm-muted">Excludes cancelled orders</span></header>
@@ -930,6 +932,7 @@ function fillBillingForm(settings) {
   const form = $('billingForm');
   BILLING_FIELDS.forEach(name => { form.elements[name].value = settings[name] ?? ''; });
   $('billingSwitch').setAttribute('aria-checked', String(Boolean(settings.enabled)));
+  $('counterNotice').hidden = Boolean(settings.enabled);
   syncBillingHints();
 }
 
@@ -1121,6 +1124,7 @@ document.querySelectorAll('dialog').forEach(dialog => {
 });
 
 const menuAdmin = createMenuAdmin({ supabase, toast, run, isAdmin: () => state.role === 'admin' });
+const counter = createCounter({ supabase, api, toast, run, ask, billingEnabled: () => state.billing?.enabled === true });
 
 // ---------- boot ----------
 if (isSupabaseConfigured) {
