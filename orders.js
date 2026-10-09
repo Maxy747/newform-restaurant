@@ -32,9 +32,10 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   const kind=$('orderType').value;
   $('deliveryLocation').hidden=kind!=='delivery';
   if(deliveryQuote && (Date.parse(deliveryQuote.expires_at)<=Date.now() || deliveryQuote.distance_m>6000))deliveryQuote=null;
-  const deliveryFee=kind==='delivery'?(deliveryQuote?.fee??100):0;
-  $('cartTotal').textContent=money(totals().total+Number(deliveryFee));
-  $('deliveryQuoteStatus').textContent=deliveryQuote?`Delivery ₹${Number(deliveryQuote.fee)} · ${(deliveryQuote.distance_m/1000).toFixed(1)} km`:'Delivery ₹100';
+  const deliveryFee=kind==='delivery'?(deliveryQuote?.fee??0):0;
+  // The per-km fee is only known once the address is checked; until then say so instead of guessing.
+  $('cartTotal').textContent=money(totals().total+Number(deliveryFee))+(kind==='delivery'&&!deliveryQuote?' + delivery':'');
+  $('deliveryQuoteStatus').textContent=deliveryQuote?`Delivery ₹${Number(deliveryQuote.fee)} · ${(deliveryQuote.distance_m/1000).toFixed(1)} km`:'Delivery ₹20 per km';
   // Once a quote exists the locate button and privacy note step aside.
   $('deliveryLocation').classList.toggle('has-quote',Boolean(deliveryQuote));
   $('deliveryAddressField').hidden=kind!=='delivery';

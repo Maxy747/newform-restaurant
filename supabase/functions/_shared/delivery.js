@@ -2,7 +2,8 @@ export const RESTAURANT = [76.0828979, 11.6137653];
 export function deliveryFee(metres) {
  if (!Number.isFinite(metres) || metres < 0) throw new Error('Invalid route distance');
  if (metres > 6000) throw new Error('Delivery is available within 6 km by road only.');
- return 100;
+ // Rs20 per road km on the exact distance, rounded up to the next rupee (3.4 km -> Rs68).
+ return Math.ceil(metres / 50);
 }
 export function destination(value) {
  const {lat,lng} = value || {};

@@ -397,5 +397,24 @@ test('PostgreSQL migration and order/payment/RLS lifecycle',async t=>{
   assert.equal(Number(summary.total),799*4);assert.equal(Number(summary.credit_total),799);
   assert.equal(Math.round(Number(summary.cgst)*100),1903*4);
  });
+ await t.test('delivery is Rs20 per road km within 6km (replaces the flat Rs100)',async()=>{
+  // Production applied the flat-fee policy first; replay it, then the per-km migration (twice: re-runnable).
+  await db.exec(await readFile(new URL('../supabase/migrations/20261006000300_flat_delivery.sql',import.meta.url),'utf8'));
+  const migration=await readFile(new URL('../supabase/migrations/20261009120000_delivery_per_km.sql',import.meta.url),'utf8');
+  await db.exec(migration);await db.exec(migration);
+  const quote=(distance,fee)=>q('insert into public.delivery_quotes(user_id,latitude,longitude,distance_m,fee) values($1,11,76,$2,$3) returning id',[user,distance,fee]);
+  await assert.rejects(quote(1000,100),/quotes_delivery_per_km/);
+  await assert.rejects(quote(6500,130),/quotes_delivery_6km/);
+  const id=(await quote(3400,68))[0].id;
+  await db.exec('set role service_role');
+  const order=(await q('select public.oms_create_order($1,$2,$3,$4,$5,$6) id',[user,crypto.randomUUID(),'a1'.repeat(32),JSON.stringify({name:'Test Customer',phone:'9999999999',address:'Test Road',order_type:'delivery',quote_id:id}),JSON.stringify([{id:'cod-boundary',quantity:1}]),'cod']))[0].id;
+  await db.exec('reset role');
+  const row=(await q('select delivery_fee,delivery_distance_m,total,subtotal,tax from public.orders where id=$1',[order]))[0];
+  assert.equal(Number(row.delivery_fee),68);
+  assert.equal(Number(row.total),Number(row.subtotal)+Number(row.tax)+68);
+  // A later edit that breaks the formula is refused; untouched history is not re-checked.
+  await assert.rejects(q('update public.orders set delivery_fee=100 where id=$1',[order]),/Rs20 per km/);
+  assert.equal(Number((await q('select public.delivery_fee_for(6000) f'))[0].f),120);
+ });
  } finally {await db.close();}
 });
