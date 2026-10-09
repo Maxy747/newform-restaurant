@@ -1,0 +1,68 @@
+/* Printable invoice. Always paper-white so screen and print match. */
+:root { color-scheme: light; --ink: #16121f; --muted: #5d566e; --rule: #d9d4e4; --accent: #6d28d9; --page: #ece9f3; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+h1, h2, p { margin: 0; }
+
+.inv-toolbar { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; padding: 10px 16px; background: #fffffff2; border-bottom: 1px solid var(--rule); }
+.inv-paper { display: inline-flex; border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
+.inv-paper button, .inv-print { font: inherit; font-weight: 600; min-height: 40px; padding: 8px 14px; border: 0; cursor: pointer; }
+.inv-paper button { background: #fff; color: var(--muted); }
+.inv-paper button[aria-checked="true"] { background: var(--accent); color: #fff; }
+.inv-print { border-radius: 10px; background: var(--ink); color: #fff; }
+.inv-status { max-width: 520px; margin: 48px auto; padding: 0 16px; text-align: center; color: var(--muted); }
+.inv-error { color: #b91c1c; font-weight: 600; }
+
+#doc { display: grid; gap: 20px; justify-items: center; padding: 20px 16px 40px; }
+.inv-doc { width: min(210mm, 100%); background: #fff; padding: 28px; border-radius: 6px; box-shadow: 0 4px 20px #1b153014; display: grid; gap: 18px; }
+.inv-head { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; padding-bottom: 16px; border-bottom: 2px solid var(--ink); }
+.inv-seller h1 { font-size: 1.35rem; letter-spacing: .02em; }
+.inv-seller p { color: var(--muted); font-size: .88rem; }
+.inv-pre { white-space: pre-line; }
+.inv-title { display: grid; gap: 6px; justify-items: end; text-align: right; }
+.inv-title > strong { font-size: 1.05rem; text-transform: uppercase; letter-spacing: .12em; }
+.inv-meta { display: grid; grid-template-columns: auto auto; gap: 2px 12px; margin: 0; font-size: .86rem; }
+.inv-meta dt { color: var(--muted); }
+.inv-meta dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.inv-buyer { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; font-size: .9rem; }
+.inv-buyer h2 { width: 100%; font-size: .72rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.inv-buyer p:last-child { text-align: right; color: var(--muted); }
+.inv-lines { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.inv-lines th { text-align: left; font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); border-bottom: 1px solid var(--ink); padding: 6px 4px; }
+.inv-lines td { padding: 7px 4px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.inv-lines small { color: var(--muted); }
+.inv-num, .inv-lines .inv-num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.inv-totals { display: grid; grid-template-columns: 1fr auto; gap: 4px 0; width: min(320px, 100%); margin: 0 0 0 auto; font-size: .92rem; font-variant-numeric: tabular-nums; }
+.inv-totals dt { color: var(--muted); }
+.inv-totals dd { margin: 0; padding-left: 24px; text-align: right; }
+.inv-totals .inv-grand { color: var(--ink); font-weight: 700; }
+.inv-totals dt.inv-grand:last-of-type, .inv-totals dd.inv-grand:last-of-type { font-size: 1.1rem; padding-top: 6px; border-top: 2px solid var(--ink); }
+.inv-reason { font-size: .92rem; }
+.inv-foot { display: grid; gap: 4px; padding-top: 12px; border-top: 1px dashed var(--rule); color: var(--muted); font-size: .8rem; text-align: center; }
+
+/* 80 mm thermal receipt: one narrow column, everything stacked. */
+body[data-paper="receipt"] .inv-doc { width: 76mm; padding: 10px 8px; gap: 10px; border-radius: 0; font-size: 12px; }
+body[data-paper="receipt"] .inv-head, body[data-paper="receipt"] .inv-buyer { flex-direction: column; gap: 8px; text-align: center; }
+body[data-paper="receipt"] .inv-head { border-bottom-style: dashed; padding-bottom: 8px; }
+body[data-paper="receipt"] .inv-title { justify-items: center; text-align: left; }
+body[data-paper="receipt"] .inv-seller h1 { font-size: 15px; }
+body[data-paper="receipt"] .inv-buyer, body[data-paper="receipt"] .inv-buyer p:last-child { text-align: left; }
+body[data-paper="receipt"] .inv-lines { font-size: 11.5px; }
+body[data-paper="receipt"] .inv-lines th:first-child, body[data-paper="receipt"] .inv-lines td:first-child { display: none; }
+body[data-paper="receipt"] .inv-lines th:nth-child(4), body[data-paper="receipt"] .inv-lines td:nth-child(4) { display: none; }
+body[data-paper="receipt"] .inv-totals { width: 100%; font-size: 12px; }
+
+@media (max-width: 560px) {
+  #doc { padding: 12px 8px 32px; }
+  .inv-doc { padding: 18px 14px; }
+  .inv-title { justify-items: start; text-align: left; }
+  .inv-buyer p:last-child { text-align: left; }
+}
+@media print {
+  body { background: #fff; }
+  .inv-toolbar { display: none; }
+  #doc { display: block; padding: 0; }
+  .inv-doc { width: auto; box-shadow: none; padding: 0; border-radius: 0; break-inside: avoid-page; }
+  .inv-doc + .inv-doc { break-before: page; }
+  body[data-paper="receipt"] .inv-doc { width: 74mm; padding: 0; }
+}

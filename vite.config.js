@@ -13,6 +13,7 @@ export default defineConfig(({ mode }) => ({
       input: {
         main: resolve(import.meta.dirname, 'index.html'),
         admin: resolve(import.meta.dirname, 'admin.html'),
+        invoice: resolve(import.meta.dirname, 'invoice.html'),
       },
     },
   }

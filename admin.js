@@ -3,12 +3,13 @@ import { createOmsApi } from './oms-client.js';
 import { escapeHTML as e, money, statusLabel as label, nextStatuses, canClaim, indiaDayRange, stepTimes, orderNumber, orderRef } from './oms-policy.js';
 import { BOARD_COLUMNS, groupOrders, findNewOrders, ageLabel, minutesSince } from './admin-policy.js';
 import { createMenuAdmin } from './admin-menu.js';
+import { GSTIN, normalizeBillingSettings, placeOfSupply, financialYear, billingRange, invoicesCSV, creditedTotal, needsCreditNote, rupees2, billDate } from './billing.js';
 
 const THEME_KEY = 'newform_theme_v1';
 const SOUND_KEY = 'newform_admin_sound_v1';
 const FLASH_MS = 3000;
 const ACTIVE_STATUSES = ['new', 'awaiting_payment', 'confirmed', 'preparing', 'ready', 'out_for_delivery'];
-const SECTIONS = { orders: ['admin', 'staff', 'kitchen', 'delivery'], menu: ['admin'], tickets: ['admin', 'staff'], drivers: ['admin', 'staff'], reports: ['admin', 'staff'], settings: ['admin'] };
+const SECTIONS = { orders: ['admin', 'staff', 'kitchen', 'delivery'], menu: ['admin'], tickets: ['admin', 'staff'], drivers: ['admin', 'staff'], reports: ['admin', 'staff'], billing: ['admin', 'staff'], settings: ['admin'] };
 const TYPE_ICON = { delivery: 'fa-motorcycle', takeaway: 'fa-bag-shopping', dine_in: 'fa-chair' };
 const TYPE_LABEL = { delivery: 'Delivery', takeaway: 'Takeaway', dine_in: 'Dine in' };
 const PAYMENT_LABEL = { cod: 'COD', cash: 'Pay at counter', whatsapp: 'WhatsApp', razorpay: 'Online' };
@@ -17,7 +18,7 @@ const paymentName = method => PAYMENT_LABEL[method] || label(method);
 
 const $ = id => document.getElementById(id);
 const api = createOmsApi(supabase, isSupabaseConfigured);
-const state = { role: null, userId: null, config: {}, section: 'orders', ordersView: 'board', historyPage: 0, detailId: null, reportDays: 1, drivers: [], me: null };
+const state = { role: null, userId: null, config: {}, section: 'orders', ordersView: 'board', historyPage: 0, detailId: null, reportDays: 1, drivers: [], me: null, billing: null, billPage: 0 };
 const seenOrders = new Set();
 let primed = false, arrivedAt = new Map(), boardOrders = [], lastBoardHTML = '', channel = null, pollTimer = null, refreshTimer = null, boardVersion = 0, detailVersion = 0, authVersion = 0;
 const baseTitle = document.title;
@@ -173,6 +174,8 @@ async function evaluateSession(session) {
   $('addDriverBtn').hidden = state.role !== 'admin';
   $('shiftBox').hidden = true;
   if (state.role === 'delivery') loadMyShift(version).catch(error => toast(error.message, 'error'));
+  state.billing = null;
+  if (isManager()) loadBillingSettings(version);
   primed = false; seenOrders.clear();
   syncSoundPrompt();
   startLive(session.user.id);
@@ -207,6 +210,7 @@ function route() {
   if (section === 'tickets') refreshTickets().catch(error => toast(error.message, 'error'));
   if (section === 'drivers') refreshDrivers().catch(error => toast(error.message, 'error'));
   if (section === 'reports') refreshReports().catch(error => toast(error.message, 'error'));
+  if (section === 'billing') refreshBilling().catch(error => toast(error.message, 'error'));
 }
 window.addEventListener('hashchange', route);
 
@@ -401,7 +405,7 @@ async function openOrder(id) {
 async function refreshDetail() {
   const id = state.detailId, version = ++detailVersion;
   // Managers need the roster for the driver picker; it is fetched once and dropped after any assignment.
-  const [{ order: fetched, events, tickets }] = await Promise.all([api('detail', { id }), isManager() && !state.drivers.length ? loadDrivers().catch(() => {}) : null]);
+  const [{ order: fetched, events, tickets, invoice }] = await Promise.all([api('detail', { id }), isManager() && !state.drivers.length ? loadDrivers().catch(() => {}) : null]);
   if (version !== detailVersion || id !== state.detailId) return;
   const o = withPending(fetched);
   $('orderDialogTitle').textContent = `Order ${orderNumber(o)}`;
@@ -422,6 +426,7 @@ async function refreshDetail() {
       <ul class="adm-items">${o.items.map(item => `<li><span>${e(item.quantity)} × ${e(item.name)}${item.portion && item.portion !== 'single' ? ` <small>(${e(item.portion)})</small>` : ''}</span><strong>${money(item.quantity * item.price)}</strong></li>`).join('')}</ul>
       <dl class="adm-totals"><dt>Subtotal</dt><dd>${money(o.subtotal)}</dd><dt>GST</dt><dd>${money(o.tax)}</dd>${o.order_type === 'delivery' ? `<dt>Delivery${o.delivery_distance_m != null ? ` · ${(o.delivery_distance_m / 1000).toFixed(1)} km` : ''}</dt><dd>${money(o.delivery_fee || 0)}</dd>` : ''}<dt class="adm-total">Total</dt><dd class="adm-total">${money(o.total)}</dd></dl>
     </section>
+    ${invoiceBlock(o, invoice)}
     <section class="adm-detail-block"><h3>${e(typeName(o.order_type))}</h3>
       ${o.customer_name ? `<p><strong>${e(o.customer_name)}</strong></p>` : ''}
       ${o.phone ? `<p><a class="adm-link" href="tel:${e(o.phone.replace(/[^0-9+]/g, ''))}"><i class="fa-solid fa-phone"></i> ${e(o.phone)}</a></p>` : ''}
@@ -440,6 +445,8 @@ async function refreshDetail() {
     try { await assignDriver(o, select.value || null); } catch (error) { select.value = o.assigned_driver || ''; throw error; } finally { select.disabled = false; select.blur(); }
   });
   if ($('releaseBtn')) $('releaseBtn').onclick = run(() => releaseOrder(o));
+  if ($('issueInvoiceBtn')) $('issueInvoiceBtn').onclick = run(async () => { await api('issue_invoice', { id: o.id }); toast('Invoice issued', 'success'); await refreshDetail(); });
+  if ($('creditBtn')) $('creditBtn').onclick = run(() => openCreditNote(o.id));
   if (isManager()) renderTickets(o, tickets);
 }
 
@@ -896,6 +903,196 @@ function renderReports() {
   });
   body.addEventListener('pointerleave', () => { tip.hidden = true; body.querySelectorAll('.is-hover').forEach(node => node.classList.remove('is-hover')); });
 })();
+
+// ---------- billing ----------
+const BILLING_FIELDS = ['legal_name', 'address', 'phone', 'gstin', 'fssai', 'prefix', 'sac', 'footer'];
+const invoiceLink = orderId => `invoice.html?order=${encodeURIComponent(orderId)}`;
+
+async function loadBillingSettings(version) {
+  try {
+    const { settings } = await api('billing_settings');
+    if (version !== authVersion) return;
+    state.billing = settings;
+    fillBillingForm(settings);
+  } catch {
+    // The billing server update isn't installed yet: hide its screens rather than showing errors.
+    if (version !== authVersion) return;
+    state.billing = null;
+  }
+  const available = Boolean(state.billing);
+  document.querySelector('#adminNav [data-section="billing"]').hidden = !available || !can('billing');
+  $('billingSettingsCard').hidden = !available;
+  if (!available && state.section === 'billing') location.hash = '#orders';
+  else if (state.section === 'billing') refreshBilling().catch(error => toast(error.message, 'error'));
+}
+
+function fillBillingForm(settings) {
+  const form = $('billingForm');
+  BILLING_FIELDS.forEach(name => { form.elements[name].value = settings[name] ?? ''; });
+  $('billingSwitch').setAttribute('aria-checked', String(Boolean(settings.enabled)));
+  syncBillingHints();
+}
+
+function syncBillingHints() {
+  const form = $('billingForm');
+  const gstin = form.elements.gstin.value.trim().toUpperCase();
+  const supply = placeOfSupply(gstin);
+  $('gstinHelp').textContent = gstin && !GSTIN.test(gstin) ? 'A GSTIN is 15 characters, e.g. 32ABCDE1234F1Z5.'
+    : gstin ? `Documents print as "Tax invoice"${supply ? `, place of supply ${supply}` : ''}.`
+    : 'Without a GSTIN, documents print as "Bill", not "Tax invoice". Orders still add 5% GST, so check your GST registration with your accountant.';
+  const prefix = form.elements.prefix.value.trim().toUpperCase() || 'NF', year = financialYear(todayIST());
+  $('prefixPreview').textContent = `Numbers look like ${prefix}/${year}/00001 for invoices and ${prefix}C/${year}/00001 for credit notes.`;
+}
+$('billingForm').addEventListener('input', syncBillingHints);
+
+function billingError(message) {
+  $('billingError').textContent = message;
+  $('billingError').hidden = !message;
+}
+
+async function saveBilling(enabled) {
+  billingError('');
+  const values = Object.fromEntries(BILLING_FIELDS.map(name => [name, $('billingForm').elements[name].value]));
+  let settings;
+  try { settings = normalizeBillingSettings({ ...values, enabled }); } catch (error) { billingError(error.message); throw error; }
+  try {
+    const result = await api('set_billing_settings', { settings });
+    state.billing = result.settings;
+    fillBillingForm(result.settings);
+    return result.settings;
+  } catch (error) { billingError(error.message); throw error; }
+}
+
+$('billingForm').onsubmit = event => {
+  event.preventDefault();
+  run(async () => { await saveBilling(state.billing?.enabled === true); toast('Business details saved', 'success'); })({ currentTarget: $('billingSave') });
+};
+
+$('billingSwitch').onclick = run(async () => {
+  const enabled = $('billingSwitch').getAttribute('aria-checked') !== 'true';
+  const choice = await ask(enabled
+    ? { title: 'Start issuing invoices?', message: 'From now on, every order that is completed and paid gets the next invoice number. Issued invoices are permanent.', choices: [{ label: 'Turn on invoicing', value: 'yes' }, { label: 'Not yet', value: null }] }
+    : { title: 'Stop issuing invoices?', message: "Orders finished while invoicing is off won't get an invoice automatically. You can still issue one later from the order.", choices: [{ label: 'Turn off invoicing', value: 'yes', tone: 'danger' }, { label: 'Keep invoicing on', value: null }] });
+  if (!choice) return;
+  const saved = await saveBilling(enabled);
+  toast(saved.enabled ? 'Invoicing is on' : 'Invoicing is off', 'success');
+});
+
+function applyBillPreset(preset) {
+  const { from, to } = billingRange(preset, todayIST());
+  $('billFrom').value = from; $('billTo').value = to;
+  document.querySelectorAll('#billRange [data-preset]').forEach(button => button.setAttribute('aria-selected', String(button.dataset.preset === preset)));
+}
+document.querySelectorAll('#billRange [data-preset]').forEach(button => button.onclick = () => {
+  applyBillPreset(button.dataset.preset);
+  state.billPage = 0;
+  refreshBilling().catch(error => toast(error.message, 'error'));
+});
+// Editing the dates by hand means no preset is selected any more.
+['billFrom', 'billTo'].forEach(id => $(id).addEventListener('change', () => document.querySelectorAll('#billRange [data-preset]').forEach(button => button.setAttribute('aria-selected', 'false'))));
+$('billingFilters').onsubmit = event => { event.preventDefault(); state.billPage = 0; refreshBilling().catch(error => toast(error.message, 'error')); };
+$('billPrev').onclick = run(async () => { state.billPage = Math.max(0, state.billPage - 1); await refreshBilling(); });
+$('billNext').onclick = run(async () => { state.billPage++; await refreshBilling(); });
+
+function billingQuery() {
+  if (!$('billFrom').value || !$('billTo').value) applyBillPreset('month');
+  const from = $('billFrom').value, to = $('billTo').value;
+  if (from > to) throw new Error('"From" must be on or before "To".');
+  return { start: indiaDayRange(from).start, end: indiaDayRange(to).end, search: $('billSearch').value.trim(), from, to };
+}
+
+function invoiceRow(invoice) {
+  const credited = creditedTotal(invoice);
+  const badge = needsCreditNote(invoice) ? '<span class="adm-badge adm-badge-cancelled">Refunded · needs credit note</span>'
+    : credited ? `<span class="adm-badge">Credited ${e(rupees2(credited))}</span>` : '<span></span>';
+  return `<div class="adm-invoice">
+    <button type="button" class="adm-row" data-open="${e(invoice.order_id)}"><strong>${e(invoice.invoice_no)}</strong><span>${e(invoice.buyer?.name || 'Walk-in customer')} <small class="adm-muted">· ${e(billDate(invoice.issued_at))}</small></span>${badge}<strong>${e(rupees2(invoice.total))}</strong></button>
+    <a class="adm-icon-btn" href="${e(invoiceLink(invoice.order_id))}" target="_blank" rel="noopener" title="Print invoice" aria-label="Print invoice ${e(invoice.invoice_no)}"><i class="fa-solid fa-print"></i></a>
+  </div>`;
+}
+
+async function refreshBilling() {
+  if (!isManager()) return;
+  const query = billingQuery();
+  const { invoices, count, summary } = await api('invoices', { start: query.start, end: query.end, search: query.search, page: state.billPage });
+  const off = !state.billing?.enabled;
+  $('billingNotice').hidden = !off;
+  $('billingNotice').innerHTML = off ? (state.role === 'admin'
+    ? 'Invoicing is off. Fill in your business details and turn it on in <a class="adm-link" href="#settings">Settings</a>.'
+    : 'Invoicing is off. An admin can turn it on in Settings.') : '';
+  const gst = Number(summary.cgst) + Number(summary.sgst), creditGst = Number(summary.credit_cgst) + Number(summary.credit_sgst);
+  const kpis = [
+    ['Invoiced', rupees2(summary.total), `${summary.invoices} invoice${summary.invoices === 1 ? '' : 's'}`],
+    ['Taxable value', rupees2(summary.taxable), 'Food before GST'],
+    ['GST collected', rupees2(gst), `CGST ${rupees2(summary.cgst)} · SGST ${rupees2(summary.sgst)}`],
+    ['Credit notes', rupees2(summary.credit_total), `${summary.credit_notes} issued · GST ${rupees2(creditGst)}`],
+    ['Net', rupees2(Number(summary.total) - Number(summary.credit_total)), 'Invoiced minus credit notes'],
+  ];
+  $('billingSummary').innerHTML = kpis.map(([title, value, note]) => `<div class="adm-kpi"><small>${e(title)}</small><strong>${e(value)}</strong><span>${e(note)}</span></div>`).join('');
+  $('invoiceList').innerHTML = invoices.map(invoiceRow).join('') || `<p class="adm-empty">${query.search ? 'No invoice number matches in this period.' : 'No invoices in this period.'}</p>`;
+  $('billPrev').disabled = state.billPage === 0;
+  $('billNext').disabled = (state.billPage + 1) * 30 >= count;
+  $('billPage').textContent = `${count} invoice${count === 1 ? '' : 's'} · page ${state.billPage + 1}`;
+}
+
+$('billExport').onclick = run(async () => {
+  const query = billingQuery();
+  const { invoices, count } = await api('invoices', { start: query.start, end: query.end, search: query.search, export: true });
+  if (!invoices.length) { toast('No invoices to export in this period.'); return; }
+  if (count > invoices.length) toast(`Exported the latest ${invoices.length} of ${count} invoices. Choose a shorter period for the rest.`, 'error');
+  // Byte-order mark so Excel opens the file as UTF-8 (customer names aren't always ASCII).
+  const url = URL.createObjectURL(new Blob(['﻿' + invoicesCSV(invoices)], { type: 'text/csv;charset=utf-8' }));
+  const link = Object.assign(document.createElement('a'), { href: url, download: `invoices-${query.from}-to-${query.to}.csv` });
+  document.body.append(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
+
+function invoiceBlock(order, invoice) {
+  if (!isManager()) return '';
+  if (invoice) return `<section class="adm-detail-block"><h3>Invoice</h3>
+    <p><strong>${e(invoice.invoice_no)}</strong></p>
+    <div class="adm-head-actions"><a class="adm-btn" href="${e(invoiceLink(order.id))}" target="_blank" rel="noopener"><i class="fa-solid fa-print"></i> Print invoice</a>${state.role === 'admin' ? '<button type="button" class="adm-btn" id="creditBtn"><i class="fa-solid fa-rotate-left"></i> Credit note</button>' : ''}</div></section>`;
+  if (!state.billing?.enabled || order.order_status === 'cancelled') return '';
+  if (order.order_status === 'completed' && order.payment_status === 'paid') return `<section class="adm-detail-block"><h3>Invoice</h3>
+    <p class="adm-muted">This order finished before invoicing was turned on.</p>
+    <div><button type="button" class="adm-btn adm-btn-primary" id="issueInvoiceBtn"><i class="fa-solid fa-file-invoice"></i> Issue invoice</button></div></section>`;
+  return '<p class="adm-muted adm-invoice-hint"><i class="fa-solid fa-file-invoice"></i> The invoice is issued automatically once this order is completed and paid.</p>';
+}
+
+let creditTarget = null;
+async function openCreditNote(orderId) {
+  const { invoice } = await api('invoice', { id: orderId });
+  const credited = creditedTotal(invoice), remaining = Math.round((Number(invoice.total) - credited) * 100) / 100;
+  if (remaining <= 0) { toast('This invoice has already been fully credited.'); return; }
+  creditTarget = { invoice, remaining, orderId };
+  const form = $('creditForm');
+  form.reset();
+  $('creditTitle').textContent = `Credit note for ${invoice.invoice_no}`;
+  $('creditInfo').textContent = `Invoice total ${rupees2(invoice.total)} · already credited ${rupees2(credited)} · up to ${rupees2(remaining)} can be credited.`;
+  form.elements.amount.max = remaining.toFixed(2);
+  form.elements.amount.value = remaining.toFixed(2);
+  $('creditError').hidden = true;
+  $('creditDialog').showModal();
+  form.elements.reason.focus();
+}
+
+$('creditForm').onsubmit = async event => {
+  event.preventDefault();
+  const button = $('creditSave');
+  if (button.disabled || !creditTarget) return;
+  const form = event.currentTarget, amount = Number(form.elements.amount.value), reason = form.elements.reason.value.trim();
+  const fail = message => { $('creditError').textContent = message; $('creditError').hidden = false; };
+  if (!(amount > 0) || amount > creditTarget.remaining) return fail(`Enter an amount from ₹0.01 to ${rupees2(creditTarget.remaining)}.`);
+  if (reason.length < 3) return fail('Give a short reason (at least 3 characters).');
+  button.disabled = true;
+  try {
+    await api('credit_note', { invoiceId: creditTarget.invoice.id, amount, reason });
+    $('creditDialog').close();
+    toast('Credit note issued', 'success');
+    if (state.section === 'billing') refreshBilling().catch(error => toast(error.message, 'error'));
+  } catch (error) { fail(error.message); }
+  finally { button.disabled = false; }
+};
 
 // ---------- settings ----------
 $('codSwitch').onclick = run(async () => {

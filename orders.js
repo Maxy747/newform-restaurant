@@ -317,7 +317,7 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
  }
  async function refreshDetail() {
   const id=detailId,version=++detailVersion;
-  const {order:o,events,tickets}=await api('detail',{id,token:tokenFor(id)});
+  const {order:o,events,tickets,invoice}=await api('detail',{id,token:tokenFor(id)});
   if(detailId!==id||version!==detailVersion||!$('orderDetailState'))return;
   const previous=lastStatus.get(o.id);lastStatus.set(o.id,o.order_status);
   const [headline,subline]=trackingCopy(o);
@@ -337,7 +337,8 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
    <section class="track-card"><div class="oms-card-heading"><h4>ORDER ${e(orderNumber(o))} <span class="track-ref">Ref ${e(orderRef(o))}</span></h4><small>${e(new Date(o.created_at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}))}</small></div>
    ${itemsHTML(o)}
    <dl class="track-totals"><dt>Subtotal</dt><dd>${money(o.subtotal)}</dd><dt>GST</dt><dd>${money(o.tax)}</dd>${o.order_type==='delivery'?`<dt>Delivery${o.delivery_distance_m!=null?' · '+(o.delivery_distance_m/1000).toFixed(1)+' km':''}</dt><dd>${money(o.delivery_fee||0)}</dd>`:''}<dt class="track-total">Total</dt><dd class="track-total">${money(o.total)}</dd></dl>
-   <p class="track-pay${unpaid?'':' is-paid'}"><i class="fa-solid ${unpaid?'fa-wallet':'fa-circle-check'}"></i> ${e(payNote)}</p></section>
+   <p class="track-pay${unpaid?'':' is-paid'}"><i class="fa-solid ${unpaid?'fa-wallet':'fa-circle-check'}"></i> ${e(payNote)}</p>
+   ${invoice?`<a class="btn-minimal track-invoice" href="invoice.html?order=${e(encodeURIComponent(o.id))}" target="_blank" rel="noopener"><i class="fa-solid fa-file-invoice"></i> VIEW INVOICE ${e(invoice.invoice_no)}</a>`:''}</section>
    <section class="track-card"><h4>${e(label(o.order_type).toUpperCase())}</h4><p>${e(o.customer_name||'')}${o.phone?' · '+e(o.phone):''}${o.table_number?'<br>Table '+e(o.table_number):''}${o.delivery_address?'<br>'+e(o.delivery_address):''}</p></section>
    ${live?'<p class="track-live"><span></span> Updates automatically while this screen is open</p>':''}
    <p class="track-help">Questions? Call <a href="tel:7593881112">7593 881 112</a></p>`;

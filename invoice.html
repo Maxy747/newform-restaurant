@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Invoice · NEWFORM</title>
+  <link rel="icon" type="image/png" href="assets/newform_logo.png">
+  <link rel="stylesheet" href="invoice.css">
+  <style id="pageSize">@page { size: A4; margin: 14mm; }</style>
+</head>
+<body>
+  <div class="inv-toolbar" id="toolbar" hidden>
+    <div class="inv-paper" role="radiogroup" aria-label="Paper size">
+      <button type="button" role="radio" data-paper="a4" aria-checked="true">A4</button>
+      <button type="button" role="radio" data-paper="receipt" aria-checked="false">Receipt (80 mm)</button>
+    </div>
+    <button type="button" class="inv-print" id="printBtn">Print / Save PDF</button>
+  </div>
+  <main id="doc" aria-live="polite"><p class="inv-status">Loading invoice…</p></main>
+  <script type="module" src="/invoice.js"></script>
+</body>
+</html>

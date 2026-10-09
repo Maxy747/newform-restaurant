@@ -1685,6 +1685,7 @@ body:has(.cart-drawer.active) .mobile-cart-cta { display: none; }
 .track-totals .track-total { font-weight: 800; font-size: 1rem; color: var(--text-title); }
 .track-pay { margin-top: 12px !important; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--gold-primary) 10%, transparent); font-weight: 700; font-size: .88rem; }
 .track-pay.is-paid { background: #34c08a1c; color: #34c08a; }
+.track-invoice { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 10px; text-decoration: none; }
 .track-whatsapp { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 14px 0; padding: 12px 14px; border-radius: 14px; border: 1px dashed var(--glass-border); }
 .track-whatsapp p { margin: 0; flex: 1 1 200px; font-size: .85rem; color: var(--text-muted); }
 .track-live { display: flex; align-items: center; gap: 8px; font-size: .78rem; color: var(--text-muted); }

@@ -1,5 +1,6 @@
 // Local-only fake Supabase backend for visual checks: `npx vite --mode mock`.
 // Never bundled in production builds (see vite.config.js). No network calls.
+import { financialYear } from '../billing.js';
 const role = () => { try { return localStorage.getItem('mock_role') || 'admin'; } catch { return 'admin'; } };
 const signedIn = () => { try { return localStorage.getItem('mock_signed_out') !== '1'; } catch { return true; } };
 const now = Date.now();
@@ -46,6 +47,26 @@ let tickets = [{ id: uuid(90), order_id: uuid(4), subject: 'Can you add extra ma
 let codEnabled = true, deliveryEnabled = (() => { try { return localStorage.getItem('mock_delivery') !== 'off'; } catch { return true; } })(), counter = 50;
 const listeners = new Set();
 const signal = () => listeners.forEach(fn => setTimeout(fn, 50));
+// Billing: invoices for completed, paid orders, numbered per financial year like the database does.
+let billing = { enabled: true, legal_name: 'Newform Multi Cuisine Restaurant', address: 'Kuttikunnu Rd, Mandayapuram\nKalpetta, Wayanad, Kerala 673121', phone: '7593 881 112', gstin: '32ABCDE1234F1Z5', fssai: '11223344556677', sac: '996331', prefix: 'NF', footer: 'Thank you for dining with us!' };
+const invoices = [], counters = {};
+const fyOf = at => financialYear(new Date(Date.parse(at) + 5.5 * 3600000).toISOString().slice(0, 10));
+const nextNo = (series, at) => { const key = series + fyOf(at); counters[key] = (counters[key] || 0) + 1; return counters[key]; };
+function issueInvoice(order, at = new Date().toISOString()) {
+  const existing = invoices.find(i => i.order_id === order.id);
+  if (existing || !billing.enabled) return existing;
+  const n = nextNo('INV', at), half = Math.round(order.subtotal * 2.5) / 100;
+  const invoice = { id: 'inv-' + order.id, order_id: order.id, invoice_no: `${billing.prefix}/${fyOf(at)}/${String(n).padStart(5, '0')}`, financial_year: fyOf(at), issued_at: at,
+    seller: { ...billing }, buyer: { name: order.customer_name, phone: order.phone, address: order.delivery_address, table: order.table_number, order_type: order.order_type },
+    lines: order.items, payment_method: order.payment_method, taxable: order.subtotal, cgst: half, sgst: half, delivery_fee: order.delivery_fee,
+    round_off: Math.round((order.total - order.subtotal - 2 * half - order.delivery_fee) * 100) / 100, total: order.total, credit_notes: [] };
+  invoices.push(invoice); return invoice;
+}
+[...orders].filter(o => o.order_status === 'completed' && o.payment_status === 'paid').sort((a, b) => a.created_at.localeCompare(b.created_at))
+  .forEach(o => issueInvoice(o, new Date(Date.parse(o.created_at) + 40 * 60000).toISOString()));
+orders.find(o => o.id === uuid(7)).payment_status = 'refunded'; // shows the "needs credit note" state
+const invoiceView = i => ({ ...i, order: { payment_status: orders.find(o => o.id === i.order_id)?.payment_status } });
+const sum = (rows, key) => Math.round(rows.reduce((total, row) => total + Number(row[key]), 0) * 100) / 100;
 const kitchenRedact = order => { const { phone, delivery_address, customer_name, delivery_latitude, delivery_longitude, ...rest } = order; return rest; };
 
 async function oms(body) {
@@ -112,22 +133,55 @@ async function oms(body) {
       events[order.id].push({ id: events[order.id].length + 1, event_type: body.driver ? 'driver.assigned' : 'driver.unassigned', detail: body.driver ? (r === 'delivery' ? `${d.name} took this delivery` : `Assigned to ${d.name}`) : 'Driver removed', created_at: new Date().toISOString() });
       signal(); return { ok: true };
     }
+    case 'billing_settings': return { settings: billing };
+    case 'set_billing_settings': billing = { ...body.settings }; return { settings: billing };
+    case 'invoices': {
+      let rows = invoices.filter(i => i.issued_at >= body.start && i.issued_at < body.end).sort((a, b) => b.issued_at.localeCompare(a.issued_at));
+      if (body.search) rows = rows.filter(i => i.invoice_no.includes(body.search));
+      const notes = invoices.flatMap(i => i.credit_notes).filter(n => n.issued_at >= body.start && n.issued_at < body.end);
+      const inRange = invoices.filter(i => i.issued_at >= body.start && i.issued_at < body.end);
+      const summary = { invoices: inRange.length, taxable: sum(inRange, 'taxable'), cgst: sum(inRange, 'cgst'), sgst: sum(inRange, 'sgst'), delivery: sum(inRange, 'delivery_fee'), round_off: sum(inRange, 'round_off'), total: sum(inRange, 'total'),
+        credit_notes: notes.length, credit_taxable: sum(notes, 'taxable'), credit_cgst: sum(notes, 'cgst'), credit_sgst: sum(notes, 'sgst'), credit_total: sum(notes, 'total') };
+      const size = body.export ? 5000 : 30, page = body.export ? 0 : body.page || 0;
+      return { invoices: rows.slice(page * size, page * size + size).map(invoiceView), count: rows.length, summary };
+    }
+    case 'invoice': {
+      const invoice = invoices.find(i => i.order_id === body.id);
+      if (!invoice) throw new Error('No invoice has been issued for this order yet');
+      return { invoice };
+    }
+    case 'issue_invoice': {
+      const invoice = issueInvoice(orders.find(o => o.id === body.id));
+      if (!invoice) throw new Error('Invoicing is turned off. An admin can turn it on in Settings → Billing.');
+      return { id: invoice.id };
+    }
+    case 'credit_note': {
+      const invoice = invoices.find(i => i.id === body.invoiceId), remaining = invoice.total - sum(invoice.credit_notes, 'total');
+      if (body.amount > remaining + 0.001) throw new Error(`Credit amount must be between ₹0.01 and ₹${remaining}`);
+      const at = new Date().toISOString(), share = key => Math.round(invoice[key] * body.amount / invoice.total * 100) / 100;
+      const note = { id: 'cn-' + Date.now(), note_no: `${billing.prefix}C/${fyOf(at)}/${String(nextNo('CN', at)).padStart(5, '0')}`, issued_at: at, reason: body.reason, taxable: share('taxable'), cgst: share('cgst'), sgst: share('sgst'), total: body.amount };
+      note.other = Math.round((note.total - note.taxable - note.cgst - note.sgst) * 100) / 100;
+      invoice.credit_notes.push(note); signal(); return { id: note.id };
+    }
     case 'ticket_list': return { tickets: tickets.filter(t => t.status !== 'resolved') };
     case 'detail': {
       const order = orders.find(o => o.id === body.id);
       if (!order) throw new Error('Order not found or access denied');
-      return { order: view(order), events: events[order.id] || [], tickets: tickets.filter(t => t.order_id === order.id) };
+      const invoice = r === 'kitchen' || r === 'delivery' ? null : invoices.find(i => i.order_id === order.id);
+      return { order: view(order), events: events[order.id] || [], tickets: tickets.filter(t => t.order_id === order.id), invoice: invoice ? { id: invoice.id, invoice_no: invoice.invoice_no } : null };
     }
     case 'transition': {
       const order = orders.find(o => o.id === body.id);
       order.order_status = body.status; order.updated_at = new Date().toISOString();
       events[order.id].push({ id: events[order.id].length + 1, event_type: 'order.' + body.status, detail: body.status, created_at: order.updated_at });
+      if (order.order_status === 'completed' && order.payment_status === 'paid') issueInvoice(order);
       signal(); return { ok: true };
     }
     case 'cash': {
       const order = orders.find(o => o.id === body.id);
       order.payment_status = 'paid';
       events[order.id].push({ id: 99, event_type: 'payment.updated', detail: 'Cash payment received', created_at: new Date().toISOString() });
+      if (order.order_status === 'completed') issueInvoice(order);
       signal(); return { ok: true };
     }
     case 'ticket': {

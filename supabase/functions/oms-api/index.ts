@@ -1,6 +1,7 @@
 import {db,checked,rpc,razorpay,paymentConfigured} from '../_shared/server.js';
 import {requireUUID,sha256,validHmac,canViewOrder,publicOrder} from '../_shared/security.js';
 import {roadQuote,addressLocation} from '../_shared/delivery.js';
+import {normalizeBillingSettings} from '../_shared/billing.js';
 
 const origin=Deno.env.get('SITE_ORIGIN')||'https://maxy747.github.io';
 const headers={'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Headers':'authorization, apikey, content-type, x-client-info','Access-Control-Allow-Methods':'POST, OPTIONS','Content-Type':'application/json','Cache-Control':'no-store','Vary':'Origin'};
@@ -124,6 +125,40 @@ Deno.serve(async req=>{
    if(!Number.isFinite(+start)||!Number.isFinite(+end)||+end<=+start||+end-+start>366*86400000) throw new Error('Choose a date range up to one year');
    return json(await rpc('oms_analytics',{p_start:start.toISOString(),p_end:end.toISOString()}));
   }
+  // Billing requires the 20261009090000_billing_invoices migration.
+  const manager=['admin','staff'].includes(role);
+  const range=()=>{
+   const start=new Date(body.start),end=new Date(body.end);
+   if(!Number.isFinite(+start)||!Number.isFinite(+end)||+end<=+start||+end-+start>366*86400000) throw new Error('Choose a date range up to one year');
+   return {p_start:start.toISOString(),p_end:end.toISOString()};
+  };
+  if(body.action==='billing_settings') {
+   if(!manager) return json({error:'Manager access required'},403);
+   return json({settings:checked(await db.from('billing_settings').select('*').eq('id',true).single())});
+  }
+  if(body.action==='set_billing_settings') {
+   if(role!=='admin') return json({error:'Admin access required'},403);
+   const row={...normalizeBillingSettings(body.settings),updated_at:new Date().toISOString()};
+   return json({settings:checked(await db.from('billing_settings').update(row).eq('id',true).select('*').single())});
+  }
+  if(body.action==='invoices') {
+   if(!manager) return json({error:'Manager access required'},403);
+   const {p_start,p_end}=range();
+   const size=body.export?5000:30,page=body.export?0:Math.min(10000,Math.max(0,Number(body.page)||0));
+   let query=db.from('invoices').select('id,order_id,invoice_no,issued_at,buyer,payment_method,taxable,cgst,sgst,delivery_fee,round_off,total,credit_notes(total),order:orders(payment_status)',{count:'exact'})
+    .gte('issued_at',p_start).lt('issued_at',p_end).order('issued_at',{ascending:false});
+   if(body.search) query=query.ilike('invoice_no','%'+String(body.search).replace(/[%_\\]/g,'').slice(0,24)+'%');
+   const result=await query.range(page*size,page*size+size-1); checked(result);
+   return json({invoices:result.data,count:result.count,summary:await rpc('oms_billing_summary',{p_start,p_end})});
+  }
+  if(body.action==='credit_note') {
+   if(role!=='admin') return json({error:'Admin access required'},403);
+   const amount=Number(body.amount);
+   if(!Number.isFinite(amount)||amount<=0) throw new Error('Enter the amount to credit');
+   const id=await rpc('oms_credit_note',{p_invoice:requireUUID(body.invoiceId),p_actor:userId,p_amount:amount,p_reason:typeof body.reason==='string'?body.reason.slice(0,200):''});
+   console.info('invoice.credited',{invoice:body.invoiceId});
+   return json({id});
+  }
   if(body.action==='ticket_list') {
    if(!['admin','staff'].includes(role)) return json({error:'Staff access required'},403);
    const tickets=checked(await db.from('support_tickets').select('*').neq('status','resolved').order('updated_at',{ascending:false}).limit(100));
@@ -133,7 +168,22 @@ Deno.serve(async req=>{
   if(body.action==='detail') {
    const events=checked(await db.from('order_events').select('id,event_type,detail,created_at').eq('order_id',order.id).order('created_at'));
    const tickets=['kitchen','delivery'].includes(role)?[]:checked(await db.from('support_tickets').select('*,ticket_messages(id,author_role,message,created_at)').eq('order_id',order.id).order('created_at'));
-   return json({order:publicOrder(order,role),events,tickets});
+   // Ignores a missing invoices table so order tracking keeps working before the billing migration.
+   const issued=['kitchen','delivery'].includes(role)?null:await db.from('invoices').select('id,invoice_no').eq('order_id',order.id).maybeSingle();
+   return json({order:publicOrder(order,role),events,tickets,invoice:issued&&!issued.error?issued.data:null});
+  }
+  if(body.action==='invoice') {
+   if(!manager) await access(order.id,false); // kitchen and drivers only get invoices for their own orders
+   const invoice=checked(await db.from('invoices').select('id,order_id,invoice_no,financial_year,issued_at,seller,buyer,lines,payment_method,taxable,cgst,sgst,delivery_fee,round_off,total,credit_notes(id,note_no,issued_at,reason,taxable,cgst,sgst,other,total)').eq('order_id',order.id).maybeSingle());
+   if(!invoice) throw new Error('No invoice has been issued for this order yet');
+   return json({invoice});
+  }
+  if(body.action==='issue_invoice') {
+   if(!manager) return json({error:'Manager access required'},403);
+   const id=await rpc('oms_issue_invoice',{p_order:order.id});
+   if(!id) throw new Error('Invoicing is turned off. An admin can turn it on in Settings → Billing.');
+   console.info('invoice.issued',{order:order.id});
+   return json({id});
   }
   if(body.action==='transition'||body.action==='cash') {
    if(!userId||role==='customer') return json({error:'Staff access required'},403);

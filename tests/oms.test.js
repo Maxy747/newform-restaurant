@@ -306,5 +306,96 @@ test('PostgreSQL migration and order/payment/RLS lifecycle',async t=>{
   await save(admin,null,'Ravi K',null,driver2);
   assert.deepEqual((await q('select display_name,phone from public.delivery_drivers where user_id=$1',[driver2]))[0],{display_name:'Ravi K',phone:null});
  });
+ await t.test('billing: gapless invoice numbers, automatic issue, immutability and credit notes',async()=>{
+  const migration=await readFile(new URL('../supabase/migrations/20261009090000_billing_invoices.sql',import.meta.url),'utf8');
+  await db.exec(migration);await db.exec(migration); // safe to re-run
+  const fy=async at=>(await q('select public.oms_financial_year($1) fy',[at]))[0].fy;
+  assert.equal(await fy('2027-03-31T18:29:00Z'),'26-27'); // 23:59 on 31 March, India time
+  assert.equal(await fy('2027-03-31T18:30:00Z'),'27-28');
+  assert.equal(await fy('2026-10-09T06:00:00Z'),'26-27');
+  const year=await fy(new Date().toISOString());
+
+  await db.exec(`set role authenticated;select set_config('request.jwt.claim.sub','${admin}',false);`);
+  for(const table of ['invoices','credit_notes','billing_settings','billing_counters']) await assert.rejects(q(`select * from public.${table}`),/permission denied/);
+  await assert.rejects(q('select public.oms_issue_invoice($1)',[crypto.randomUUID()]),/permission denied/);
+  await db.exec('reset role');
+
+  const place=async()=>(await q('select public.oms_create_order($1,$2,$3,$4,$5,$6) id',[user,crypto.randomUUID(),'9'.repeat(64),JSON.stringify({name:'Bill Customer',phone:'9999999999',order_type:'takeaway'}),JSON.stringify([{id:'cod-boundary',quantity:1}]),'cash']))[0].id;
+  const finish=async(id,{pay=true}={})=>{
+   for(const step of ['confirmed','preparing','ready','completed']) await q('select public.oms_change_order($1,$2,$3,false)',[id,admin,step]);
+   if(pay) await q('select public.oms_change_order($1,$2,null,true)',[id,admin]);
+  };
+  const invoiceOf=async id=>(await q('select * from public.invoices where order_id=$1',[id]))[0];
+
+  // Off by default: completing and paying an order issues nothing, and it cannot be enabled without details.
+  const early=await place();await finish(early);
+  assert.equal(await invoiceOf(early),undefined);
+  await assert.rejects(q('update public.billing_settings set enabled=true'),/billing_enabled_needs_details/);
+  await assert.rejects(q("update public.billing_settings set gstin='not-a-gstin'"),/check constraint/);
+  await assert.rejects(q("update public.billing_settings set prefix='nf/x'"),/check constraint/);
+  await q("update public.billing_settings set legal_name='Newform Restaurant',address='Kalpetta, Wayanad',gstin='32ABCDE1234F1Z5',enabled=true");
+
+  // Cash recorded after completion issues the invoice (payment was the last condition to be met).
+  const first=await place();await finish(first);
+  const inv=await invoiceOf(first);
+  assert.equal(inv.invoice_no,`NF/${year}/00001`);
+  assert.equal(inv.seller.gstin,'32ABCDE1234F1Z5');assert.equal(inv.buyer.name,'Bill Customer');
+  assert.deepEqual([inv.taxable,inv.cgst,inv.sgst,inv.round_off,inv.total].map(Number),[761,19.03,19.03,-0.06,799]);
+  assert.equal(inv.lines[0].price,761);
+  assert.equal((await q('select public.oms_issue_invoice($1) id',[first]))[0].id,inv.id); // idempotent
+  assert.ok((await q("select 1 from public.order_events where order_id=$1 and event_type='invoice.issued'",[first])).length);
+
+  // Paid before completion (online/prepaid path) issues on completion.
+  const prepaid=await place();
+  await q('select public.oms_change_order($1,$2,null,true)',[prepaid,admin]);
+  assert.equal(await invoiceOf(prepaid),undefined);
+  await finish(prepaid,{pay:false});
+  assert.equal((await invoiceOf(prepaid)).invoice_no,`NF/${year}/00002`);
+
+  // Completed but unpaid: no invoice and cannot be forced.
+  const unpaid=await place();await finish(unpaid,{pay:false});
+  assert.equal(await invoiceOf(unpaid),undefined);
+  await assert.rejects(q('select public.oms_issue_invoice($1)',[unpaid]),/completed, paid/);
+
+  // A rolled-back issue does not burn a number.
+  await db.exec('begin');
+  await q('select public.oms_change_order($1,$2,null,true)',[unpaid,admin]);
+  await db.exec('rollback');
+  await q('select public.oms_change_order($1,$2,null,true)',[unpaid,admin]);
+  assert.equal((await invoiceOf(unpaid)).invoice_no,`NF/${year}/00003`);
+
+  await assert.rejects(q("update public.invoices set total=1 where id=$1",[inv.id]),/cannot be changed/);
+  await assert.rejects(q('delete from public.invoices where id=$1',[inv.id]),/cannot be changed/);
+
+  // Credit notes: admin only, capped at what is left, and the last one nets tax exactly to zero.
+  const credit=(actor,amount,reason='Customer refund')=>q('select public.oms_credit_note($1,$2,$3,$4) id',[inv.id,actor,amount,reason]);
+  const staff='66666666-6666-4666-8666-666666666666';
+  await assert.rejects(credit(staff,100),/Admin access/);
+  await assert.rejects(credit(user,100),/Admin access/);
+  await assert.rejects(credit(admin,800),/between/);
+  await assert.rejects(credit(admin,0),/between/);
+  await assert.rejects(credit(admin,10,'x'),/reason/);
+  await credit(admin,99.9);
+  await assert.rejects(credit(admin,700),/between/);
+  await credit(admin,699.1);
+  const notes=await q('select * from public.credit_notes where invoice_id=$1 order by seq',[inv.id]);
+  assert.deepEqual(notes.map(n=>n.note_no),[`NFC/${year}/00001`,`NFC/${year}/00002`]);
+  const sum=key=>notes.reduce((s,n)=>s+Number(n[key]),0);
+  assert.equal(Math.round(sum('total')*100),79900);
+  assert.equal(Math.round(sum('cgst')*100),1903);assert.equal(Math.round(sum('taxable')*100),76100);
+  await assert.rejects(credit(admin,0.01),/between/);
+  await assert.rejects(q("update public.credit_notes set reason='changed'"),/cannot be changed/);
+
+  await db.exec('set role service_role');
+  const viaApi=await place();await finish(viaApi); // the Edge Function's role can complete orders and trigger issuing
+  assert.equal((await invoiceOf(viaApi)).invoice_no,`NF/${year}/00004`);
+  await assert.rejects(q("update public.billing_settings set legal_name='x' returning id").then(()=>q('select * from public.billing_counters')),/permission denied/);
+  const summary=(await q("select public.oms_billing_summary(now()-interval '1 day',now()+interval '1 day') s"))[0].s;
+  await db.exec('reset role');
+  await q("update public.billing_settings set legal_name='Newform Restaurant'");
+  assert.equal(summary.invoices,4);assert.equal(summary.credit_notes,2);
+  assert.equal(Number(summary.total),799*4);assert.equal(Number(summary.credit_total),799);
+  assert.equal(Math.round(Number(summary.cgst)*100),1903*4);
+ });
  } finally {await db.close();}
 });

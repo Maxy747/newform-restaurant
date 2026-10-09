@@ -498,3 +498,32 @@ body:has(#gate:not([hidden])) { padding-bottom: 0; }
   /* The new-order flash is an alert (colour only, no movement), so it stays on. */
   .adm-order.just-arrived { animation: adm-flash .6s steps(2, jump-none) 5 !important; }
 }
+
+/* ---------- billing ---------- */
+.adm-notice { margin: 0; padding: 10px 14px; border-radius: 12px; background: var(--warn-soft); color: var(--text); font-size: .9rem; font-weight: 500; }
+.adm-invoice { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.adm-invoice .adm-icon-btn { width: 44px; height: 44px; }
+#invoiceList .adm-row { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+#invoiceList .adm-row strong:first-child { font-variant-numeric: tabular-nums; }
+.adm-billing-settings { gap: 16px; }
+.adm-billing-settings .adm-form { padding-top: 14px; border-top: 1px solid var(--border); }
+.adm-invoice-hint { display: flex; gap: 8px; align-items: center; margin: 0; }
+#creditDialog .adm-form { gap: 12px; }
+#creditDialog h2 { margin: 0; }
+@media (min-width: 1100px) {
+  #invoiceList { flex: 1; min-height: 0; overflow-y: auto; align-content: start; padding-right: 2px; }
+  #section-billing .adm-kpis, #billingNotice { flex: none; }
+  #section-settings:not([hidden]) { overflow-y: auto; padding-right: 2px; }
+}
+@media (max-width: 520px) {
+  #invoiceList .adm-row { grid-template-columns: minmax(0, 1fr) auto; }
+  #invoiceList .adm-row > span:nth-child(2) { grid-column: 1 / -1; grid-row: 2; }
+  #invoiceList .adm-row > span:nth-child(3):empty { display: none; }
+  #invoiceList .adm-row > span.adm-badge { grid-column: 1 / -1; justify-self: start; }
+  #billingSummary { grid-template-columns: 1fr 1fr; gap: 10px; }
+  #billingSummary .adm-kpi { padding: 12px 14px; min-width: 0; }
+  #billingSummary .adm-kpi strong { font-size: clamp(1.05rem, 5.2vw, 1.35rem); overflow-wrap: anywhere; }
+  .adm-billing-settings .adm-form-row { grid-template-columns: 1fr; }
+  #billRange { width: 100%; }
+  #billRange button { flex: 1; padding: 7px 8px; }
+}

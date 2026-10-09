@@ -32,6 +32,7 @@
     <a href="#tickets" data-section="tickets" data-roles="admin staff"><i class="fa-solid fa-life-ring"></i><span>Tickets</span></a>
     <a href="#drivers" data-section="drivers" data-roles="admin staff"><i class="fa-solid fa-motorcycle"></i><span>Drivers</span></a>
     <a href="#reports" data-section="reports" data-roles="admin staff"><i class="fa-solid fa-chart-column"></i><span>Reports</span></a>
+    <a href="#billing" data-section="billing" data-roles="admin staff"><i class="fa-solid fa-file-invoice"></i><span>Billing</span></a>
     <a href="#settings" data-section="settings" data-roles="admin"><i class="fa-solid fa-gear"></i><span>Settings</span></a>
   </nav>
 
@@ -129,6 +130,28 @@
       <div id="reportBody"></div>
     </section>
 
+    <section id="section-billing" class="adm-section" hidden>
+      <div class="adm-section-head">
+        <h2>Billing</h2>
+        <div class="adm-segment" id="billRange" role="tablist" aria-label="Billing period">
+          <button type="button" data-preset="month" aria-selected="true">This month</button>
+          <button type="button" data-preset="last" aria-selected="false">Last month</button>
+          <button type="button" data-preset="fy" aria-selected="false">This financial year</button>
+        </div>
+      </div>
+      <p class="adm-notice" id="billingNotice" hidden></p>
+      <form id="billingFilters" class="adm-filters">
+        <label>From<input type="date" id="billFrom" required></label>
+        <label>To<input type="date" id="billTo" required></label>
+        <label class="adm-grow">Invoice number<input id="billSearch" maxlength="24" placeholder="e.g. 00042"></label>
+        <button type="submit" class="adm-btn adm-btn-primary">Show</button>
+        <button type="button" class="adm-btn" id="billExport"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
+      </form>
+      <div class="adm-kpis" id="billingSummary"></div>
+      <div id="invoiceList" class="adm-list"></div>
+      <div class="adm-pager"><button type="button" class="adm-btn" id="billPrev">Previous</button><span id="billPage"></span><button type="button" class="adm-btn" id="billNext">Next</button></div>
+    </section>
+
     <section id="section-settings" class="adm-section" hidden>
       <div class="adm-section-head"><h2>Settings</h2></div>
       <div class="adm-card adm-setting">
@@ -151,6 +174,35 @@
           <p class="adm-muted" id="notifyHelp">The order sound is on by default (speaker icon at the top). Desktop notifications also show when this tab is in the background.</p>
         </div>
         <button type="button" class="adm-btn" id="notifyBtn">Enable notifications</button>
+      </div>
+      <div class="adm-card adm-billing-settings" id="billingSettingsCard">
+        <div class="adm-setting">
+          <div>
+            <h3>Invoices</h3>
+            <p class="adm-muted">When on, each order gets the next invoice number as soon as it is both completed and paid. Numbers restart every financial year (April). Issued invoices can't be edited or deleted. To correct one, issue a credit note.</p>
+          </div>
+          <button type="button" class="adm-switch" id="billingSwitch" role="switch" aria-checked="false" aria-label="Issue invoices"><span></span></button>
+        </div>
+        <form id="billingForm" class="adm-form" novalidate>
+          <div class="adm-form-row">
+            <label>Business name (as registered)<input name="legal_name" maxlength="120" required placeholder="e.g. Newform Multi Cuisine Restaurant"></label>
+            <label>Phone<input name="phone" type="tel" maxlength="40" placeholder="Printed on the invoice"></label>
+          </div>
+          <label>Address<textarea name="address" rows="2" maxlength="300" required placeholder="Full address including state and PIN"></textarea></label>
+          <div class="adm-form-row">
+            <label>GSTIN<input name="gstin" maxlength="15" autocomplete="off" spellcheck="false" placeholder="15 characters"></label>
+            <label>FSSAI licence no.<input name="fssai" maxlength="14" inputmode="numeric" autocomplete="off" placeholder="14 digits"></label>
+          </div>
+          <p class="adm-muted" id="gstinHelp"></p>
+          <div class="adm-form-row">
+            <label>Invoice prefix<input name="prefix" maxlength="3" autocomplete="off" spellcheck="false" placeholder="NF"></label>
+            <label>SAC code<input name="sac" maxlength="8" inputmode="numeric" placeholder="996331"></label>
+          </div>
+          <label>Footer note<input name="footer" maxlength="200" placeholder="Optional, e.g. Thank you for dining with us"></label>
+          <p class="adm-muted" id="prefixPreview"></p>
+          <p class="adm-error" id="billingError" role="alert" hidden></p>
+          <div><button type="submit" class="adm-btn adm-btn-primary" id="billingSave">Save business details</button></div>
+        </form>
       </div>
     </section>
   </main>
@@ -237,6 +289,21 @@
       </div>
       <div class="adm-drawer-foot">
         <button type="submit" class="adm-btn adm-btn-primary" id="driverSave">Save driver</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="creditDialog" class="adm-ask" aria-labelledby="creditTitle">
+    <form id="creditForm" method="dialog" class="adm-form" novalidate>
+      <h2 id="creditTitle">Credit note</h2>
+      <p class="adm-muted" id="creditInfo"></p>
+      <label>Amount to credit (₹)<input name="amount" type="number" min="0.01" step="0.01" inputmode="decimal" required></label>
+      <label>Reason<input name="reason" maxlength="200" required placeholder="e.g. Refund for missing item"></label>
+      <p class="adm-muted">Credit notes are permanent. They don't move money: refund the customer separately (cash, UPI or Razorpay).</p>
+      <p class="adm-error" id="creditError" role="alert" hidden></p>
+      <div class="adm-ask-choices">
+        <button type="submit" class="adm-btn adm-btn-danger" id="creditSave">Issue credit note</button>
+        <button type="button" class="adm-btn" data-close>Cancel</button>
       </div>
     </form>
   </dialog>

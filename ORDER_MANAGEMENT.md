@@ -55,6 +55,19 @@ Apply `supabase/migrations/20260923061317_menu_categories.sql` after the baselin
 
 `tests/categories-preview.html` is a local-only in-memory UI fixture (not a production build entry); database authorization is covered in `tests/oms.test.js`.
 
+## Billing and invoices
+
+Apply `supabase/migrations/20261009090000_billing_invoices.sql` **after** the delivery-drivers migration (credit notes use its `oms_actor_role`), then deploy `oms-api`. The migration can be re-run safely. Until it's applied, the updated `oms-api` still serves orders, and the admin hides Billing.
+
+- Invoicing is **off** after the migration. An admin fills in **Settings → Invoices** (business name, address, GSTIN, FSSAI, prefix, SAC) and turns it on. Nothing is backfilled. An order that finished earlier can be invoiced from its order drawer (**Issue invoice**).
+- A database trigger issues the invoice when an order is both `completed` and `paid`, whichever happens last. Numbers are `PREFIX/YY-YY/00001`, consecutive per financial year (April–March, India time), with no gaps. The counter is updated inside the same transaction, so a rollback also rolls back the number. Credit notes use `PREFIXC/YY-YY/00001`.
+- Each invoice stores a snapshot of the seller, buyer, lines and totals. Invoices and credit notes can't be updated or deleted, by any role. To make a correction, an admin issues a credit note (Order drawer → Credit note) up to the uncredited amount. Credit notes don't move money: refund separately. Billing flags fully refunded orders whose invoices haven't been fully credited yet.
+- Tax: the order's existing 5% is shown as CGST 2.5% + SGST 2.5% of the food subtotal, computed to the paisa. The difference from the whole-rupee `orders.tax` is shown as **Round off**, so invoice totals always equal `orders.total`. The delivery fee is printed as a separate, untaxed line, which is how orders are priced today.
+- Staff and admins can view, print and export invoices (**Billing**, CSV by date range). Only admins change settings or issue credit notes. Customers get **View invoice** on their order tracking card. Guests use the tracking key already on their device. Nothing sensitive goes in the URL.
+- `invoice.html?order=<id>` prints on A4 or as an 80 mm thermal receipt. Use the browser's Save as PDF for a file.
+
+**Check with the restaurant's accountant before turning it on:** confirm a regular GST registration and the GSTIN (a composition-scheme restaurant must not charge GST and issues a "bill of supply"). Also confirm whether the delivery fee should carry GST, and whether the invoice format meets their requirements. Without a GSTIN, documents print as "Bill" rather than "Tax invoice".
+
 ## Razorpay activation (credentials still required)
 
 Set these **Supabase Edge secrets**, never Vite variables or committed files:
