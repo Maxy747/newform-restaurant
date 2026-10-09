@@ -974,6 +974,16 @@ function startSearchPlaceholderAnimation(input) {
   }, 150);
 }
 
+// Centre the small floating logo on the search field of the (collapsed) glass search bar.
+function alignCompactLogo(controls, logo) {
+  const row = controls?.querySelector('.search-filter-row');
+  if (!row || !logo) return;
+  const offset = row.getBoundingClientRect().top - controls.getBoundingClientRect().top + row.offsetHeight / 2;
+  // Collapsed, the bar's top sits at its sticky top minus the header height it slid over.
+  const collapsedTop = (parseFloat(getComputedStyle(controls).top) || 0) - (document.querySelector('.header')?.offsetHeight || 0);
+  logo.style.setProperty('--compact-logo-top', `${Math.max(4, collapsedTop + offset - logo.offsetHeight / 2)}px`);
+}
+
 function setupCategoryVisibility() {
   const categories = document.querySelector('.category-scroll-shell');
   const header = document.querySelector('.header');
@@ -998,11 +1008,14 @@ function setupCategoryVisibility() {
     if (currentY < lastScrollY - 8) categories.classList.remove('is-collapsed');
     const headerHeight = header?.offsetHeight || 0;
     const searchReachedHeader = controls && controls.getBoundingClientRect().top <= headerHeight + 2;
-    const collapseHeader = searchReachedHeader && currentY > lastScrollY + 8;
-    const restoreHeader = !searchReachedHeader || currentY < lastScrollY - 8;
+    // Past the menu the search bar slides away, so the full header must stay visible.
+    const pastMenu = controls?.classList.contains('past-menu');
+    const collapseHeader = !pastMenu && searchReachedHeader && currentY > lastScrollY + 8;
+    const restoreHeader = pastMenu || !searchReachedHeader || currentY < lastScrollY - 8;
     if (collapseHeader) {
       header?.classList.add('is-mobile-collapsed');
       controls?.classList.add('header-collapsed');
+      alignCompactLogo(controls, compactLogo);
       compactLogo?.classList.add('visible');
     } else if (restoreHeader) {
       header?.classList.remove('is-mobile-collapsed');
@@ -1060,6 +1073,8 @@ function setupSectionNav() {
     });
   });
 
+  document.getElementById('backToTop')?.addEventListener('click', () => smoothScrollTo(0));
+
   const spyLinks = [...document.querySelectorAll('[data-spy]')];
   let activeKey = null;
   const setActive = key => {
@@ -1084,7 +1099,14 @@ function setupSectionNav() {
     const controls = document.querySelector('.controls-wrapper');
     if (controls && menu) {
       const past = menu.getBoundingClientRect().bottom < (header?.offsetHeight || 0) + controls.offsetHeight + 24;
-      controls.classList.toggle('past-menu', past && !controls.contains(document.activeElement));
+      const hide = past && !controls.contains(document.activeElement);
+      controls.classList.toggle('past-menu', hide);
+      // Bring the full header back (NEWFORM, account, cart) when the search bar leaves.
+      if (hide) {
+        header?.classList.remove('is-mobile-collapsed');
+        controls.classList.remove('header-collapsed');
+        document.getElementById('compactBrandLogo')?.classList.remove('visible');
+      }
     }
   };
   let queued = false;

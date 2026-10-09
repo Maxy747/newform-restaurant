@@ -849,7 +849,7 @@ html { scroll-behavior: smooth; }
   .header.is-mobile-collapsed { transform: translate3d(0, -110%, 0); }
   .compact-brand-logo {
     position: fixed;
-    top: 9px;
+    top: var(--compact-logo-top, 9px);
     left: 12px;
     z-index: 101;
     display: grid;
@@ -2317,3 +2317,31 @@ html:not([data-theme="light"]) .controls-container { background: rgba(18, 16, 24
 /* Routing credit now sits with the delivery check in the cart. */
 .delivery-credit { display: block; margin: 4px 0 0 40px; font-size: .62rem; color: var(--text-dim); }
 .delivery-credit a { color: inherit; }
+
+/* Footer "Back to top": a small glass pill above the logo. */
+.back-to-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 auto 22px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, .8);
+  background: color-mix(in srgb, #ffffff 70%, transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, .1), inset 0 1px 0 #fff;
+  color: var(--text-title);
+  font-family: var(--font-heading);
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.back-to-top i { color: var(--gold-primary); transition: transform .2s ease; }
+.back-to-top:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(15, 23, 42, .14), inset 0 1px 0 #fff; }
+.back-to-top:hover i { transform: translateY(-2px); }
+.back-to-top:focus-visible { outline: 2px solid var(--gold-primary); outline-offset: 3px; }
+html:not([data-theme="light"]) .back-to-top { background: rgba(255, 255, 255, .08); border-color: rgba(255, 255, 255, .14); color: #fff; box-shadow: none; }
