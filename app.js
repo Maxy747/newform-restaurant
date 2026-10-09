@@ -434,6 +434,7 @@ function setupEventListeners() {
   if (accountBtn) accountBtn.addEventListener('click', openAccountModal);
   if (accountBtnMobile) accountBtnMobile.addEventListener('click', openAccountModal);
   if (closeAccountModalBtn) closeAccountModalBtn.addEventListener('click', closeAccountModal);
+  setupSheetDrag(document.getElementById('accountModal'), closeAccountModal);
 
 
   // Category Scroll Tabs
@@ -1257,6 +1258,35 @@ function updateFeaturedDish() {
 }
 
 function openAccountModal() { document.getElementById('overlay').classList.add('active'); document.getElementById('accountModal').classList.add('active'); renderAccount(); }
+
+// Phones: the account sheet can be dragged down by its handle/header to close.
+function setupSheetDrag(sheet, onClose) {
+  if (!sheet) return;
+  let startY = null, dragged = 0;
+  const grab = sheet.querySelectorAll('.sheet-handle, .modal-header');
+  const end = () => {
+    if (startY === null) return;
+    sheet.classList.remove('is-dragging');
+    if (dragged > 90) onClose();
+    sheet.style.removeProperty('--sheet-drag');
+    startY = null; dragged = 0;
+  };
+  grab.forEach(element => {
+    element.addEventListener('pointerdown', event => {
+      if (!matchMedia('(max-width: 768px)').matches || event.target.closest('button')) return;
+      startY = event.clientY; dragged = 0;
+      sheet.classList.add('is-dragging');
+      element.setPointerCapture(event.pointerId);
+    });
+    element.addEventListener('pointermove', event => {
+      if (startY === null) return;
+      dragged = Math.max(0, event.clientY - startY);
+      sheet.style.setProperty('--sheet-drag', `${dragged}px`);
+    });
+    element.addEventListener('pointerup', end);
+    element.addEventListener('pointercancel', end);
+  });
+}
 function closeAccountModal() { document.getElementById('overlay').classList.remove('active'); document.getElementById('accountModal').classList.remove('active'); }
 
 function renderAccount() { return ordering.renderAccount().catch(error => showToast(error.message)); }

@@ -1,6 +1,7 @@
 import {supabase as defaultSupabase,isSupabaseConfigured as defaultConfigured} from './supabaseClient.js';
 import {escapeHTML as e,money,statusLabel as label,hasDeliveryDetails,cashOption,stepTimes,trackingCopy,orderNumber,orderRef} from './oms-policy.js';
 import {createOmsApi} from './oms-client.js';
+import logoSrc from './assets/newform-logo-splash.webp';
 
 export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAll,onStaffChange=()=>{},supabase=defaultSupabase,isSupabaseConfigured=defaultConfigured}) {
  let role='customer',profile=null,channel=null,poll=null,detailId=null,detailVersion=0;
@@ -161,11 +162,50 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   if(!isSupabaseConfigured){content.textContent='Account service is not configured yet.';return;}
   const user=getSession()?.user;
   if(!user) {
-   content.innerHTML=`<div class="account-section"><p>Login is optional. Create an account to save your details and order history.</p><label>Email<input id="accountEmail" class="form-control" type="email" autocomplete="email" placeholder="Email"></label><label>Password<input id="accountPassword" class="form-control" type="password" autocomplete="current-password" placeholder="Password"></label><button id="accountSignIn" class="btn-minimal btn-primary-minimal">Sign in</button><button id="accountSignUp" class="btn-minimal">Create account</button><p id="authStatus" role="status"></p><h4>ORDERS ON THIS DEVICE</h4><div id="guestHistory"></div></div>`;
-   $('accountSignIn').onclick=run(()=>authenticate(false));$('accountSignUp').onclick=renderRegistration;
+   content.innerHTML=`<div class="acct">
+    <div class="acct-welcome"><img src="${logoSrc}" alt="" width="52" height="52"><div><h3>Welcome to NEWFORM</h3><p>Sign in to save your address and see every order. Ordering as a guest works too.</p></div></div>
+    <form id="accountSignInForm" class="acct-form" novalidate>
+     <label>Email<input id="accountEmail" class="form-control" type="email" autocomplete="email" placeholder="you@example.com"></label>
+     <label>Password<input id="accountPassword" class="form-control" type="password" autocomplete="current-password" placeholder="Password"></label>
+     <button id="accountSignIn" type="submit" class="btn-minimal btn-primary-minimal acct-wide">SIGN IN</button>
+     <p class="acct-switch">New here? <button id="accountSignUp" type="button" class="acct-link">Create an account</button></p>
+     <p id="authStatus" class="acct-status" role="status"></p>
+    </form>
+    <section class="acct-block"><h4>Track an order</h4><div id="guestHistory" class="acct-orders"></div></section>
+   </div>`;
+   $('accountSignInForm').onsubmit=event=>{event.preventDefault();run(()=>authenticate(false))({currentTarget:$('accountSignIn')});};
+   $('accountSignUp').onclick=renderRegistration;
    renderGuestHistory();return;
   }
-  content.innerHTML=`<div class="account-section"><strong>${e(user.email)}</strong><details class="account-details"><summary class="btn-minimal">ACCOUNT DETAILS</summary><div class="account-section"><label>Name<input id="profileName" class="form-control" autocomplete="name" maxlength="100" value="${e(profile?.full_name)}"></label><label>Phone<input id="profilePhone" type="tel" class="form-control" autocomplete="tel" maxlength="20" value="${e(profile?.phone)}"></label><label>Default address<textarea id="profileAddress" class="form-control" autocomplete="street-address" maxlength="500">${e(profile?.default_address)}</textarea></label><button id="saveProfile" class="btn-minimal">SAVE DETAILS</button>${staff()?'<a href="admin.html" class="btn-minimal btn-primary-minimal">OPEN RESTAURANT ADMIN</a>':''}</div></details><h4>ORDER HISTORY</h4><div id="accountHistory" aria-live="polite"></div><div class="oms-actions"><button id="historyPrev" class="btn-minimal">PREVIOUS</button><button id="historyNext" class="btn-minimal">NEXT</button></div><h4>GUEST ORDERS ON THIS DEVICE</h4><div id="guestHistory"></div><button id="accountSignOut" class="btn-minimal">SIGN OUT</button></div>`;
+  const displayName=profile?.full_name||user.email.split('@')[0];
+  content.innerHTML=`<div class="acct">
+   <div class="acct-profile"><span class="acct-avatar" aria-hidden="true">${e(displayName.trim().charAt(0).toUpperCase())}</span><div class="acct-who"><strong>${e(displayName)}</strong><small>${e(user.email)}${profile?.phone?' · '+e(profile.phone):''}</small></div><button id="accountSignOut" type="button" class="acct-icon-btn" title="Sign out" aria-label="Sign out"><i class="fa-solid fa-right-from-bracket"></i></button></div>
+   ${staff()?'<a href="admin.html" class="btn-minimal btn-primary-minimal acct-wide"><i class="fa-solid fa-gauge"></i> OPEN RESTAURANT ADMIN</a>':''}
+   <div class="acct-tabs" role="tablist" aria-label="Account"><span class="acct-tab-bubble" aria-hidden="true"></span><button type="button" role="tab" class="acct-tab" data-tab="orders" aria-selected="true">Orders</button><button type="button" role="tab" class="acct-tab" data-tab="details" aria-selected="false">Details</button></div>
+   <section class="acct-panel" data-panel="orders">
+    <div id="accountHistory" class="acct-orders" aria-live="polite"><p class="acct-empty">Loading your orders…</p></div>
+    <div class="acct-pager"><button id="historyPrev" type="button" class="acct-link">← Newer</button><button id="historyNext" type="button" class="acct-link">Older →</button></div>
+    <div class="acct-block acct-guest" hidden><h4>Also on this device</h4><div id="guestHistory" class="acct-orders"></div></div>
+   </section>
+   <section class="acct-panel" data-panel="details" hidden>
+    <div class="acct-form">
+     <label>Name<input id="profileName" class="form-control" autocomplete="name" maxlength="100" value="${e(profile?.full_name)}"></label>
+     <label>Phone<input id="profilePhone" type="tel" class="form-control" autocomplete="tel" maxlength="20" value="${e(profile?.phone)}"></label>
+     <label>Delivery address<textarea id="profileAddress" class="form-control" rows="3" autocomplete="street-address" maxlength="500">${e(profile?.default_address)}</textarea></label>
+     <button id="saveProfile" type="button" class="btn-minimal btn-primary-minimal acct-wide">SAVE DETAILS</button>
+    </div>
+   </section>
+  </div>`;
+  // Tabs: a glass bubble slides between Orders and Details.
+  const tabs=[...content.querySelectorAll('.acct-tab')],bubble=content.querySelector('.acct-tab-bubble');
+  const showTab=name=>{
+   tabs.forEach(tab=>tab.setAttribute('aria-selected',String(tab.dataset.tab===name)));
+   content.querySelectorAll('.acct-panel').forEach(panel=>{panel.hidden=panel.dataset.panel!==name;});
+   const current=tabs.find(tab=>tab.dataset.tab===name);
+   if(current&&bubble){bubble.style.width=current.offsetWidth+'px';bubble.style.transform=`translateX(${current.offsetLeft-4}px)`;}
+  };
+  tabs.forEach(tab=>tab.onclick=()=>showTab(tab.dataset.tab));
+  requestAnimationFrame(()=>showTab('orders'));
   $('saveProfile').onclick=run(async()=>{await saveProfile({full_name:$('profileName').value.trim(),phone:$('profilePhone').value.trim(),default_address:$('profileAddress').value.trim()});fillCheckout();toast('Details saved.');});
   $('accountSignOut').onclick=run(async()=>{await supabase.auth.signOut();closeAll();});
   $('historyPrev').onclick=run(async()=>{historyPage=Math.max(0,historyPage-1);await refreshHistory();});
@@ -174,14 +214,14 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
  }
  function renderRegistration() {
   const email=$('accountEmail')?.value || '';
-  $('accountContent').innerHTML=`<form id="registrationForm" class="account-section registration-screen">
-   <button type="button" id="backToSignIn" class="btn-minimal">← Back to sign in</button>
+  $('accountContent').innerHTML=`<form id="registrationForm" class="acct acct-form registration-screen">
+   <button type="button" id="backToSignIn" class="acct-link acct-back">← Back to sign in</button>
    <h3>Create account</h3><p>Save your delivery details and order history. We’ll send an email to verify your account.</p>
    <label>Email<input id="accountEmail" class="form-control" type="email" autocomplete="email" placeholder="Email" required value="${e(email)}"></label>
    <label>Password<input id="accountPassword" class="form-control" type="password" autocomplete="new-password" placeholder="At least 6 characters" minlength="6" required></label>
    <label>Confirm password<input id="confirmAccountPassword" class="form-control" type="password" autocomplete="new-password" placeholder="Confirm password" minlength="6" required></label>
-   <button type="submit" class="btn-minimal btn-primary-minimal">Create account</button>
-   <button type="button" id="resendConfirmation" class="btn-minimal">Resend verification email</button><p id="authStatus" role="status"></p>
+   <button type="submit" class="btn-minimal btn-primary-minimal acct-wide">CREATE ACCOUNT</button>
+   <button type="button" id="resendConfirmation" class="acct-link">Resend verification email</button><p id="authStatus" class="acct-status" role="status"></p>
    </form>`;
   $('backToSignIn').onclick=()=>renderAccount();
   $('resendConfirmation').onclick=run(async()=>{
@@ -214,20 +254,30 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   else toast('Signed in.');
  }
  function renderGuestHistory() {
-  $('guestHistory').innerHTML=receipts().map(r=>`<button class="btn-minimal" data-track="${e(r.id)}">TRACK #${e(r.id.slice(0,8))}</button>`).join('')||'<p>No guest orders on this device.</p>';
-  bindTracking($('guestHistory'));
+  const list=receipts().slice(0,5),target=$('guestHistory');
+  target.closest('.acct-guest')?.toggleAttribute('hidden',!list.length);
+  target.innerHTML=list.map(r=>orderCard({id:r.id})).join('')||'<p class="acct-empty">Orders you place on this device show up here.</p>';
+  bindTracking(target);
+  // Fill in number, status and total for each saved order.
+  list.forEach(r=>api('detail',{id:r.id,token:r.token}).then(({order})=>{
+   const card=target.querySelector(`[data-track="${CSS.escape(r.id)}"]`);
+   if(card)card.outerHTML=orderCard(order);
+   bindTracking(target);
+  }).catch(()=>{}));
  }
  async function refreshHistory() {
   const target=$('accountHistory');if(!target)return;
   const {orders,count}=await api('list',{page:historyPage});
   if(!$('accountHistory'))return;
-  target.innerHTML=orders.map(o=>orderCard(o)).join('')||'<p>No orders yet.</p>';
+  target.innerHTML=orders.map(o=>orderCard(o)).join('')||'<p class="acct-empty">No orders yet. Your orders will show up here.</p>';
   bindTracking(target);$('historyPrev').disabled=historyPage===0;$('historyNext').disabled=(historyPage+1)*30>=count;
+  $('historyPrev').closest('.acct-pager').hidden=count<=30;
  }
  const bindTracking=element=>element.querySelectorAll('[data-track]').forEach(b=>b.onclick=run(()=>openDetail(b.dataset.track)));
  const itemsHTML=order=>`<ul class="oms-items">${order.items.map(i=>`<li><span>${e(i.quantity)} × ${e(i.name)}${i.portion&&i.portion!=='single'?` <small>(${e(i.portion)})</small>`:''}</span><strong>${money(i.quantity*i.price)}</strong></li>`).join('')}</ul>`;
  function orderCard(o) {
-  return `<article class="order-history-item"><div class="oms-card-heading"><strong>${e(orderNumber(o))}</strong><strong>${money(o.total)}</strong></div><span class="oms-badge ${e(o.order_status)}">${e(label(o.order_status))}</span><small>${e(new Date(o.created_at).toLocaleString())} · ${e(label(o.order_type))}</small><span>Payment: <strong>${e(label(o.payment_status))}</strong> · ${e(paymentName(o.payment_method))}</span><div class="oms-actions"><button class="btn-minimal" data-track="${e(o.id)}">TRACK / REPORT ISSUE</button></div></article>`;
+  const when=o.created_at?new Date(o.created_at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}):'Tap to track';
+  return `<button type="button" class="acct-order" data-track="${e(o.id)}"><span class="acct-order-main"><strong>${e(orderNumber(o))}</strong><small>${e(when)}${o.order_type?' · '+e(label(o.order_type)):''}</small></span>${o.order_status?`<span class="oms-badge ${e(o.order_status)}">${e(label(o.order_status))}</span>`:''}${o.total!=null?`<strong class="acct-order-total">${money(o.total)}</strong>`:''}<i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>`;
  }
  const paymentName=method=>({cash:'Pay at counter',cod:'Cash on delivery',whatsapp:'WhatsApp',razorpay:'Online'})[method]||method;
  async function placeOrder() {

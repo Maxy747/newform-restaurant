@@ -277,7 +277,6 @@
     <p style="font-family:var(--font-heading); font-weight:700; letter-spacing:2px;">NEWFORM MULTI CUISINE RESTAURANT</p>
     <p>Main Rd, Mandayapuram, Kalpetta, Kerala 673121 · 7593 881 112</p>
     <p style="margin-top:8px; font-size:0.75rem; color:var(--text-dim);">&copy; 2026 NEWFORM Restaurant.</p>
-    <small class="routing-credit">Routing by <a href="https://openrouteservice.org/" target="_blank" rel="noopener noreferrer">openrouteservice / HeiGIT</a> · Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a></small>
   </footer>
 
   <!-- Modal Overlay -->
@@ -328,6 +327,7 @@
             </div>
             <div id="deliveryAddressMatches" hidden></div>
             <p class="delivery-privacy">Location is shared with HeiGIT only to check distance.</p>
+            <small class="delivery-credit">Routing © <a href="https://openrouteservice.org/" target="_blank" rel="noopener noreferrer">openrouteservice/HeiGIT</a> · Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a></small>
           </section>
         </div>
         <div id="deliveryFields">
@@ -364,7 +364,8 @@
     </div>
   </aside>
 
-  <div class="modal" id="accountModal">
+  <div class="modal account-sheet" id="accountModal" role="dialog" aria-modal="true" aria-label="Your account">
+    <span class="sheet-handle" aria-hidden="true"></span>
     <div class="modal-header"><h3><i class="fa-solid fa-user"></i> YOUR ACCOUNT</h3><button class="cart-icon-btn" id="closeAccountModalBtn" aria-label="Close account"><i class="fa-solid fa-xmark"></i></button></div>
     <div class="modal-body" id="accountContent"></div>
   </div>

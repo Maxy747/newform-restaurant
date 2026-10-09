@@ -29,7 +29,7 @@ html:not([data-theme="light"]) .hero-minimal::before { background:radial-gradien
 html:not([data-theme="light"]) .menu-section::before { background:radial-gradient(ellipse at 100% 35%,#3a0ca326,transparent 65%); }
 html:not([data-theme="light"]) .garnish-leaf { display:none; }
 
-html:not([data-theme="light"]) :is(.controls-wrapper,.cart-checkout-bar) { background:#050505; border-color:#30203f; }
+html:not([data-theme="light"]) .cart-checkout-bar { background:#050505; border-color:#30203f; }
 html:not([data-theme="light"]) .mobile-nav:not(.glass-nav) { background:#050505; border-color:#30203f; }
 
 html:not([data-theme="light"]) .hero-sub-tag { color:#c4a7ff; }
