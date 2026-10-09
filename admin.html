@@ -87,7 +87,13 @@
     </section>
 
     <section id="section-counter" class="adm-section" hidden>
-      <div class="adm-section-head"><h2>Counter</h2></div>
+      <div class="adm-section-head">
+        <h2>Counter</h2>
+        <div class="adm-segment" id="counterView" role="tablist" aria-label="Counter view">
+          <button type="button" role="tab" data-view="bill" aria-selected="true">New bill</button>
+          <button type="button" role="tab" data-view="cash" aria-selected="false">Close day</button>
+        </div>
+      </div>
       <p class="adm-notice" id="counterNotice" hidden>Invoicing is off, so counter sales are saved without a printed bill. An admin can turn it on in Settings → Invoices.</p>
       <div class="adm-counter">
         <div class="adm-counter-menu">
@@ -119,6 +125,32 @@
         </aside>
       </div>
       <button type="button" class="adm-btn adm-btn-primary adm-ticket-jump" id="ticketJump" hidden></button>
+      <div id="cashView" class="adm-cash" hidden>
+        <div class="adm-filters">
+          <label>Day<input type="date" id="cashDay"></label>
+          <button type="button" class="adm-btn" id="cashRefresh"><i class="fa-solid fa-rotate"></i> Refresh</button>
+        </div>
+        <div class="adm-cash-grid">
+          <section class="adm-card">
+            <h3>Expected in the drawer</h3>
+            <label class="adm-field">Opening float (₹)<input id="cashFloat" type="number" min="0" step="1" inputmode="decimal" placeholder="Cash in the drawer at opening"></label>
+            <dl class="adm-totals" id="cashExpected"></dl>
+            <p class="adm-muted" id="cashUpi"></p>
+          </section>
+          <section class="adm-card">
+            <h3>Count the drawer</h3>
+            <div class="adm-denoms" id="cashDenoms"></div>
+            <dl class="adm-totals" id="cashCounted"></dl>
+            <p class="adm-cash-diff" id="cashDiff" aria-live="polite"></p>
+            <label class="adm-field">Note<input id="cashNote" maxlength="300" placeholder="Optional, e.g. ₹200 paid out for gas"></label>
+            <button type="button" class="adm-btn adm-btn-primary" id="cashSave"><i class="fa-solid fa-floppy-disk"></i> Save count</button>
+          </section>
+        </div>
+        <section class="adm-card">
+          <h3>Counts saved for this day</h3>
+          <div id="cashHistory" class="adm-list"></div>
+        </section>
+      </div>
     </section>
 
     <section id="section-menu" class="adm-section" hidden>

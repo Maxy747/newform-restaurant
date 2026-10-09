@@ -78,6 +78,14 @@ Apply `supabase/migrations/20261009150000_counter_billing.sql` after the billing
 - Cancelling an invoiced order (counter or online) automatically issues a full credit note ("Order cancelled"). Return the money at the counter separately.
 - UPI is recorded as its own payment method (`upi`) so cash and UPI totals can be reconciled in Reports.
 
+## End-of-day cash count
+
+Apply `supabase/migrations/20261009180000_cash_counts.sql` after the counter migration, then deploy `oms-api`. It can be re-run safely.
+
+- **Admin → Counter → Close day** (admins and staff). Pick today or one of the last 7 days, enter the opening float (it defaults to the last float used), and type how many of each note and coin (₹500…₹1) are in the drawer.
+- Expected cash is the opening float plus cash recorded as **received** that India day: counter cash sales, pay-at-counter orders staff marked paid, and cash drivers collected. Cash for paid orders cancelled that day is taken off, because it was handed back. UPI and Razorpay never count towards the drawer. UPI counter takings are shown separately so you can check them against the UPI app.
+- Saving stores a permanent snapshot: the server recomputes the expected cash and the counted total from the note and coin counts, and records who counted. A count can't be edited or deleted. To recount, save another one; every count for the day is listed with its over/short amount.
+
 ## Razorpay activation (credentials still required)
 
 Set these **Supabase Edge secrets**, never Vite variables or committed files:

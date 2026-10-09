@@ -159,6 +159,28 @@ Deno.serve(async req=>{
    console.info('invoice.credited',{invoice:body.invoiceId});
    return json({id});
   }
+  // End-of-day cash count (requires the 20261009180000_cash_counts migration).
+  const businessDay=()=>{ const day=String(body.day||''); if(!/^\d{4}-\d{2}-\d{2}$/.test(day)) throw new Error('Choose a day'); return day; };
+  if(body.action==='cash_day') {
+   if(!manager) return json({error:'Manager access required'},403);
+   const day=businessDay();
+   const summary=await rpc('oms_cash_summary',{p_day:day});
+   const counts=checked(await db.from('cash_counts').select('id,counted_at,counted_by,opening_float,counted,expected,difference,denominations,note').eq('business_day',day).order('counted_at',{ascending:false}));
+   const ids=[...new Set(counts.map((c:any)=>c.counted_by).filter(Boolean))];
+   const people=ids.length?checked(await db.from('profiles').select('id,full_name').in('id',ids)):[];
+   const names=new Map(people.map((p:any)=>[p.id,p.full_name]));
+   // The last float used is the usual starting point for the next count.
+   const last=checked(await db.from('cash_counts').select('opening_float').order('counted_at',{ascending:false}).limit(1).maybeSingle());
+   return json({summary,lastFloat:last?.opening_float??null,counts:counts.map(({counted_by,...c}:any)=>({...c,counted_by_name:names.get(counted_by)||'Staff'}))});
+  }
+  if(body.action==='cash_count') {
+   if(!userId||!manager) return json({error:'Manager access required'},403);
+   const amount=(value:unknown)=>value===null||value===undefined||value===''||!Number.isFinite(Number(value))?null:Number(value);
+   const denominations=body.denominations&&typeof body.denominations==='object'&&!Array.isArray(body.denominations)?body.denominations:null;
+   const id=await rpc('oms_cash_count',{p_actor:userId,p_day:businessDay(),p_opening:amount(body.opening),p_counted:amount(body.counted),p_denominations:denominations,p_note:typeof body.note==='string'?body.note.slice(0,300):null});
+   console.info('cash.counted',{id});
+   return json({id});
+  }
   // Counter sale paid on the spot (requires the 20261009150000_counter_billing migration).
   if(body.action==='counter_order') {
    if(!userId||!manager) return json({error:'Manager access required'},403);

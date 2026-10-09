@@ -588,3 +588,35 @@ button.adm-dish-tile:active { transform: scale(.98); }
 @media (max-width: 759px) {
   #section-counter { padding-bottom: 64px; }
 }
+
+/* ---------- counter: close day ---------- */
+#section-counter[data-view="cash"] .adm-counter,
+#section-counter[data-view="cash"] .adm-ticket-jump,
+#section-counter[data-view="cash"] #counterNotice { display: none; }
+.adm-cash { display: grid; gap: 14px; align-content: start; }
+.adm-cash-grid { display: grid; gap: 14px; align-items: start; }
+.adm-cash h3 { margin: 0; }
+.adm-denoms { display: grid; gap: 6px; }
+.adm-denom { display: grid; grid-template-columns: 52px 12px minmax(0, 1fr) 96px; align-items: center; gap: 8px; font-weight: 700; }
+.adm-denom > span:nth-child(2) { color: var(--muted); }
+.adm-denom input { min-height: 40px; text-align: right; font-variant-numeric: tabular-nums; }
+.adm-denom b { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+.adm-cash-diff { margin: 0; padding: 10px 12px; border-radius: 10px; font-weight: 800; background: var(--surface-2); color: var(--muted); }
+.adm-cash-diff.is-match { background: var(--ok-soft); color: var(--ok); }
+.adm-cash-diff.is-over { background: var(--warn-soft); color: var(--warn); }
+.adm-cash-diff.is-short { background: var(--danger-soft); color: var(--danger); }
+.adm-cash-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-2); }
+.adm-cash-row > span:first-child { display: grid; min-width: 0; }
+.adm-cash-row small { color: var(--muted); }
+.adm-cash-match { background: var(--ok-soft); color: var(--ok); }
+.adm-cash-over { background: var(--warn-soft); color: var(--warn); }
+.adm-cash-short { background: var(--danger-soft); color: var(--danger); }
+#cashSave { min-height: 48px; }
+@media (min-width: 900px) { .adm-cash-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1100px) {
+  #cashView:not([hidden]) { flex: 1; min-height: 0; overflow-y: auto; padding-right: 2px; }
+}
+@media (max-width: 520px) {
+  .adm-cash-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .adm-cash-row > span:last-child { grid-column: 1 / -1; justify-self: start; }
+}

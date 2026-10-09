@@ -4,6 +4,7 @@ import { escapeHTML as e, money, statusLabel as label, nextStatuses, canClaim, i
 import { BOARD_COLUMNS, groupOrders, findNewOrders, ageLabel, minutesSince } from './admin-policy.js';
 import { createMenuAdmin } from './admin-menu.js';
 import { createCounter } from './admin-counter.js';
+import { createCashCount } from './admin-cash.js';
 import { GSTIN, normalizeBillingSettings, placeOfSupply, financialYear, billingRange, invoicesCSV, creditedTotal, needsCreditNote, rupees2, billDate } from './billing.js';
 
 const THEME_KEY = 'newform_theme_v1';
@@ -208,7 +209,10 @@ function route() {
   document.querySelectorAll('#adminNav [data-section]').forEach(link => link.toggleAttribute('aria-current', link.dataset.section === section));
   if (section === 'orders') refreshOrders().catch(error => toast(error.message, 'error'));
   if (section === 'menu') menuAdmin.open().catch(error => toast(error.message, 'error'));
-  if (section === 'counter') counter.open().catch(error => toast(error.message, 'error'));
+  if (section === 'counter') {
+    counter.open().catch(error => toast(error.message, 'error'));
+    cashCount.open().catch(error => toast(error.message, 'error'));
+  }
   if (section === 'tickets') refreshTickets().catch(error => toast(error.message, 'error'));
   if (section === 'drivers') refreshDrivers().catch(error => toast(error.message, 'error'));
   if (section === 'reports') refreshReports().catch(error => toast(error.message, 'error'));
@@ -1124,6 +1128,7 @@ document.querySelectorAll('dialog').forEach(dialog => {
 });
 
 const menuAdmin = createMenuAdmin({ supabase, toast, run, isAdmin: () => state.role === 'admin' });
+const cashCount = createCashCount({ api, toast, run, ask, todayIST });
 const counter = createCounter({ supabase, api, toast, run, ask, billingEnabled: () => state.billing?.enabled === true });
 
 // ---------- boot ----------

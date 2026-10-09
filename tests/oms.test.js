@@ -475,5 +475,52 @@ test('PostgreSQL migration and order/payment/RLS lifecycle',async t=>{
   await assert.rejects(sell(admin),/permission denied/);
   await db.exec('reset role');
  });
+ await t.test('cash count: expected drawer cash by payment source, refunds, denominations and immutability',async()=>{
+  const migration=await readFile(new URL('../supabase/migrations/20261009180000_cash_counts.sql',import.meta.url),'utf8');
+  await db.exec(migration);await db.exec(migration); // safe to re-run
+  const today=(await q("select (now() at time zone 'Asia/Kolkata')::date::text d"))[0].d;
+  const summary=async(day=today)=>(await q('select public.oms_cash_summary($1::date) s',[day]))[0].s;
+  const n=value=>Number(value);
+  const before=await summary();
+  assert.ok(n(before.driver_cash)>0&&n(before.driver_cash_count)>0); // cash the driver recorded in the drivers test
+  const sell=(method,request=crypto.randomUUID())=>q('select public.oms_counter_order($1,$2,$3,$4,$5) id',[admin,request,JSON.stringify({order_type:'takeaway'}),JSON.stringify([{id:'multi',portion:'quarter',quantity:1}]),method]).then(r=>r[0].id);
+  const cash1=await sell('cash'),cash2=await sell('cash'),upi=await sell('upi'); // ₹252 each
+  // A pay-at-counter online order marked paid by staff also lands in the drawer.
+  const online=(await q('select public.oms_create_order($1,$2,$3,$4,$5,$6) id',[user,crypto.randomUUID(),'6'.repeat(64),JSON.stringify({name:'Online Customer',phone:'9999999999',order_type:'takeaway'}),JSON.stringify([{id:'multi',portion:'quarter',quantity:2}]),'cash']))[0].id;
+  await q('select public.oms_change_order($1,$2,null,true)',[online,admin]); // ₹504
+  await q('select public.oms_change_order($1,$2,$3,false)',[cash2,admin,'cancelled']); // cash handed back
+  await q('select public.oms_change_order($1,$2,$3,false)',[upi,admin,'cancelled']);
+  const after=await summary();
+  const delta=key=>n(after[key])-n(before[key]);
+  assert.equal(delta('counter_cash'),504);assert.equal(delta('counter_cash_count'),2);
+  assert.equal(delta('staff_cash'),504);assert.equal(delta('driver_cash'),0);
+  assert.equal(delta('cash_refunds'),252);assert.equal(delta('upi'),252);assert.equal(delta('upi_refunds'),252);
+  assert.equal(delta('expected_cash'),504+504-252);
+  assert.equal(n((await summary('2001-01-01')).expected_cash),0); // other days are separate
+  assert.ok(cash1);
+
+  const count=(actor,{day=today,opening=2000,counted=null,denoms=null,note=null}={})=>q('select public.oms_cash_count($1,$2::date,$3,$4,$5,$6) id',[actor,day,opening,counted,denoms&&JSON.stringify(denoms),note]).then(r=>r[0].id);
+  await assert.rejects(count(kitchen,{counted:1}),/Manager access/);
+  await assert.rejects(count(admin,{day:'2001-01-01',counted:1}),/last 7 days/);
+  await assert.rejects(count(admin,{opening:-1,counted:1}),/opening float/);
+  await assert.rejects(count(admin,{}),/cash counted/);
+  await assert.rejects(count(admin,{denoms:{'2000':1}}),/Invalid count for ₹2000/);
+  await assert.rejects(count(admin,{denoms:{'100':1.5}}),/Invalid count/);
+  // Denominations win over a typed total: 3×500 + 2×100 + 7×1 = 1707.
+  const id=await count('66666666-6666-4666-8666-666666666666',{counted:99999,denoms:{'500':3,'100':2,'1':7},note:' Shift A '});
+  const saved=(await q('select * from public.cash_counts where id=$1',[id]))[0];
+  const expected=2000+n(after.expected_cash);
+  assert.deepEqual([n(saved.counted),n(saved.expected),n(saved.difference),saved.note],[1707,expected,1707-expected,'Shift A']);
+  assert.equal(n(saved.summary.expected_cash),n(after.expected_cash));
+  await assert.rejects(q('update public.cash_counts set counted=0 where id=$1',[id]),/cannot be changed/);
+  await assert.rejects(q('delete from public.cash_counts where id=$1',[id]),/cannot be changed/);
+
+  await db.exec('set role service_role');
+  assert.ok(await count(admin,{counted:expected})); // the API role can save counts
+  await db.exec('reset role');
+  await db.exec('set role authenticated');
+  await assert.rejects(q('select * from public.cash_counts'),/permission denied/);
+  await db.exec('reset role');
+ });
  } finally {await db.close();}
 });

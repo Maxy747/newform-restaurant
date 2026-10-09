@@ -49,7 +49,7 @@ const listeners = new Set();
 const signal = () => listeners.forEach(fn => setTimeout(fn, 50));
 // Billing: invoices for completed, paid orders, numbered per financial year like the database does.
 let billing = { enabled: true, legal_name: 'Newform Multi Cuisine Restaurant', address: 'Kuttikunnu Rd, Mandayapuram\nKalpetta, Wayanad, Kerala 673121', phone: '7593 881 112', gstin: '32ABCDE1234F1Z5', fssai: '11223344556677', sac: '996331', prefix: 'NF', footer: 'Thank you for dining with us!' };
-const invoices = [], counters = {};
+const invoices = [], counters = {}; const cashCounts = [];
 const fyOf = at => financialYear(new Date(Date.parse(at) + 5.5 * 3600000).toISOString().slice(0, 10));
 const nextNo = (series, at) => { const key = series + fyOf(at); counters[key] = (counters[key] || 0) + 1; return counters[key]; };
 function issueInvoice(order, at = new Date().toISOString()) {
@@ -149,6 +149,23 @@ async function oms(body) {
       const invoice = invoices.find(i => i.order_id === body.id);
       if (!invoice) throw new Error('No invoice has been issued for this order yet');
       return { invoice };
+    }
+    case 'cash_day': {
+      const day = body.day, inDay = at => new Date(Date.parse(at) + 5.5 * 3600000).toISOString().slice(0, 10) === day;
+      const paid = Object.entries(events).flatMap(([id, list]) => list.filter(ev => ['Cash payment received', 'Paid at counter (cash)', 'Paid at counter (UPI)'].includes(ev.detail) && inDay(ev.created_at)).map(ev => ({ order: orders.find(o => o.id === id), ev })));
+      const pick = test => paid.filter(test), total = rows => rows.reduce((sum, row) => sum + row.order.total, 0);
+      const counterCash = pick(p => p.ev.detail === 'Paid at counter (cash)'), staffCash = pick(p => p.ev.detail === 'Cash payment received' && !p.order.assigned_driver), driverCash = pick(p => p.ev.detail === 'Cash payment received' && p.order.assigned_driver), upi = pick(p => p.ev.detail === 'Paid at counter (UPI)');
+      const summary = { day, counter_cash: total(counterCash), counter_cash_count: counterCash.length, staff_cash: total(staffCash), staff_cash_count: staffCash.length, driver_cash: total(driverCash) + 1240, driver_cash_count: driverCash.length + 3,
+        cash_refunds: 0, cash_refund_count: 0, upi: total(upi), upi_count: upi.length, upi_refunds: 0 };
+      summary.expected_cash = summary.counter_cash + summary.staff_cash + summary.driver_cash;
+      return { summary, lastFloat: cashCounts[0]?.opening_float ?? 2000, counts: cashCounts.filter(c => c.business_day === day) };
+    }
+    case 'cash_count': {
+      const counted = Object.entries(body.denominations || {}).reduce((sum, [value, pieces]) => sum + Number(value) * pieces, 0);
+      const { summary } = await oms({ action: 'cash_day', day: body.day });
+      const expected = body.opening + summary.expected_cash;
+      cashCounts.unshift({ id: 'cc' + Date.now(), business_day: body.day, counted_at: new Date().toISOString(), counted_by_name: 'Test Admin', opening_float: body.opening, counted, expected, difference: counted - expected, note: body.note || null });
+      return { id: cashCounts[0].id };
     }
     case 'counter_order': {
       const c = body.customer || {};
