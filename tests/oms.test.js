@@ -400,8 +400,11 @@ test('PostgreSQL migration and order/payment/RLS lifecycle',async t=>{
  await t.test('delivery is Rs20 per road km within 6km (replaces the flat Rs100)',async()=>{
   // Production applied the flat-fee policy first; replay it, then the per-km migration (twice: re-runnable).
   await db.exec(await readFile(new URL('../supabase/migrations/20261006000300_flat_delivery.sql',import.meta.url),'utf8'));
+  // Production had unused Rs100 quotes when this migration ran; it must expire them, not fail on them.
+  const stale=(await q('insert into public.delivery_quotes(user_id,latitude,longitude,distance_m,fee) values($1,11,76,922,100) returning id',[user]))[0].id;
   const migration=await readFile(new URL('../supabase/migrations/20261009120000_delivery_per_km.sql',import.meta.url),'utf8');
   await db.exec(migration);await db.exec(migration);
+  assert.ok((await q('select expires_at<=now() expired from public.delivery_quotes where id=$1',[stale]))[0].expired,'old Rs100 quote expired');
   const quote=(distance,fee)=>q('insert into public.delivery_quotes(user_id,latitude,longitude,distance_m,fee) values($1,11,76,$2,$3) returning id',[user,distance,fee]);
   await assert.rejects(quote(1000,100),/quotes_delivery_per_km/);
   await assert.rejects(quote(6500,130),/quotes_delivery_6km/);
