@@ -1060,7 +1060,15 @@ function setupSectionNav() {
   });
 
   const spyLinks = [...document.querySelectorAll('[data-spy]')];
-  const setActive = key => spyLinks.forEach(link => link.classList.toggle('active', link.dataset.spy === key));
+  let activeKey = null;
+  const setActive = key => {
+    spyLinks.forEach(link => link.classList.toggle('active', link.dataset.spy === key));
+    if (key !== activeKey) { activeKey = key; document.querySelectorAll('.glass-nav').forEach(nav => placeGlassIndicator(nav, true)); }
+  };
+  // Keep the glass bubble glued to the active item when the layout changes.
+  const replace = () => document.querySelectorAll('.glass-nav').forEach(nav => placeGlassIndicator(nav, false));
+  window.addEventListener('resize', replace, { passive: true });
+  document.fonts?.ready.then(replace);
   const menu = document.getElementById('menuSection');
   const pick = () => {
     // The section crossing a line ~40% down the screen wins; the page bottom counts as Contact.
@@ -1085,6 +1093,29 @@ function setupSectionNav() {
     requestAnimationFrame(() => { queued = false; pick(); });
   }, { passive: true });
   pick();
+}
+
+// Liquid-glass nav: one bubble sits under the active item and glides (with a brief
+// stretch, like liquid) when the active section changes.
+function placeGlassIndicator(nav, animate) {
+  const indicator = nav.querySelector('.glass-indicator');
+  const active = nav.querySelector('[data-spy].active');
+  if (!indicator) return;
+  if (!active || !active.offsetWidth) { indicator.style.opacity = '0'; return; }
+  const navBox = nav.getBoundingClientRect(), box = active.getBoundingClientRect();
+  const x = box.left - navBox.left - nav.clientLeft;
+  const first = indicator.style.opacity !== '1';
+  indicator.style.setProperty('--glass-x', `${x}px`);
+  indicator.style.setProperty('--glass-w', `${box.width}px`);
+  indicator.style.opacity = '1';
+  // No glide on the very first placement; transitions switch on afterwards.
+  if (first) { requestAnimationFrame(() => indicator.classList.add('is-ready')); return; }
+  if (!animate || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  indicator.classList.remove('is-moving');
+  void indicator.offsetWidth; // restart the stretch
+  indicator.classList.add('is-moving');
+  clearTimeout(indicator._stretchTimer);
+  indicator._stretchTimer = setTimeout(() => indicator.classList.remove('is-moving'), 320);
 }
 
 // "Open now" line in Contact, from the 11 am – 11 pm daily hours in India time.
