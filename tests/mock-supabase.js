@@ -152,7 +152,7 @@ async function oms(body) {
     }
     case 'issue_invoice': {
       const invoice = issueInvoice(orders.find(o => o.id === body.id));
-      if (!invoice) throw new Error('Invoicing is turned off. An admin can turn it on in Settings → Billing.');
+      if (!invoice) throw new Error('Invoicing is turned off. An admin can turn it on in Settings → Invoices.');
       return { id: invoice.id };
     }
     case 'credit_note': {

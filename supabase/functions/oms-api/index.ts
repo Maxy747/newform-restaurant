@@ -181,7 +181,7 @@ Deno.serve(async req=>{
   if(body.action==='issue_invoice') {
    if(!manager) return json({error:'Manager access required'},403);
    const id=await rpc('oms_issue_invoice',{p_order:order.id});
-   if(!id) throw new Error('Invoicing is turned off. An admin can turn it on in Settings → Billing.');
+   if(!id) throw new Error('Invoicing is turned off. An admin can turn it on in Settings → Invoices.');
    console.info('invoice.issued',{order:order.id});
    return json({id});
   }
