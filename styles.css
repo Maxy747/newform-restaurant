@@ -1919,7 +1919,7 @@ footer {
   font-size: min(1em, 7.6cqi);
 }
 
-/* ---------- Welcome splash (once per visit; shown/hidden by the inline <head> check) ----------
+/* ---------- Welcome splash (every page load; shown/hidden by the inline <head> check) ----------
    Restaurant photos cross-fade with a slow zoom (Ken Burns) under a dark fade; the welcome
    sits bottom-left on desktop and bottom-centre on phones. */
 .splash { display: none; }
@@ -2554,4 +2554,14 @@ html.lightbox-open { overflow: hidden; }
   html.reveal-ready .reveal, html.reveal-ready .gallery-item, html.reveal-ready .gallery-item img { transition: none; }
   .gallery-item img, #lightboxImage { transition: none; }
   .lightbox[open] { animation: none; }
+}
+
+/* Staff header on phones: ADMIN shrinks to an icon button and, on narrow screens,
+   the NEWFORM wordmark gives way so the extra staff buttons never push the page wide. */
+@media (max-width: 768px) {
+  .admin-link-btn { width: 40px; height: 40px; padding: 0; justify-content: center; border-radius: 50%; }
+  .admin-link-label { display: none; }
+}
+@media (max-width: 369px) {
+  .header:has(#ordersBtn:not([hidden])) .brand-text { display: none; }
 }

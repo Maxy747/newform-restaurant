@@ -1,4 +1,4 @@
-// Welcome splash: the inline <head> check adds `splash-open` on the first view of a visit.
+// Welcome splash: the inline <head> check adds `splash-open` on every page load (not deep links).
 // Restaurant photos cross-fade (slow zoom) behind the welcome while the site loads underneath.
 // "Explore menu" lifts the splash and glides to the menu; "Look inside" glides to the gallery;
 // Esc just lifts it, leaving the page at the top.

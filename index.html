@@ -15,23 +15,15 @@
   <!-- Custom Design System matching Minimalist Reference Template -->
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="dark-theme.css">
-  <!-- Welcome splash: once per browser visit. Decided before first paint so the site never flashes first.
-       Skipped for deep links (#…). -->
+  <!-- Welcome splash: shown on every page load (including refreshes). Decided before first paint so
+       the site never flashes first. Skipped only for deep links (#…) so shared section links land directly. -->
   <script>
-    (function () {
-      var show = true;
-      try {
-        if (sessionStorage.getItem('newform_splash_seen_v1')) show = false;
-        if (location.hash) show = false;
-        if (show) sessionStorage.setItem('newform_splash_seen_v1', '1');
-      } catch (error) { /* storage blocked: still show once on this load */ }
-      document.documentElement.classList.add(show ? 'splash-open' : 'no-splash');
-    })();
+    document.documentElement.classList.add(location.hash ? 'no-splash' : 'splash-open');
   </script>
 </head>
 <body>
 
-  <!-- Welcome splash (first view of a visit): restaurant photos cross-fade behind the welcome. -->
+  <!-- Welcome splash (every page load): restaurant photos cross-fade behind the welcome. -->
   <section id="splash" class="splash" role="dialog" aria-modal="true" aria-labelledby="splashTitle">
     <div class="splash-slides" aria-hidden="true">
       <img class="splash-slide is-active" style="--pos-phone: 42% 50%" src="assets/gallery/exterior-front-dusk-800.webp" srcset="assets/gallery/exterior-front-dusk-800.webp 800w, assets/gallery/exterior-front-dusk-full.webp 1536w" sizes="100vw" alt="" width="1536" height="1024" fetchpriority="high" decoding="async">
@@ -86,8 +78,8 @@
         </button>
 
         <!-- Shown only to restaurant staff accounts -->
-        <a id="ordersBtn" href="admin.html" class="btn-minimal admin-link-btn" hidden>
-          <i class="fa-solid fa-gauge"></i> ADMIN
+        <a id="ordersBtn" href="admin.html" class="btn-minimal admin-link-btn" aria-label="Admin console" hidden>
+          <i class="fa-solid fa-gauge" aria-hidden="true"></i><span class="admin-link-label">ADMIN</span>
         </a>
 
         <button id="cartBtn" class="cart-icon-btn" aria-label="View Order Cart">
