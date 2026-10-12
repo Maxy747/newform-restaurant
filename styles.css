@@ -2604,3 +2604,9 @@ html.lightbox-open { overflow: hidden; }
   --bubble-bg: linear-gradient(180deg, #fbf8f2, rgba(251, 248, 242, .85));
 }
 [data-palette="ivory"] .header .nav-links.glass-nav { background: color-mix(in srgb, #e8dfcf 45%, transparent); }
+
+/* Phones: everything a touch smaller. Nearly all text is in rem, so lowering the root size
+   (16px -> 15px) scales it evenly, and a percentage keeps the visitor's own text-size setting. */
+@media (max-width: 768px) {
+  html { font-size: 93.75%; }
+}
