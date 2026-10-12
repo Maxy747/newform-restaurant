@@ -511,6 +511,9 @@ function setupEventListeners() {
   setupCategoryVisibility();
   setupMenuReveal();
   setupSectionNav();
+  setupScrollReveal();
+  setupPlaceParallax();
+  setupGallery();
   updateOpenStatus();
   setInterval(updateOpenStatus, 60000);
   setupImageParallax();
@@ -1062,8 +1065,12 @@ function setupMenuReveal() {
 // top nav + phone bar highlight whichever part of the page is on screen.
 function setupSectionNav() {
   const header = document.querySelector('.header');
-  const sections = { about: document.getElementById('aboutSection'), contact: document.getElementById('contactSection') };
-  document.querySelectorAll('a[href="#aboutSection"], a[href="#contactSection"]').forEach(link => {
+  const sections = {
+    gallery: document.getElementById('gallerySection'),
+    about: document.getElementById('aboutSection'),
+    contact: document.getElementById('contactSection'),
+  };
+  document.querySelectorAll('a[href="#gallerySection"], a[href="#aboutSection"], a[href="#contactSection"]').forEach(link => {
     link.addEventListener('click', event => {
       const section = document.querySelector(link.getAttribute('href'));
       if (!section) return;
@@ -1092,6 +1099,7 @@ function setupSectionNav() {
     const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
     let key = 'home';
     if (menu && menu.getBoundingClientRect().top <= line) key = 'menu';
+    if (sections.gallery && sections.gallery.getBoundingClientRect().top <= line) key = 'gallery';
     if (sections.about && sections.about.getBoundingClientRect().top <= line) key = 'about';
     if ((sections.contact && sections.contact.getBoundingClientRect().top <= line) || atBottom) key = 'contact';
     setActive(key);
@@ -1116,6 +1124,111 @@ function setupSectionNav() {
     requestAnimationFrame(() => { queued = false; pick(); });
   }, { passive: true });
   pick();
+}
+
+// Scroll reveals: elements marked .reveal (plus About/Contact cards) fade and rise into
+// place the first time they come on screen. Without IntersectionObserver, or with reduced
+// motion, everything is simply shown.
+function setupScrollReveal() {
+  const extra = document.querySelectorAll('.about-copy > p, .about-facts, .about-highlights .info-card, .contact-card');
+  extra.forEach((element, index) => {
+    element.classList.add('reveal');
+    element.style.setProperty('--i', String(index % 4));
+  });
+  const targets = [...document.querySelectorAll('.reveal, .gallery-item')];
+  if (!('IntersectionObserver' in window) || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    targets.forEach(element => element.classList.add('is-in'));
+    return;
+  }
+  const observer = new IntersectionObserver(entries => entries.forEach(entry => {
+    if (!entry.isIntersecting) return;
+    entry.target.classList.add('is-in');
+    observer.unobserve(entry.target);
+  }), { rootMargin: '0px 0px -8% 0px', threshold: 0.12 });
+  document.documentElement.classList.add('reveal-ready');
+  targets.forEach(element => observer.observe(element));
+}
+
+// "Our place" band: the photo drifts slower than the page (parallax). Only runs while the
+// band is on screen, moves a single transform, and is skipped for reduced motion.
+function setupPlaceParallax() {
+  const band = document.getElementById('placeBand');
+  const image = band?.querySelector('.place-media img');
+  if (!band || !image || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  let visible = false;
+  let queued = false;
+  const update = () => {
+    queued = false;
+    const box = band.getBoundingClientRect();
+    // -1 when the band enters at the bottom, +1 when it leaves at the top.
+    const progress = Math.max(-1, Math.min(1, (window.innerHeight / 2 - (box.top + box.height / 2)) / (window.innerHeight / 2 + box.height / 2)));
+    image.style.transform = `translate3d(0, ${(progress * 9).toFixed(2)}%, 0) scale(1.18)`;
+  };
+  const onScroll = () => {
+    if (!visible || queued) return;
+    queued = true;
+    requestAnimationFrame(update);
+  };
+  new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; if (visible) onScroll(); }).observe(band);
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll, { passive: true });
+}
+
+// Gallery lightbox: tap a photo to open it full size; arrows, keyboard (←/→/Esc) and
+// swipe move between photos; tapping the dark backdrop closes it.
+function setupGallery() {
+  const dialog = document.getElementById('galleryLightbox');
+  const items = [...document.querySelectorAll('.gallery-item')];
+  if (!dialog || !items.length || typeof dialog.showModal !== 'function') return;
+  const image = document.getElementById('lightboxImage');
+  const caption = document.getElementById('lightboxCaption');
+  const count = document.getElementById('lightboxCount');
+  let index = 0;
+
+  const show = (next, direction = 0) => {
+    index = (next + items.length) % items.length;
+    const item = items[index];
+    const thumb = item.querySelector('img');
+    image.classList.remove('is-shown');
+    image.style.setProperty('--from', `${direction * 40}px`);
+    // Show the already-loaded thumbnail at once, then swap to the full-size photo.
+    image.src = thumb.currentSrc || thumb.src;
+    image.alt = thumb.alt;
+    const full = new Image();
+    full.onload = () => { if (items[index] === item) image.src = full.src; };
+    // Largest candidate in the thumbnail's srcset (the build rewrites srcset paths, not data-*).
+    full.src = (thumb.getAttribute('srcset') || '').split(',').pop().trim().split(/\s+/)[0] || thumb.src;
+    caption.textContent = thumb.alt;
+    count.textContent = `${index + 1} / ${items.length}`;
+    requestAnimationFrame(() => image.classList.add('is-shown'));
+  };
+
+  items.forEach((item, i) => item.addEventListener('click', () => {
+    show(i);
+    dialog.showModal();
+    document.documentElement.classList.add('lightbox-open');
+  }));
+  dialog.addEventListener('close', () => {
+    document.documentElement.classList.remove('lightbox-open');
+    items[index]?.focus({ preventScroll: true });
+  });
+  dialog.querySelector('.lightbox-close').addEventListener('click', () => dialog.close());
+  dialog.querySelector('.lightbox-prev').addEventListener('click', () => show(index - 1, -1));
+  dialog.querySelector('.lightbox-next').addEventListener('click', () => show(index + 1, 1));
+  dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
+  dialog.addEventListener('keydown', event => {
+    if (event.key === 'ArrowLeft') { event.preventDefault(); show(index - 1, -1); }
+    if (event.key === 'ArrowRight') { event.preventDefault(); show(index + 1, 1); }
+  });
+
+  let touchX = null;
+  dialog.addEventListener('touchstart', event => { touchX = event.touches[0].clientX; }, { passive: true });
+  dialog.addEventListener('touchend', event => {
+    if (touchX === null) return;
+    const dx = event.changedTouches[0].clientX - touchX;
+    touchX = null;
+    if (Math.abs(dx) > 45) show(index + (dx < 0 ? 1 : -1), dx < 0 ? 1 : -1);
+  }, { passive: true });
 }
 
 // Liquid-glass nav: one bubble sits under the active item and glides (with a brief
