@@ -52,7 +52,8 @@ const isManager = () => ['admin', 'staff'].includes(state.role);
 
 // ---------- theme ----------
 function applyTheme(theme) {
-  document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark';
+  // The site's staff-only Ivory palette shows as light here.
+  document.documentElement.dataset.theme = theme === 'light' || theme === 'ivory' ? 'light' : 'dark';
 }
 applyTheme((() => { try { return localStorage.getItem(THEME_KEY) || 'dark'; } catch { return 'dark'; } })());
 $('themeBtn').onclick = () => {

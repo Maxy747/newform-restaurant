@@ -2565,3 +2565,53 @@ html.lightbox-open { overflow: hidden; }
 @media (max-width: 369px) {
   .header:has(#ordersBtn:not([hidden])) .brand-text { display: none; }
 }
+
+/* ---------- Ivory palette (staff only) ----------
+   Warm ivory / champagne beige with coffee-brown text and accents, layered on the light
+   theme so layout and components are unchanged. Toggled from the staff theme button. */
+[data-theme="light"][data-palette="ivory"] {
+  color-scheme: light;
+  --bg-body: #f2efe7;
+  --bg-primary: #f2efe7;
+  --bg-secondary: #f5f0e6;
+  --bg-surface: #f5f0e6;
+  --bg-surface-elevated: #e8dfcf;
+  --bg-glass: rgba(242, 239, 231, .92);
+
+  --gold-primary: #4a3026;
+  --gold-light: #30251f;
+  --gold-dark: #30251f;
+  --gold-gradient: linear-gradient(135deg, #4a3026 0%, #30251f 100%);
+  --gold-btn-gradient: linear-gradient(135deg, #4a3026 0%, #30251f 100%);
+  --gold-glow: rgba(74, 48, 38, .22);
+  --glass-border: #e2d7c4;
+
+  --text-main: #30251f;
+  --text-muted: #6e6157;
+  --text-dim: #9a8d80;
+  --text-title: #30251f;
+
+  --shadow-gold: 0 10px 25px rgba(74, 48, 38, .22);
+  --shadow-card: 0 10px 25px rgba(48, 37, 31, .06);
+  --shadow-hover: 0 15px 35px rgba(74, 48, 38, .18);
+
+  --btn-minimal-bg: rgba(74, 48, 38, .08);
+  --btn-minimal-color: #4a3026;
+  --btn-minimal-hover-color: #f5f0e6;
+  --btn-primary-text: #f5f0e6;
+
+  --card-bg: #faf7f1;
+  --card-img-bg: #e8dfcf;
+  --input-bg: #faf7f1;
+  --portion-bg: #ede6d9;
+  --drawer-bg: #f5f0e6;
+  --drawer-footer-bg: #f2efe7;
+  --modal-bg: #f5f0e6;
+  --footer-bg: #e8dfcf;
+}
+[data-palette="ivory"] .glass-nav {
+  --glass-bg: color-mix(in srgb, #e8dfcf 62%, transparent);
+  --glass-shadow: 0 10px 28px rgba(48, 37, 31, .10), 0 1px 3px rgba(48, 37, 31, .08);
+  --bubble-bg: linear-gradient(180deg, #fbf8f2, rgba(251, 248, 242, .85));
+}
+[data-palette="ivory"] .header .nav-links.glass-nav { background: color-mix(in srgb, #e8dfcf 45%, transparent); }

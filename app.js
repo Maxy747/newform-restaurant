@@ -193,12 +193,25 @@ const CART_STORAGE_KEY = 'newform_cart_v1';
 const THEME_STORAGE_KEY = 'newform_theme_v1';
 
 // Theme Management Functions
-// Customers always get the light theme; dark mode is a staff-only preference
-// (shared with the admin console through THEME_STORAGE_KEY).
+// Customers always get the light theme. Staff can cycle Light -> Ivory -> Dark; the choice is
+// shared with the admin console through THEME_STORAGE_KEY. Ivory is the light layout with a
+// warm ivory/coffee palette (data-palette="ivory"), so it never picks up dark-theme rules.
 let staffThemeEnabled = false;
+const STAFF_THEMES = ['light', 'ivory', 'dark'];
+const THEME_ICONS = { light: 'fa-solid fa-sun', ivory: 'fa-solid fa-mug-hot', dark: 'fa-solid fa-moon' };
+const THEME_LABELS = { light: 'Light', ivory: 'Ivory', dark: 'Dark' };
 
 function readSavedTheme() {
-  try { return localStorage.getItem(THEME_STORAGE_KEY) === 'light' ? 'light' : 'dark'; } catch { return 'dark'; }
+  try {
+    const saved = localStorage.getItem(THEME_STORAGE_KEY);
+    return STAFF_THEMES.includes(saved) ? saved : 'dark';
+  } catch { return 'dark'; }
+}
+
+function currentTheme() {
+  const root = document.documentElement;
+  if (root.dataset.palette === 'ivory') return 'ivory';
+  return root.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
 }
 
 function initTheme() {
@@ -206,9 +219,14 @@ function initTheme() {
 }
 
 function applyTheme(theme) {
-  document.documentElement.setAttribute('data-theme', theme);
+  const root = document.documentElement;
+  root.setAttribute('data-theme', theme === 'dark' ? 'dark' : 'light');
+  if (theme === 'ivory') root.dataset.palette = 'ivory';
+  else delete root.dataset.palette;
   const themeIcon = document.getElementById('themeIcon');
-  if (themeIcon) themeIcon.className = theme === 'light' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+  if (themeIcon) themeIcon.className = THEME_ICONS[theme] || THEME_ICONS.light;
+  const toggle = document.getElementById('themeToggleBtn');
+  if (toggle) toggle.title = `Theme: ${THEME_LABELS[theme] || 'Light'} (tap to change)`;
 }
 
 function setTheme(theme) {
@@ -226,8 +244,7 @@ function syncStaffTheme(isStaff) {
 
 function toggleTheme() {
   if (!staffThemeEnabled) return;
-  const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  const newTheme = STAFF_THEMES[(STAFF_THEMES.indexOf(currentTheme()) + 1) % STAFF_THEMES.length];
   const root = document.documentElement;
 
   // Per-element transitions fade at different speeds while gradients snap, so
