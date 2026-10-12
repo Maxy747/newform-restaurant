@@ -522,5 +522,38 @@ test('PostgreSQL migration and order/payment/RLS lifecycle',async t=>{
   await assert.rejects(q('select * from public.cash_counts'),/permission denied/);
   await db.exec('reset role');
  });
+ await t.test('website theme setting and admin-managed gallery',async()=>{
+  const migration=await readFile(new URL('../supabase/migrations/20261013090000_site_theme_and_gallery.sql',import.meta.url),'utf8');
+  await db.exec(migration);
+  assert.equal((await q('select site_theme from public.checkout_settings'))[0].site_theme,'light');
+  await q("update public.checkout_settings set site_theme='ivory'");
+  await assert.rejects(q("update public.checkout_settings set site_theme='neon'"),/site_theme_check/);
+  await db.exec('set role authenticated');
+  await assert.rejects(q("update public.checkout_settings set site_theme='dark'"),/permission denied/);
+  await db.exec('reset role');
+  // Everyone can read the six launch photos, in order.
+  await db.exec('set role anon');
+  const seeded=await q('select caption,image_url from public.gallery_photos order by sort_order');
+  assert.equal(seeded.length,6);
+  assert.equal(seeded[0].image_url,'gallery/exterior-aerial-dusk-full.webp');
+  await assert.rejects(q("insert into public.gallery_photos(image_url,thumb_url) values('https://x.test/a.webp','https://x.test/b.webp')"),/permission denied/);
+  await db.exec('reset role');
+  const add=url=>q('insert into public.gallery_photos(image_url,thumb_url) values($1,$1) returning id',[url]);
+  // Staff (not admin) can't add, re-caption or delete; RLS hides the change.
+  await db.exec(`set role authenticated; set request.jwt.claim.sub='${user}'`);
+  await assert.rejects(add('https://x.test/staff.webp'),/row-level security/);
+  assert.equal((await q("update public.gallery_photos set caption='Forged' returning id")).length,0);
+  assert.equal((await q('delete from public.gallery_photos returning id')).length,0);
+  // Admins can.
+  await db.exec(`set request.jwt.claim.sub='${admin}'`);
+  const id=(await add('https://crlivalipmeypovsubca.supabase.co/storage/v1/object/public/gallery-photos/a-full.webp'))[0].id;
+  assert.equal((await q("update public.gallery_photos set caption='Terrace at night' where id=$1 returning caption",[id]))[0].caption,'Terrace at night');
+  await assert.rejects(q('update public.gallery_photos set image_url=$1 where id=$2',['https://x.test/c.webp',id]),/permission denied/); // only caption/order are editable
+  await assert.rejects(add('javascript:alert(1)'),/check constraint/);
+  await assert.rejects(add('https://x.test/"><script>'),/check constraint/);
+  assert.equal((await q('delete from public.gallery_photos where id=$1 returning id',[id])).length,1);
+  await db.exec('reset role');
+  assert.equal((await q("select public from storage.buckets where id='gallery-photos'"))[0].public,true);
+ });
  } finally {await db.close();}
 });

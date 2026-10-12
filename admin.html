@@ -238,6 +238,28 @@
       </div>
       <div class="adm-card adm-setting">
         <div>
+          <h3>Website theme</h3>
+          <p class="adm-muted">The colour scheme every customer sees on the website. Staff can still switch their own view with the theme button in the website header.</p>
+        </div>
+        <div class="adm-segmented" id="siteThemePicker" role="radiogroup" aria-label="Website theme">
+          <button type="button" role="radio" aria-checked="true" data-site-theme="light"><i class="fa-solid fa-sun" aria-hidden="true"></i> Light</button>
+          <button type="button" role="radio" aria-checked="false" data-site-theme="ivory"><i class="fa-solid fa-mug-hot" aria-hidden="true"></i> Ivory</button>
+          <button type="button" role="radio" aria-checked="false" data-site-theme="dark"><i class="fa-solid fa-moon" aria-hidden="true"></i> Dark</button>
+        </div>
+      </div>
+      <div class="adm-card" id="galleryCard">
+        <div class="adm-setting">
+          <div>
+            <h3>Website gallery</h3>
+            <p class="adm-muted">Photos in the Gallery on the website, in this order. New photos go at the end and are resized automatically. Edit a caption and press Enter (or tap elsewhere) to save it.</p>
+          </div>
+          <label class="adm-btn adm-btn-primary adm-file-btn" id="galleryAddBtn"><i class="fa-solid fa-plus" aria-hidden="true"></i> Add photos<input type="file" id="galleryFiles" accept="image/jpeg,image/png,image/webp" multiple hidden></label>
+        </div>
+        <p class="adm-muted" id="galleryStatus" role="status" hidden></p>
+        <div class="adm-gallery-grid" id="galleryAdminGrid"></div>
+      </div>
+      <div class="adm-card adm-setting">
+        <div>
           <h3>New-order alerts on this device</h3>
           <p class="adm-muted" id="notifyHelp">The order sound is on by default (speaker icon at the top). Desktop notifications also show when this tab is in the background.</p>
         </div>

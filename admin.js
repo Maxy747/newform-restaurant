@@ -5,6 +5,7 @@ import { BOARD_COLUMNS, groupOrders, findNewOrders, ageLabel, minutesSince } fro
 import { createMenuAdmin } from './admin-menu.js';
 import { createCounter } from './admin-counter.js';
 import { createCashCount } from './admin-cash.js';
+import { createGalleryAdmin } from './admin-gallery.js';
 import { GSTIN, normalizeBillingSettings, placeOfSupply, financialYear, billingRange, invoicesCSV, creditedTotal, needsCreditNote, rupees2, billDate } from './billing.js';
 
 const THEME_KEY = 'newform_theme_v1';
@@ -51,13 +52,24 @@ const can = section => SECTIONS[section]?.includes(state.role);
 const isManager = () => ['admin', 'staff'].includes(state.role);
 
 // ---------- theme ----------
+// Light -> Ivory -> Dark, shared with the public site through THEME_KEY. Ivory is the light
+// layout with a warm ivory / coffee-brown palette (data-palette="ivory").
+const ADMIN_THEMES = ['light', 'ivory', 'dark'];
+const ADMIN_THEME_LABELS = { light: 'Light', ivory: 'Ivory', dark: 'Dark' };
+let adminTheme = 'dark';
 function applyTheme(theme) {
-  // The site's staff-only Ivory palette shows as light here.
-  document.documentElement.dataset.theme = theme === 'light' || theme === 'ivory' ? 'light' : 'dark';
+  adminTheme = ADMIN_THEMES.includes(theme) ? theme : 'dark';
+  const root = document.documentElement;
+  root.dataset.theme = adminTheme === 'dark' ? 'dark' : 'light';
+  if (adminTheme === 'ivory') root.dataset.palette = 'ivory';
+  else delete root.dataset.palette;
+  const label = `Theme: ${ADMIN_THEME_LABELS[adminTheme]} (click to change)`;
+  $('themeBtn').title = label;
+  $('themeBtn').setAttribute('aria-label', label);
 }
 applyTheme((() => { try { return localStorage.getItem(THEME_KEY) || 'dark'; } catch { return 'dark'; } })());
 $('themeBtn').onclick = () => {
-  const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+  const next = ADMIN_THEMES[(ADMIN_THEMES.indexOf(adminTheme) + 1) % ADMIN_THEMES.length];
   applyTheme(next);
   try { localStorage.setItem(THEME_KEY, next); } catch { /* storage blocked */ }
 };
@@ -174,6 +186,7 @@ async function evaluateSession(session) {
   document.querySelector('[data-orders-view="history"]').hidden = !isManager();
   $('codSwitch').setAttribute('aria-checked', String(Boolean(config.codEnabled)));
   $('deliverySwitch').setAttribute('aria-checked', String(config.deliveryEnabled !== false));
+  showSiteTheme(config.siteTheme);
   $('addDriverBtn').hidden = state.role !== 'admin';
   $('shiftBox').hidden = true;
   if (state.role === 'delivery') loadMyShift(version).catch(error => toast(error.message, 'error'));
@@ -218,6 +231,7 @@ function route() {
   if (section === 'drivers') refreshDrivers().catch(error => toast(error.message, 'error'));
   if (section === 'reports') refreshReports().catch(error => toast(error.message, 'error'));
   if (section === 'billing') refreshBilling().catch(error => toast(error.message, 'error'));
+  if (section === 'settings') galleryAdmin.open().catch(error => toast(error.message, 'error'));
 }
 window.addEventListener('hashchange', route);
 
@@ -1121,6 +1135,23 @@ $('deliverySwitch').onclick = run(async () => {
   toast(result.deliveryEnabled ? 'Home delivery is on' : 'Home delivery paused', 'success');
 });
 
+// Website theme every customer sees (Light / Ivory / Dark).
+function showSiteTheme(theme) {
+  const current = ['light', 'ivory', 'dark'].includes(theme) ? theme : 'light';
+  document.querySelectorAll('#siteThemePicker [data-site-theme]').forEach(button => {
+    button.setAttribute('aria-checked', String(button.dataset.siteTheme === current));
+  });
+}
+document.querySelectorAll('#siteThemePicker [data-site-theme]').forEach(button => {
+  button.onclick = run(async () => {
+    if (button.getAttribute('aria-checked') === 'true') return;
+    const result = await api('set_site_theme', { theme: button.dataset.siteTheme });
+    showSiteTheme(result.siteTheme);
+    const names = { light: 'Light', ivory: 'Ivory', dark: 'Dark' };
+    toast(`Website theme set to ${names[result.siteTheme] || result.siteTheme}`, 'success');
+  });
+});
+
 // ---------- dialogs ----------
 document.querySelectorAll('dialog').forEach(dialog => {
   dialog.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', () => dialog.close()));
@@ -1130,6 +1161,7 @@ document.querySelectorAll('dialog').forEach(dialog => {
 
 const menuAdmin = createMenuAdmin({ supabase, toast, run, isAdmin: () => state.role === 'admin' });
 const cashCount = createCashCount({ api, toast, run, ask, todayIST });
+const galleryAdmin = createGalleryAdmin({ supabase, toast, run, ask });
 const counter = createCounter({ supabase, api, toast, run, ask, billingEnabled: () => state.billing?.enabled === true });
 
 // ---------- boot ----------

@@ -1483,7 +1483,8 @@ html { scroll-behavior: smooth; }
   backdrop-filter: blur(16px);
   border-top: 1px solid var(--glass-border);
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   align-items: center;
   justify-items: center;
   padding: 10px 0;
@@ -2437,22 +2438,12 @@ html.reveal-ready .reveal.is-in { opacity: 1; translate: none; }
 .place-link:hover i { transform: translateY(3px); }
 
 /* ---------- Gallery ----------
-   Desktop bento (4 columns x 3 rows); tablets and phones use 2 columns with the wide
-   shots spanning both. Photos open in the lightbox. */
+   Masonry columns (3 on desktop, 2 on tablets and phones) so any number of photos, in any
+   shape, packs without gaps. Photos open in the lightbox. */
 .gallery-section { padding-bottom: 80px; }
-.gallery-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  grid-auto-rows: clamp(160px, 14vw, 250px);
-  gap: 14px;
-  margin-top: 14px;
-}
-.g-a { grid-column: 1 / 3; grid-row: 1 / 3; }
-.g-b { grid-column: 3; grid-row: 1; }
-.g-d { grid-column: 4; grid-row: 1; }
-.g-c { grid-column: 3 / 5; grid-row: 2; }
-.g-e { grid-column: 1 / 3; grid-row: 3; }
-.g-f { grid-column: 3 / 5; grid-row: 3; }
+.gallery-grid { columns: 3; column-gap: 14px; margin-top: 14px; }
+.gallery-grid .gallery-item { width: 100%; margin: 0 0 14px; break-inside: avoid; }
+.gallery-grid .gallery-item img { height: auto; aspect-ratio: auto; }
 .gallery-item {
   position: relative;
   display: block;
@@ -2492,10 +2483,8 @@ html.reveal-ready .gallery-item.is-in img { scale: 1; }
 }
 
 @media (max-width: 900px) {
-  .gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: clamp(130px, 30vw, 260px); grid-auto-flow: dense; gap: 10px; }
-  .g-a, .g-b, .g-c, .g-d, .g-e, .g-f { grid-column: auto; grid-row: auto; }
-  .g-a, .g-c { grid-column: span 2; }
-  .g-a { grid-row: span 2; }
+  .gallery-grid { columns: 2; column-gap: 10px; }
+  .gallery-grid .gallery-item { margin-bottom: 10px; }
   .gallery-item { border-radius: 14px; }
   .gallery-caption { padding: 28px 12px 10px; font-size: .78rem; }
 }

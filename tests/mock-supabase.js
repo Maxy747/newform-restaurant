@@ -44,6 +44,7 @@ const withDriver = order => { const d = drivers.find(x => x.id === order.assigne
 const events = {};
 orders.forEach(order => { events[order.id] = [{ id: 1, event_type: 'order.created', detail: 'Order placed', created_at: order.created_at }]; });
 let tickets = [{ id: uuid(90), order_id: uuid(4), subject: 'Can you add extra mayo?', status: 'open', created_at: iso(20), updated_at: iso(20), ticket_messages: [{ id: 1, author_role: 'customer', message: 'Please add extra mayonnaise and no onions.', created_at: iso(20) }] }];
+let siteTheme = (() => { try { return localStorage.getItem('mock_site_theme') || 'light'; } catch { return 'light'; } })();
 let codEnabled = true, deliveryEnabled = (() => { try { return localStorage.getItem('mock_delivery') !== 'off'; } catch { return true; } })(), counter = 50;
 const listeners = new Set();
 const signal = () => listeners.forEach(fn => setTimeout(fn, 50));
@@ -73,8 +74,9 @@ async function oms(body) {
   const r = role();
   const view = order => r === 'kitchen' ? kitchenRedact(withDriver(order)) : withDriver(order);
   switch (body.action) {
-    case 'config': return { role: signedIn() ? r : 'customer', codEnabled, deliveryEnabled, payments: false, testMode: true, deliveryRouting: true };
+    case 'config': return { role: signedIn() ? r : 'customer', codEnabled, deliveryEnabled, siteTheme, payments: false, testMode: true, deliveryRouting: true };
     case 'set_cod': codEnabled = body.enabled; return { codEnabled };
+    case 'set_site_theme': siteTheme = body.theme; try { localStorage.setItem('mock_site_theme', siteTheme); } catch { /* ignore */ } return { siteTheme };
     case 'set_delivery': deliveryEnabled = body.enabled; try { localStorage.setItem('mock_delivery', body.enabled ? 'on' : 'off'); } catch { /* ignore */ } return { deliveryEnabled };
     case 'list': {
       let rows = [...orders].sort((a, b) => b.created_at.localeCompare(a.created_at));
@@ -238,8 +240,13 @@ let categories = [
   { id: 'beef', name: 'Beef Specials', sort_order: 2, archived: false }, { id: 'veg', name: 'Vegetarian', sort_order: 3, archived: false },
   { id: 'old', name: 'Old Specials', sort_order: 4, archived: true },
 ];
-const tables = { menu_items: () => menu, menu_categories: () => categories, profiles: () => [{ id: 'u1', role: role(), full_name: 'Test Admin', phone: '9999999999', default_address: 'J36M+G56, Kuttikunnu Rd, Mandayapuram,' + String.fromCharCode(10) + 'Kalpetta, Kerala 673121' }] };
-const setTable = (name, rows) => { if (name === 'menu_items') menu = rows; if (name === 'menu_categories') categories = rows; };
+let galleryPhotos = [
+  ['exterior-aerial-dusk', 'Newform at dusk, from above', 1536, 1024], ['exterior-front-day', 'The front entrance', 1536, 1024],
+  ['dining-terrace', 'The terrace dining hall', 1600, 900], ['exterior-front-dusk', 'Lights on at sunset', 1536, 1024],
+  ['dining-terrace-garden', 'Tables beside the greenery', 1536, 1024], ['exterior-street-dusk', 'On Main Road, Kalpetta', 1600, 900],
+].map(([name, caption, width, height], index) => ({ id: 'g' + index, image_url: `gallery/${name}-full.webp`, thumb_url: `gallery/${name}-800.webp`, storage_paths: [], caption, width, height, sort_order: index, created_at: '2026-10-13T00:00:00Z' }));
+const tables = { gallery_photos: () => galleryPhotos, menu_items: () => menu, menu_categories: () => categories, profiles: () => [{ id: 'u1', role: role(), full_name: 'Test Admin', phone: '9999999999', default_address: 'J36M+G56, Kuttikunnu Rd, Mandayapuram,' + String.fromCharCode(10) + 'Kalpetta, Kerala 673121' }] };
+const setTable = (name, rows) => { if (name === 'gallery_photos') galleryPhotos = rows; if (name === 'menu_items') menu = rows; if (name === 'menu_categories') categories = rows; };
 
 function query(table) {
   let op = 'select', payload = null, filters = [], single = false, maybe = false, order = [];

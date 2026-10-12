@@ -19,6 +19,13 @@
        the site never flashes first. Skipped only for deep links (#…) so shared section links land directly. -->
   <script>
     document.documentElement.classList.add(location.hash ? 'no-splash' : 'splash-open');
+    // Paint in the website theme the admin picked (cached from the last visit) so there's no flash;
+    // app.js confirms it against the server once the page loads.
+    try {
+      var siteTheme = localStorage.getItem('newform_site_theme_v1');
+      if (siteTheme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+      if (siteTheme === 'ivory') document.documentElement.dataset.palette = 'ivory';
+    } catch (error) { /* storage blocked: light until the server answers */ }
   </script>
 </head>
 <body>
@@ -26,9 +33,9 @@
   <!-- Welcome splash (every page load): restaurant photos cross-fade behind the welcome. -->
   <section id="splash" class="splash" role="dialog" aria-modal="true" aria-labelledby="splashTitle">
     <div class="splash-slides" aria-hidden="true">
-      <img class="splash-slide is-active" style="--pos-phone: 42% 50%" src="assets/gallery/exterior-front-dusk-800.webp" srcset="assets/gallery/exterior-front-dusk-800.webp 800w, assets/gallery/exterior-front-dusk-full.webp 1536w" sizes="100vw" alt="" width="1536" height="1024" fetchpriority="high" decoding="async">
-      <img class="splash-slide" style="--pos-phone: 38% 50%" src="assets/gallery/exterior-aerial-dusk-800.webp" srcset="assets/gallery/exterior-aerial-dusk-800.webp 800w, assets/gallery/exterior-aerial-dusk-full.webp 1536w" sizes="100vw" alt="" width="1536" height="1024" fetchpriority="low" decoding="async">
-      <img class="splash-slide" style="--pos-phone: 62% 50%" src="assets/gallery/exterior-street-dusk-800.webp" srcset="assets/gallery/exterior-street-dusk-800.webp 800w, assets/gallery/exterior-street-dusk-full.webp 1536w" sizes="100vw" alt="" width="1600" height="900" fetchpriority="low" decoding="async">
+      <img class="splash-slide is-active" style="--pos-phone: 42% 50%" src="/gallery/exterior-front-dusk-800.webp" srcset="/gallery/exterior-front-dusk-800.webp 800w, /gallery/exterior-front-dusk-full.webp 1536w" sizes="100vw" alt="" width="1536" height="1024" fetchpriority="high" decoding="async">
+      <img class="splash-slide" style="--pos-phone: 38% 50%" src="/gallery/exterior-aerial-dusk-800.webp" srcset="/gallery/exterior-aerial-dusk-800.webp 800w, /gallery/exterior-aerial-dusk-full.webp 1536w" sizes="100vw" alt="" width="1536" height="1024" fetchpriority="low" decoding="async">
+      <img class="splash-slide" style="--pos-phone: 62% 50%" src="/gallery/exterior-street-dusk-800.webp" srcset="/gallery/exterior-street-dusk-800.webp 800w, /gallery/exterior-street-dusk-full.webp 1536w" sizes="100vw" alt="" width="1600" height="900" fetchpriority="low" decoding="async">
     </div>
     <div class="splash-shade" aria-hidden="true"></div>
     <div class="splash-inner">
@@ -202,7 +209,7 @@
   <!-- Our place: full-width photo band with a gentle parallax -->
   <section class="place-band" id="placeBand" aria-labelledby="placeTitle">
     <div class="place-media" aria-hidden="true">
-      <img src="assets/gallery/exterior-front-dusk-800.webp" srcset="assets/gallery/exterior-front-dusk-800.webp 800w, assets/gallery/exterior-front-dusk-full.webp 1536w" sizes="100vw" alt="" width="1536" height="1024" loading="lazy" decoding="async">
+      <img src="/gallery/exterior-front-dusk-800.webp" srcset="/gallery/exterior-front-dusk-800.webp 800w, /gallery/exterior-front-dusk-full.webp 1536w" sizes="100vw" alt="" width="1536" height="1024" loading="lazy" decoding="async">
     </div>
     <div class="place-shade" aria-hidden="true"></div>
     <div class="place-copy">
@@ -220,27 +227,27 @@
       <h2 id="galleryTitle" class="section-title reveal" style="--i:1">Take a look around</h2>
       <div class="gallery-grid">
         <button type="button" class="gallery-item g-a" data-index="0" style="--i:0" aria-label="Open photo: Newform at dusk, from above">
-          <img src="assets/gallery/exterior-aerial-dusk-800.webp" srcset="assets/gallery/exterior-aerial-dusk-800.webp 800w, assets/gallery/exterior-aerial-dusk-full.webp 1536w" sizes="(max-width: 768px) 100vw, 50vw" alt="Newform at dusk, from above" width="1536" height="1024" loading="lazy" decoding="async">
+          <img src="/gallery/exterior-aerial-dusk-800.webp" srcset="/gallery/exterior-aerial-dusk-800.webp 800w, /gallery/exterior-aerial-dusk-full.webp 1536w" sizes="(max-width: 900px) 50vw, 33vw" alt="Newform at dusk, from above" width="1536" height="1024" loading="lazy" decoding="async">
           <span class="gallery-caption">Newform at dusk, from above</span>
         </button>
         <button type="button" class="gallery-item g-b" data-index="1" style="--i:1" aria-label="Open photo: The front entrance">
-          <img src="assets/gallery/exterior-front-day-800.webp" srcset="assets/gallery/exterior-front-day-800.webp 800w, assets/gallery/exterior-front-day-full.webp 1536w" sizes="(max-width: 768px) 100vw, 50vw" alt="The front entrance" width="1536" height="1024" loading="lazy" decoding="async">
+          <img src="/gallery/exterior-front-day-800.webp" srcset="/gallery/exterior-front-day-800.webp 800w, /gallery/exterior-front-day-full.webp 1536w" sizes="(max-width: 900px) 50vw, 33vw" alt="The front entrance" width="1536" height="1024" loading="lazy" decoding="async">
           <span class="gallery-caption">The front entrance</span>
         </button>
         <button type="button" class="gallery-item g-c" data-index="2" style="--i:2" aria-label="Open photo: The terrace dining hall">
-          <img src="assets/gallery/dining-terrace-800.webp" srcset="assets/gallery/dining-terrace-800.webp 800w, assets/gallery/dining-terrace-full.webp 1536w" sizes="(max-width: 768px) 100vw, 50vw" alt="The terrace dining hall" width="1600" height="900" loading="lazy" decoding="async">
+          <img src="/gallery/dining-terrace-800.webp" srcset="/gallery/dining-terrace-800.webp 800w, /gallery/dining-terrace-full.webp 1536w" sizes="(max-width: 900px) 50vw, 33vw" alt="The terrace dining hall" width="1600" height="900" loading="lazy" decoding="async">
           <span class="gallery-caption">The terrace dining hall</span>
         </button>
         <button type="button" class="gallery-item g-d" data-index="3" style="--i:3" aria-label="Open photo: Lights on at sunset">
-          <img src="assets/gallery/exterior-front-dusk-800.webp" srcset="assets/gallery/exterior-front-dusk-800.webp 800w, assets/gallery/exterior-front-dusk-full.webp 1536w" sizes="(max-width: 768px) 100vw, 50vw" alt="Lights on at sunset" width="1536" height="1024" loading="lazy" decoding="async">
+          <img src="/gallery/exterior-front-dusk-800.webp" srcset="/gallery/exterior-front-dusk-800.webp 800w, /gallery/exterior-front-dusk-full.webp 1536w" sizes="(max-width: 900px) 50vw, 33vw" alt="Lights on at sunset" width="1536" height="1024" loading="lazy" decoding="async">
           <span class="gallery-caption">Lights on at sunset</span>
         </button>
         <button type="button" class="gallery-item g-e" data-index="4" style="--i:4" aria-label="Open photo: Tables beside the greenery">
-          <img src="assets/gallery/dining-terrace-garden-800.webp" srcset="assets/gallery/dining-terrace-garden-800.webp 800w, assets/gallery/dining-terrace-garden-full.webp 1536w" sizes="(max-width: 768px) 100vw, 50vw" alt="Tables beside the greenery" width="1536" height="1024" loading="lazy" decoding="async">
+          <img src="/gallery/dining-terrace-garden-800.webp" srcset="/gallery/dining-terrace-garden-800.webp 800w, /gallery/dining-terrace-garden-full.webp 1536w" sizes="(max-width: 900px) 50vw, 33vw" alt="Tables beside the greenery" width="1536" height="1024" loading="lazy" decoding="async">
           <span class="gallery-caption">Tables beside the greenery</span>
         </button>
         <button type="button" class="gallery-item g-f" data-index="5" style="--i:5" aria-label="Open photo: On Main Road, Kalpetta">
-          <img src="assets/gallery/exterior-street-dusk-800.webp" srcset="assets/gallery/exterior-street-dusk-800.webp 800w, assets/gallery/exterior-street-dusk-full.webp 1536w" sizes="(max-width: 768px) 100vw, 50vw" alt="On Main Road, Kalpetta" width="1600" height="900" loading="lazy" decoding="async">
+          <img src="/gallery/exterior-street-dusk-800.webp" srcset="/gallery/exterior-street-dusk-800.webp 800w, /gallery/exterior-street-dusk-full.webp 1536w" sizes="(max-width: 900px) 50vw, 33vw" alt="On Main Road, Kalpetta" width="1600" height="900" loading="lazy" decoding="async">
           <span class="gallery-caption">On Main Road, Kalpetta</span>
         </button>
       </div>

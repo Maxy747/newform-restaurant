@@ -49,6 +49,24 @@
   --shadow: 0 10px 30px #2a1a5a1f;
 }
 
+/* Ivory (staff option, shared with the public site): warm ivory / champagne beige with
+   coffee-brown text and accents, on top of the light theme. Status colours stay as they are. */
+:root[data-theme="light"][data-palette="ivory"] {
+  --bg: #f2efe7;
+  --surface: #faf7f1;
+  --surface-2: #f5f0e6;
+  --surface-3: #e8dfcf;
+  --border: #e2d7c4;
+  --text: #30251f;
+  --muted: #6e6157;
+  --accent: #4a3026;
+  --accent-soft: #4a30261a;
+  --accent-text: #4a3026;
+  --accent-grad: linear-gradient(125deg, #5a3a2d, #30251f);
+  --on-accent: #f5f0e6;
+  --shadow: 0 10px 30px #30251f1a;
+}
+
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body {
@@ -619,4 +637,34 @@ button.adm-dish-tile:active { transform: scale(.98); }
 @media (max-width: 520px) {
   .adm-cash-row { grid-template-columns: minmax(0, 1fr) auto; }
   .adm-cash-row > span:last-child { grid-column: 1 / -1; justify-self: start; }
+}
+
+/* Settings: website theme picker (segmented control) */
+.adm-segmented { display: inline-flex; padding: 3px; gap: 2px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-2); }
+.adm-segmented button {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 6px 14px;
+  border: 0; border-radius: 999px; background: transparent; color: var(--muted);
+  font: 600 .86rem var(--font-body); cursor: pointer; transition: background .2s, color .2s;
+}
+.adm-segmented button:hover:not(:disabled) { color: var(--text); }
+.adm-segmented button[aria-checked="true"] { background: var(--accent-grad); color: var(--on-accent); }
+.adm-segmented button:disabled { opacity: .6; cursor: progress; }
+.adm-segmented button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Settings: website gallery manager */
+.adm-file-btn { cursor: pointer; }
+.adm-file-btn.is-busy { opacity: .6; pointer-events: none; }
+.adm-gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.adm-gallery-item { margin: 0; display: grid; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
+.adm-gallery-item img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: var(--surface-3); }
+.adm-gallery-item figcaption { display: flex; gap: 6px; padding: 8px; }
+.adm-gallery-item input { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); font: inherit; font-size: .85rem; }
+.adm-gallery-item input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.adm-btn-icon { width: 38px; padding: 0; justify-content: center; flex: none; }
+.adm-gallery-empty { grid-column: 1 / -1; margin: 0; }
+@media (max-width: 600px) {
+  .adm-setting:has(.adm-segmented) { grid-template-columns: 1fr; }
+  .adm-segmented { width: 100%; }
+  .adm-segmented button { flex: 1; justify-content: center; padding: 6px 8px; }
+  .adm-gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 }

@@ -180,7 +180,7 @@ const ordering = createOrdering({
   toast: message => showToast(message),
   closeAll: () => closeAllModals(),
   onPlaced: () => { cart = []; lastClearedCart = null; saveCartData(); updateCartBadge(); renderMenu(); closeCart(); },
-  onStaffChange: isStaff => syncStaffTheme(isStaff)
+  onStaffChange: (isStaff, siteTheme) => syncStaffTheme(isStaff, siteTheme)
 });
 
 // LocalStorage Keys
@@ -193,11 +193,20 @@ const CART_STORAGE_KEY = 'newform_cart_v1';
 const THEME_STORAGE_KEY = 'newform_theme_v1';
 
 // Theme Management Functions
-// Customers always get the light theme. Staff can cycle Light -> Ivory -> Dark; the choice is
-// shared with the admin console through THEME_STORAGE_KEY. Ivory is the light layout with a
-// warm ivory/coffee palette (data-palette="ivory"), so it never picks up dark-theme rules.
+// Customers get the website theme an admin picks (Settings -> Website theme), cached in
+// SITE_THEME_CACHE_KEY so the next visit paints in it straight away. Staff can cycle
+// Light -> Ivory -> Dark for themselves; that choice is shared with the admin console through
+// THEME_STORAGE_KEY. Ivory is the light layout with a warm ivory/coffee palette
+// (data-palette="ivory"), so it never picks up dark-theme rules.
 let staffThemeEnabled = false;
 const STAFF_THEMES = ['light', 'ivory', 'dark'];
+const SITE_THEME_CACHE_KEY = 'newform_site_theme_v1';
+let siteTheme = (() => {
+  try {
+    const cached = localStorage.getItem(SITE_THEME_CACHE_KEY);
+    return STAFF_THEMES.includes(cached) ? cached : 'light';
+  } catch { return 'light'; }
+})();
 const THEME_ICONS = { light: 'fa-solid fa-sun', ivory: 'fa-solid fa-mug-hot', dark: 'fa-solid fa-moon' };
 const THEME_LABELS = { light: 'Light', ivory: 'Ivory', dark: 'Dark' };
 
@@ -215,7 +224,7 @@ function currentTheme() {
 }
 
 function initTheme() {
-  applyTheme('light');
+  applyTheme(siteTheme);
 }
 
 function applyTheme(theme) {
@@ -234,12 +243,15 @@ function setTheme(theme) {
   try { localStorage.setItem(THEME_STORAGE_KEY, theme); } catch { /* storage blocked */ }
 }
 
-function syncStaffTheme(isStaff) {
-  if (isStaff === staffThemeEnabled) return;
+function syncStaffTheme(isStaff, nextSiteTheme) {
+  if (STAFF_THEMES.includes(nextSiteTheme) && nextSiteTheme !== siteTheme) {
+    siteTheme = nextSiteTheme;
+    try { localStorage.setItem(SITE_THEME_CACHE_KEY, siteTheme); } catch { /* storage blocked */ }
+  }
   staffThemeEnabled = isStaff;
   const toggle = document.getElementById('themeToggleBtn');
   if (toggle) toggle.hidden = !isStaff;
-  applyTheme(isStaff ? readSavedTheme() : 'light');
+  applyTheme(isStaff ? readSavedTheme() : siteTheme);
 }
 
 function toggleTheme() {
@@ -1152,18 +1164,21 @@ function setupScrollReveal() {
     element.classList.add('reveal');
     element.style.setProperty('--i', String(index % 4));
   });
-  const targets = [...document.querySelectorAll('.reveal, .gallery-item')];
-  if (!('IntersectionObserver' in window) || matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    targets.forEach(element => element.classList.add('is-in'));
-    return;
+  if ('IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    revealObserver = new IntersectionObserver(entries => entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      entry.target.classList.add('is-in');
+      revealObserver.unobserve(entry.target);
+    }), { rootMargin: '0px 0px -8% 0px', threshold: 0.12 });
+    document.documentElement.classList.add('reveal-ready');
   }
-  const observer = new IntersectionObserver(entries => entries.forEach(entry => {
-    if (!entry.isIntersecting) return;
-    entry.target.classList.add('is-in');
-    observer.unobserve(entry.target);
-  }), { rootMargin: '0px 0px -8% 0px', threshold: 0.12 });
-  document.documentElement.classList.add('reveal-ready');
-  targets.forEach(element => observer.observe(element));
+  observeReveal(document.querySelectorAll('.reveal, .gallery-item'));
+}
+
+let revealObserver = null;
+// Also used for gallery photos rendered later from the database.
+function observeReveal(elements) {
+  elements.forEach(element => (revealObserver ? revealObserver.observe(element) : element.classList.add('is-in')));
 }
 
 // "Our place" band: the photo drifts slower than the page (parallax). Only runs while the
@@ -1191,20 +1206,27 @@ function setupPlaceParallax() {
   window.addEventListener('resize', onScroll, { passive: true });
 }
 
-// Gallery lightbox: tap a photo to open it full size; arrows, keyboard (←/→/Esc) and
-// swipe move between photos; tapping the dark backdrop closes it.
+// Gallery: photos come from the gallery_photos table (admins manage them in Settings); the
+// six bundled photos in the HTML stay if the backend can't be reached. Tap a photo to open it
+// full size; arrows, keyboard (left/right/Esc) and swipe move between photos; tapping the dark
+// backdrop closes it.
 function setupGallery() {
+  const grid = document.querySelector('.gallery-grid');
   const dialog = document.getElementById('galleryLightbox');
-  const items = [...document.querySelectorAll('.gallery-item')];
-  if (!dialog || !items.length || typeof dialog.showModal !== 'function') return;
+  if (!grid) return;
+  loadGalleryPhotos(grid).catch(error => console.warn('Gallery photos not loaded:', error.message));
+  if (!dialog || typeof dialog.showModal !== 'function') return;
   const image = document.getElementById('lightboxImage');
   const caption = document.getElementById('lightboxCaption');
   const count = document.getElementById('lightboxCount');
+  const items = () => [...grid.querySelectorAll('.gallery-item')];
   let index = 0;
 
   const show = (next, direction = 0) => {
-    index = (next + items.length) % items.length;
-    const item = items[index];
+    const list = items();
+    if (!list.length) return;
+    index = (next + list.length) % list.length;
+    const item = list[index];
     const thumb = item.querySelector('img');
     image.classList.remove('is-shown');
     image.style.setProperty('--from', `${direction * 40}px`);
@@ -1212,22 +1234,24 @@ function setupGallery() {
     image.src = thumb.currentSrc || thumb.src;
     image.alt = thumb.alt;
     const full = new Image();
-    full.onload = () => { if (items[index] === item) image.src = full.src; };
+    full.onload = () => { if (items()[index] === item) image.src = full.src; };
     // Largest candidate in the thumbnail's srcset (the build rewrites srcset paths, not data-*).
     full.src = (thumb.getAttribute('srcset') || '').split(',').pop().trim().split(/\s+/)[0] || thumb.src;
     caption.textContent = thumb.alt;
-    count.textContent = `${index + 1} / ${items.length}`;
+    count.textContent = `${index + 1} / ${list.length}`;
     requestAnimationFrame(() => image.classList.add('is-shown'));
   };
 
-  items.forEach((item, i) => item.addEventListener('click', () => {
-    show(i);
+  grid.addEventListener('click', event => {
+    const item = event.target.closest('.gallery-item');
+    if (!item) return;
+    show(items().indexOf(item));
     dialog.showModal();
     document.documentElement.classList.add('lightbox-open');
-  }));
+  });
   dialog.addEventListener('close', () => {
     document.documentElement.classList.remove('lightbox-open');
-    items[index]?.focus({ preventScroll: true });
+    items()[index]?.focus({ preventScroll: true });
   });
   dialog.querySelector('.lightbox-close').addEventListener('click', () => dialog.close());
   dialog.querySelector('.lightbox-prev').addEventListener('click', () => show(index - 1, -1));
@@ -1246,6 +1270,33 @@ function setupGallery() {
     touchX = null;
     if (Math.abs(dx) > 45) show(index + (dx < 0 ? 1 : -1), dx < 0 ? 1 : -1);
   }, { passive: true });
+}
+
+const GALLERY_URL = /^(https:\/\/[^\s"'<>]+|gallery\/[a-z0-9-]+\.webp)$/;
+
+async function loadGalleryPhotos(grid) {
+  if (!isSupabaseConfigured) return;
+  const { data, error } = await supabase.from('gallery_photos')
+    .select('id,image_url,thumb_url,caption,width,height')
+    .order('sort_order').order('created_at');
+  // Backend unavailable (or not migrated yet): keep the bundled photos.
+  if (error || !Array.isArray(data)) return;
+  const photos = data.filter(photo => GALLERY_URL.test(photo.image_url) && GALLERY_URL.test(photo.thumb_url));
+  const empty = photos.length === 0;
+  // No photos: hide the gallery and every link that points at it.
+  document.getElementById('gallerySection').hidden = empty;
+  document.querySelectorAll('a[href="#gallerySection"], #splashLook').forEach(link => { link.hidden = empty; });
+  if (empty) { grid.replaceChildren(); return; }
+  grid.innerHTML = photos.map((photo, index) => {
+    const label = escapeHTML(photo.caption || 'Newform restaurant photo');
+    const width = Number(photo.width) || 1600, height = Number(photo.height) || 1067;
+    return `
+        <button type="button" class="gallery-item" style="--i:${index % 6}" aria-label="Open photo: ${label}">
+          <img src="${escapeHTML(photo.thumb_url)}" srcset="${escapeHTML(photo.thumb_url)} 800w, ${escapeHTML(photo.image_url)} ${Math.max(width, 801)}w" sizes="(max-width: 900px) 50vw, 33vw" alt="${label}" width="${width}" height="${height}" loading="lazy" decoding="async">
+          ${photo.caption ? `<span class="gallery-caption">${escapeHTML(photo.caption)}</span>` : ''}
+        </button>`;
+  }).join('');
+  observeReveal(grid.querySelectorAll('.gallery-item'));
 }
 
 // Liquid-glass nav: one bubble sits under the active item and glides (with a brief
