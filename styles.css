@@ -2647,3 +2647,16 @@ html.lightbox-open { overflow: hidden; }
   [data-palette="ivory"] .glass-nav { background: rgba(242, 239, 231, .96); }
   [data-palette="ivory"] .header-container { background: rgba(250, 247, 241, .96); }
 }
+
+/* "Representative image" on dishes still using a stock photo (see public/menu-stock). */
+.card-stock-tag {
+  position: absolute; left: 8px; bottom: 8px; z-index: 2;
+  padding: 3px 8px; border-radius: 999px;
+  background: rgba(20, 14, 10, .6); color: #fff;
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  font-size: .62rem; font-weight: 600; letter-spacing: .02em;
+  pointer-events: none;
+}
+@media (max-width: 768px) {
+  .card-stock-tag { left: 6px; bottom: 6px; padding: 2px 6px; font-size: .56rem; }
+}

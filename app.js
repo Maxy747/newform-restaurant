@@ -559,6 +559,11 @@ function setupEventListeners() {
 
 // Render Menu Cards
 // The bundled hero shot was the seed placeholder; show a neutral tile rather than a photo of a different dish.
+// Representative stock photos (public/menu-stock) stand in until the restaurant uploads its own.
+function isStockPhoto(image) {
+  return /^menu-stock\//.test(String(image || '').trim());
+}
+
 function hasDishPhoto(image) {
   const src = String(image || '').trim();
   return Boolean(src) && !/(^|\/)assets\/hero\.png(\?.*)?$/.test(src);
@@ -631,6 +636,7 @@ function renderMenu(animate = false) {
           <div class="card-photo-placeholder" aria-hidden="true"><i class="fa-solid fa-utensils"></i><span>Photo coming soon</span></div>
           <div class="diet-icon ${escapeHTML(item.diet)}"></div>
           ${item.tag ? `<span class="card-badge ${getTagTone(item.tag)}">${escapeHTML(item.tag)}</span>` : ''}
+          ${hasPhoto && isStockPhoto(item.image) ? '<span class="card-stock-tag">Representative image</span>' : ''}
         </div>
         <div class="card-body">
           <h3 class="food-name">${name}</h3>
