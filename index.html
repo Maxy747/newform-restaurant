@@ -7,7 +7,7 @@
   <meta name="description" content="Authentic Mandhi, Alfaham, Kerala Beef Fry, Seafood, Broast, and Chinese multi cuisine restaurant in Kakkavayal, Kalpetta, Wayanad.">
   <link rel="icon" type="image/png" href="assets/newform_logo.png">
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#52796f">
+  <meta name="theme-color" content="#f2efe7">
 
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -23,8 +23,10 @@
     // app.js confirms it against the server once the page loads.
     try {
       var siteTheme = localStorage.getItem('newform_site_theme_v1');
-      if (siteTheme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-      else if (siteTheme !== 'light') document.documentElement.dataset.palette = 'ivory'; // Ivory is the default
+      var bar = document.querySelector('meta[name="theme-color"]');
+      if (siteTheme === 'dark') { document.documentElement.setAttribute('data-theme', 'dark'); bar.content = '#050505'; }
+      else if (siteTheme === 'light') bar.content = '#f8f9fa';
+      else document.documentElement.dataset.palette = 'ivory'; // Ivory is the default
     } catch (error) { document.documentElement.dataset.palette = 'ivory'; }
   </script>
 </head>

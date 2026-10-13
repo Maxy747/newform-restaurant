@@ -2610,3 +2610,40 @@ html.lightbox-open { overflow: hidden; }
 @media (max-width: 768px) {
   html { font-size: 93.75%; }
 }
+
+/* ---------- Ivory: re-tint the white "liquid glass" surfaces ----------
+   Header capsule, search bar, category bubble, Back to top and the account sheet are frosted
+   white in Light; in Ivory they become frosted ivory with coffee-tinted shadows. */
+[data-palette="ivory"] .header-container {
+  --glass-bg: color-mix(in srgb, #faf7f1 72%, transparent);
+  --glass-rim: rgba(255, 252, 246, .9);
+  border-color: rgba(226, 215, 196, .75);
+  box-shadow: 0 10px 30px rgba(48, 37, 31, .10), 0 1px 3px rgba(48, 37, 31, .08), inset 0 1px 0 var(--glass-rim), inset 0 -1px 0 rgba(48, 37, 31, .05);
+}
+[data-palette="ivory"] .header-container::before { background: linear-gradient(180deg, rgba(255, 252, 246, .55), rgba(255, 252, 246, 0) 55%); }
+[data-palette="ivory"] .controls-container {
+  background: color-mix(in srgb, #faf7f1 72%, transparent);
+  border-color: rgba(226, 215, 196, .75);
+  box-shadow: 0 10px 30px rgba(48, 37, 31, .08), inset 0 1px 0 rgba(255, 252, 246, .9);
+}
+[data-palette="ivory"] .search-input { background: rgba(250, 247, 241, .9); border-color: #e2d7c4; box-shadow: inset 0 1px 3px rgba(48, 37, 31, .06); }
+[data-palette="ivory"] .search-input:focus { background: #fbf8f2; }
+[data-palette="ivory"] .category-highlight { background: linear-gradient(180deg, #fbf8f2, rgba(251, 248, 242, .9)); border-color: #e2d7c4; box-shadow: 0 4px 12px rgba(48, 37, 31, .12); }
+[data-palette="ivory"] :is(.category-bubble, .back-to-top, .compact-brand-logo img) {
+  background: color-mix(in srgb, #faf7f1 80%, transparent);
+  border-color: rgba(226, 215, 196, .9);
+}
+[data-palette="ivory"] .back-to-top { box-shadow: 0 6px 18px rgba(48, 37, 31, .1), inset 0 1px 0 #fffcf6; }
+[data-palette="ivory"] .modal.account-sheet {
+  background: color-mix(in srgb, #f5f0e6 92%, transparent);
+  border-color: rgba(226, 215, 196, .8);
+  box-shadow: 0 30px 70px rgba(48, 37, 31, .25), inset 0 1px 0 rgba(255, 252, 246, .9);
+}
+[data-palette="ivory"] :is(.acct-form .form-control, .acct-profile, .acct-order) { background: rgba(250, 247, 241, .85); border-color: #e2d7c4; }
+[data-palette="ivory"] .acct-icon-btn { background: rgba(250, 247, 241, .85); }
+[data-palette="ivory"] .acct-tabs { background: color-mix(in srgb, #e8dfcf 60%, transparent); }
+[data-palette="ivory"] .acct-tab-bubble { background: linear-gradient(180deg, #fbf8f2, rgba(251, 248, 242, .9)); }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  [data-palette="ivory"] .glass-nav { background: rgba(242, 239, 231, .96); }
+  [data-palette="ivory"] .header-container { background: rgba(250, 247, 241, .96); }
+}

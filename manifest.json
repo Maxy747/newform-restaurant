@@ -4,8 +4,8 @@
   "description": "Authentic Malabar, Arabian, Mandhi, Alfaham & Chinese Cuisine in Kakkavayal, Kalpetta, Wayanad.",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#0d0f12",
-  "theme_color": "#ff6b00",
+  "background_color": "#f2efe7",
+  "theme_color": "#f2efe7",
   "orientation": "portrait-primary",
   "icons": [
     {

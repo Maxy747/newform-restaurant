@@ -208,6 +208,8 @@ let siteTheme = (() => {
   } catch { return 'ivory'; }
 })();
 const THEME_ICONS = { light: 'fa-solid fa-sun', ivory: 'fa-solid fa-mug-hot', dark: 'fa-solid fa-moon' };
+// Phone browser bar / status bar colour for each theme (the <meta name="theme-color"> tag).
+const THEME_BAR_COLORS = { light: '#f8f9fa', ivory: '#f2efe7', dark: '#050505' };
 const THEME_LABELS = { light: 'Light', ivory: 'Ivory', dark: 'Dark' };
 
 function readSavedTheme() {
@@ -234,6 +236,8 @@ function applyTheme(theme) {
   else delete root.dataset.palette;
   const themeIcon = document.getElementById('themeIcon');
   if (themeIcon) themeIcon.className = THEME_ICONS[theme] || THEME_ICONS.light;
+  const bar = document.querySelector('meta[name="theme-color"]');
+  if (bar) bar.content = THEME_BAR_COLORS[theme] || THEME_BAR_COLORS.ivory;
   const toggle = document.getElementById('themeToggleBtn');
   if (toggle) toggle.title = `Theme: ${THEME_LABELS[theme] || 'Light'} (tap to change)`;
 }

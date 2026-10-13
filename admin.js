@@ -53,10 +53,14 @@ const isManager = () => ['admin', 'staff'].includes(state.role);
 
 // ---------- theme ----------
 // Light -> Ivory -> Dark, shared with the public site through THEME_KEY. Ivory is the light
-// layout with a warm ivory / coffee-brown palette (data-palette="ivory").
+// layout with a warm ivory / coffee-brown palette (data-palette="ivory"). Until you pick your
+// own with the theme button, the console follows the website theme (Settings -> Website theme),
+// and picking a website theme switches the console to it too.
 const ADMIN_THEMES = ['light', 'ivory', 'dark'];
 const ADMIN_THEME_LABELS = { light: 'Light', ivory: 'Ivory', dark: 'Dark' };
+const ADMIN_BAR_COLORS = { light: '#f5f3fa', ivory: '#f2efe7', dark: '#07060b' };
 let adminTheme = 'ivory';
+const savedAdminTheme = () => { try { return localStorage.getItem(THEME_KEY); } catch { return null; } };
 function applyTheme(theme) {
   adminTheme = ADMIN_THEMES.includes(theme) ? theme : 'ivory';
   const root = document.documentElement;
@@ -66,8 +70,11 @@ function applyTheme(theme) {
   const label = `Theme: ${ADMIN_THEME_LABELS[adminTheme]} (click to change)`;
   $('themeBtn').title = label;
   $('themeBtn').setAttribute('aria-label', label);
+  // Phone browser bar / status bar colour.
+  const bar = document.querySelector('meta[name="theme-color"]');
+  if (bar) bar.content = ADMIN_BAR_COLORS[adminTheme];
 }
-applyTheme((() => { try { return localStorage.getItem(THEME_KEY) || 'ivory'; } catch { return 'ivory'; } })());
+applyTheme(savedAdminTheme() || 'ivory');
 $('themeBtn').onclick = () => {
   const next = ADMIN_THEMES[(ADMIN_THEMES.indexOf(adminTheme) + 1) % ADMIN_THEMES.length];
   applyTheme(next);
@@ -187,6 +194,7 @@ async function evaluateSession(session) {
   $('codSwitch').setAttribute('aria-checked', String(Boolean(config.codEnabled)));
   $('deliverySwitch').setAttribute('aria-checked', String(config.deliveryEnabled !== false));
   showSiteTheme(config.siteTheme);
+  if (!savedAdminTheme() && config.siteTheme) applyTheme(config.siteTheme);
   $('addDriverBtn').hidden = state.role !== 'admin';
   $('shiftBox').hidden = true;
   if (state.role === 'delivery') loadMyShift(version).catch(error => toast(error.message, 'error'));
@@ -1147,6 +1155,9 @@ document.querySelectorAll('#siteThemePicker [data-site-theme]').forEach(button =
     if (button.getAttribute('aria-checked') === 'true') return;
     const result = await api('set_site_theme', { theme: button.dataset.siteTheme });
     showSiteTheme(result.siteTheme);
+    // The console switches with the website.
+    applyTheme(result.siteTheme);
+    try { localStorage.setItem(THEME_KEY, adminTheme); } catch { /* storage blocked */ }
     const names = { light: 'Light', ivory: 'Ivory', dark: 'Dark' };
     toast(`Website theme set to ${names[result.siteTheme] || result.siteTheme}`, 'success');
   });
