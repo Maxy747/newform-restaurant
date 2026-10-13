@@ -556,6 +556,12 @@ test('PostgreSQL migration and order/payment/RLS lifecycle',async t=>{
   assert.equal((await q("select public from storage.buckets where id='gallery-photos'"))[0].public,true);
   await db.exec(await readFile(new URL('../supabase/migrations/20261013100000_default_site_theme_ivory.sql',import.meta.url),'utf8'));
   assert.equal((await q('select site_theme from public.checkout_settings'))[0].site_theme,'ivory');
+  const tagMigration=await readFile(new URL('../supabase/migrations/20261013110000_stock_photo_tag.sql',import.meta.url),'utf8');
+  await db.exec(tagMigration);await db.exec(tagMigration); // safe to re-run
+  assert.equal((await q('select show_stock_tag from public.checkout_settings'))[0].show_stock_tag,true);
+  await db.exec('set role authenticated');
+  await assert.rejects(q('update public.checkout_settings set show_stock_tag=false'),/permission denied/);
+  await db.exec('reset role');
   assert.equal((await q("select column_default from information_schema.columns where table_name='checkout_settings' and column_name='site_theme'"))[0].column_default,"'ivory'::text");
  });
  } finally {await db.close();}

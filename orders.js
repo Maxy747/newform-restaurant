@@ -91,7 +91,7 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   if(staffLoginRedirect&&user){staffLoginRedirect=false;if(staff()){location.assign('admin.html');return;}}
   fillCheckout();
   $('ordersBtn').hidden=!staff();
-  onStaffChange(staff(),config.siteTheme);
+  onStaffChange(staff(),config.siteTheme,config.stockTag);
   if(user)channel=supabase.channel('newform-orders-'+user.id).on('postgres_changes',{event:'*',schema:'public',table:'order_signals'},()=>{
    clearTimeout(realtimeTimer);realtimeTimer=setTimeout(refreshVisible,200);
   }).subscribe();

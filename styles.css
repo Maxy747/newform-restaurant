@@ -2660,3 +2660,4 @@ html.lightbox-open { overflow: hidden; }
 @media (max-width: 768px) {
   .card-stock-tag { left: 6px; bottom: 6px; padding: 2px 6px; font-size: .56rem; }
 }
+html.hide-stock-tag .card-stock-tag { display: none; }

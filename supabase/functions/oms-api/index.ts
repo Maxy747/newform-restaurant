@@ -32,7 +32,7 @@ Deno.serve(async req=>{
   const deliveryOn=(row:any)=>row.delivery_enabled!==false;
   if(body.action==='config') {
    const current=await settings();
-   return json({role,codEnabled:current.cod_enabled,deliveryEnabled:deliveryOn(current),siteTheme:SITE_THEMES.includes(current.site_theme)?current.site_theme:'light',payments:paymentConfigured(),deliveryRouting:Boolean(Deno.env.get('ORS_API_KEY')),testMode:!(Deno.env.get('RAZORPAY_KEY_ID')||'').startsWith('rzp_live_')});
+   return json({role,codEnabled:current.cod_enabled,deliveryEnabled:deliveryOn(current),siteTheme:SITE_THEMES.includes(current.site_theme)?current.site_theme:'light',stockTag:current.show_stock_tag!==false,payments:paymentConfigured(),deliveryRouting:Boolean(Deno.env.get('ORS_API_KEY')),testMode:!(Deno.env.get('RAZORPAY_KEY_ID')||'').startsWith('rzp_live_')});
   }
   if(body.action==='set_cod') {
    if(role!=='admin') return json({error:'Admin access required'},403);
@@ -45,6 +45,12 @@ Deno.serve(async req=>{
    if(!SITE_THEMES.includes(body.theme)) throw new Error('Invalid website theme');
    const updated=checked(await db.from('checkout_settings').update({site_theme:body.theme}).eq('id',true).select('site_theme').single());
    return json({siteTheme:updated.site_theme});
+  }
+  if(body.action==='set_stock_tag') {
+   if(role!=='admin') return json({error:'Admin access required'},403);
+   if(typeof body.enabled!=='boolean') throw new Error('Invalid tag setting');
+   const updated=checked(await db.from('checkout_settings').update({show_stock_tag:body.enabled}).eq('id',true).select('show_stock_tag').single());
+   return json({stockTag:updated.show_stock_tag});
   }
   if(body.action==='set_delivery') {
    if(role!=='admin') return json({error:'Admin access required'},403);

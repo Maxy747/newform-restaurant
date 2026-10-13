@@ -180,7 +180,7 @@ const ordering = createOrdering({
   toast: message => showToast(message),
   closeAll: () => closeAllModals(),
   onPlaced: () => { cart = []; lastClearedCart = null; saveCartData(); updateCartBadge(); renderMenu(); closeCart(); },
-  onStaffChange: (isStaff, siteTheme) => syncStaffTheme(isStaff, siteTheme)
+  onStaffChange: (isStaff, siteTheme, stockTag) => { syncStaffTheme(isStaff, siteTheme); syncStockTag(stockTag); }
 });
 
 // LocalStorage Keys
@@ -560,6 +560,15 @@ function setupEventListeners() {
 // Render Menu Cards
 // The bundled hero shot was the seed placeholder; show a neutral tile rather than a photo of a different dish.
 // Representative stock photos (public/menu-stock) stand in until the restaurant uploads its own.
+// Their "Representative image" tag can be switched off by an admin (Settings); the choice is
+// cached so the next visit hides it before first paint (see the inline <head> script).
+const STOCK_TAG_CACHE_KEY = 'newform_stock_tag_v1';
+function syncStockTag(show) {
+  if (typeof show !== 'boolean') return;
+  document.documentElement.classList.toggle('hide-stock-tag', !show);
+  try { localStorage.setItem(STOCK_TAG_CACHE_KEY, show ? 'on' : 'off'); } catch { /* storage blocked */ }
+}
+
 function isStockPhoto(image) {
   return /^menu-stock\//.test(String(image || '').trim());
 }

@@ -194,6 +194,7 @@ async function evaluateSession(session) {
   $('codSwitch').setAttribute('aria-checked', String(Boolean(config.codEnabled)));
   $('deliverySwitch').setAttribute('aria-checked', String(config.deliveryEnabled !== false));
   showSiteTheme(config.siteTheme);
+  $('stockTagSwitch').setAttribute('aria-checked', String(config.stockTag !== false));
   if (!savedAdminTheme() && config.siteTheme) applyTheme(config.siteTheme);
   $('addDriverBtn').hidden = state.role !== 'admin';
   $('shiftBox').hidden = true;
@@ -1130,6 +1131,13 @@ $('codSwitch').onclick = run(async () => {
   const result = await api('set_cod', { enabled });
   $('codSwitch').setAttribute('aria-checked', String(result.codEnabled));
   toast(result.codEnabled ? 'Cash on delivery turned on' : 'Cash on delivery turned off', 'success');
+});
+
+$('stockTagSwitch').onclick = run(async () => {
+  const enabled = $('stockTagSwitch').getAttribute('aria-checked') !== 'true';
+  const result = await api('set_stock_tag', { enabled });
+  $('stockTagSwitch').setAttribute('aria-checked', String(result.stockTag));
+  toast(result.stockTag ? '"Representative image" tag shown on the menu' : '"Representative image" tag hidden on the menu', 'success');
 });
 
 $('deliverySwitch').onclick = run(async () => {

@@ -28,6 +28,9 @@
       else if (siteTheme === 'light') bar.content = '#f8f9fa';
       else document.documentElement.dataset.palette = 'ivory'; // Ivory is the default
     } catch (error) { document.documentElement.dataset.palette = 'ivory'; }
+    try {
+      if (localStorage.getItem('newform_stock_tag_v1') === 'off') document.documentElement.classList.add('hide-stock-tag');
+    } catch (error) { /* storage blocked: tag shows until the server answers */ }
   </script>
 </head>
 <body>
