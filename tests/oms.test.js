@@ -554,6 +554,9 @@ test('PostgreSQL migration and order/payment/RLS lifecycle',async t=>{
   assert.equal((await q('delete from public.gallery_photos where id=$1 returning id',[id])).length,1);
   await db.exec('reset role');
   assert.equal((await q("select public from storage.buckets where id='gallery-photos'"))[0].public,true);
+  await db.exec(await readFile(new URL('../supabase/migrations/20261013100000_default_site_theme_ivory.sql',import.meta.url),'utf8'));
+  assert.equal((await q('select site_theme from public.checkout_settings'))[0].site_theme,'ivory');
+  assert.equal((await q("select column_default from information_schema.columns where table_name='checkout_settings' and column_name='site_theme'"))[0].column_default,"'ivory'::text");
  });
  } finally {await db.close();}
 });

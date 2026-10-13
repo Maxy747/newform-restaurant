@@ -204,8 +204,8 @@ const SITE_THEME_CACHE_KEY = 'newform_site_theme_v1';
 let siteTheme = (() => {
   try {
     const cached = localStorage.getItem(SITE_THEME_CACHE_KEY);
-    return STAFF_THEMES.includes(cached) ? cached : 'light';
-  } catch { return 'light'; }
+    return STAFF_THEMES.includes(cached) ? cached : 'ivory';
+  } catch { return 'ivory'; }
 })();
 const THEME_ICONS = { light: 'fa-solid fa-sun', ivory: 'fa-solid fa-mug-hot', dark: 'fa-solid fa-moon' };
 const THEME_LABELS = { light: 'Light', ivory: 'Ivory', dark: 'Dark' };
@@ -213,8 +213,8 @@ const THEME_LABELS = { light: 'Light', ivory: 'Ivory', dark: 'Dark' };
 function readSavedTheme() {
   try {
     const saved = localStorage.getItem(THEME_STORAGE_KEY);
-    return STAFF_THEMES.includes(saved) ? saved : 'dark';
-  } catch { return 'dark'; }
+    return STAFF_THEMES.includes(saved) ? saved : 'ivory';
+  } catch { return 'ivory'; }
 }
 
 function currentTheme() {

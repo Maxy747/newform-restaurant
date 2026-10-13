@@ -56,9 +56,9 @@ const isManager = () => ['admin', 'staff'].includes(state.role);
 // layout with a warm ivory / coffee-brown palette (data-palette="ivory").
 const ADMIN_THEMES = ['light', 'ivory', 'dark'];
 const ADMIN_THEME_LABELS = { light: 'Light', ivory: 'Ivory', dark: 'Dark' };
-let adminTheme = 'dark';
+let adminTheme = 'ivory';
 function applyTheme(theme) {
-  adminTheme = ADMIN_THEMES.includes(theme) ? theme : 'dark';
+  adminTheme = ADMIN_THEMES.includes(theme) ? theme : 'ivory';
   const root = document.documentElement;
   root.dataset.theme = adminTheme === 'dark' ? 'dark' : 'light';
   if (adminTheme === 'ivory') root.dataset.palette = 'ivory';
@@ -67,7 +67,7 @@ function applyTheme(theme) {
   $('themeBtn').title = label;
   $('themeBtn').setAttribute('aria-label', label);
 }
-applyTheme((() => { try { return localStorage.getItem(THEME_KEY) || 'dark'; } catch { return 'dark'; } })());
+applyTheme((() => { try { return localStorage.getItem(THEME_KEY) || 'ivory'; } catch { return 'ivory'; } })());
 $('themeBtn').onclick = () => {
   const next = ADMIN_THEMES[(ADMIN_THEMES.indexOf(adminTheme) + 1) % ADMIN_THEMES.length];
   applyTheme(next);
@@ -1137,7 +1137,7 @@ $('deliverySwitch').onclick = run(async () => {
 
 // Website theme every customer sees (Light / Ivory / Dark).
 function showSiteTheme(theme) {
-  const current = ['light', 'ivory', 'dark'].includes(theme) ? theme : 'light';
+  const current = ['light', 'ivory', 'dark'].includes(theme) ? theme : 'ivory';
   document.querySelectorAll('#siteThemePicker [data-site-theme]').forEach(button => {
     button.setAttribute('aria-checked', String(button.dataset.siteTheme === current));
   });

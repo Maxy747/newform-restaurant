@@ -24,8 +24,8 @@
     try {
       var siteTheme = localStorage.getItem('newform_site_theme_v1');
       if (siteTheme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-      if (siteTheme === 'ivory') document.documentElement.dataset.palette = 'ivory';
-    } catch (error) { /* storage blocked: light until the server answers */ }
+      else if (siteTheme !== 'light') document.documentElement.dataset.palette = 'ivory'; // Ivory is the default
+    } catch (error) { document.documentElement.dataset.palette = 'ivory'; }
   </script>
 </head>
 <body>

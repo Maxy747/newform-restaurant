@@ -44,7 +44,7 @@ const withDriver = order => { const d = drivers.find(x => x.id === order.assigne
 const events = {};
 orders.forEach(order => { events[order.id] = [{ id: 1, event_type: 'order.created', detail: 'Order placed', created_at: order.created_at }]; });
 let tickets = [{ id: uuid(90), order_id: uuid(4), subject: 'Can you add extra mayo?', status: 'open', created_at: iso(20), updated_at: iso(20), ticket_messages: [{ id: 1, author_role: 'customer', message: 'Please add extra mayonnaise and no onions.', created_at: iso(20) }] }];
-let siteTheme = (() => { try { return localStorage.getItem('mock_site_theme') || 'light'; } catch { return 'light'; } })();
+let siteTheme = (() => { try { return localStorage.getItem('mock_site_theme') || 'ivory'; } catch { return 'ivory'; } })();
 let codEnabled = true, deliveryEnabled = (() => { try { return localStorage.getItem('mock_delivery') !== 'off'; } catch { return true; } })(), counter = 50;
 const listeners = new Set();
 const signal = () => listeners.forEach(fn => setTimeout(fn, 50));
