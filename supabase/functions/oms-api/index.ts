@@ -3,16 +3,23 @@ import {requireUUID,sha256,validHmac,canViewOrder,publicOrder} from '../_shared/
 import {roadQuote,addressLocation} from '../_shared/delivery.js';
 import {shopStatus,ORDERING_MODES} from '../_shared/hours.js';
 import {normalizeBillingSettings} from '../_shared/billing.js';
+import {parseOrigins,originAllowed,corsOrigin} from '../_shared/origins.js';
 
-const origin=Deno.env.get('SITE_ORIGIN')||'https://maxy747.github.io';
-const headers={'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Headers':'authorization, apikey, content-type, x-client-info','Access-Control-Allow-Methods':'POST, OPTIONS','Content-Type':'application/json','Cache-Control':'no-store','Vary':'Origin'};
+const origins=parseOrigins(Deno.env.get('SITE_ORIGINS'),Deno.env.get('SITE_ORIGIN'));
+// Access-Control-Allow-Origin is set per request in Deno.serve below (it depends on the caller's origin).
+const headers={'Access-Control-Allow-Headers':'authorization, apikey, content-type, x-client-info','Access-Control-Allow-Methods':'POST, OPTIONS','Content-Type':'application/json','Cache-Control':'no-store','Vary':'Origin'};
 // Website themes an admin can pick for every visitor (see checkout_settings.site_theme).
 const SITE_THEMES=['light','ivory','dark'];
 const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers});
 Deno.serve(async req=>{
+ const response=await handle(req);
+ response.headers.set('Access-Control-Allow-Origin',corsOrigin(req.headers.get('origin'),origins));
+ return response;
+});
+async function handle(req:Request):Promise<Response>{
  if(req.method==='OPTIONS') return new Response(null,{headers});
  if(req.method!=='POST') return json({error:'Method not allowed'},405);
- if(req.headers.get('origin')&&req.headers.get('origin')!==origin) return json({error:'Origin not allowed'},403);
+ if(!originAllowed(req.headers.get('origin'),origins)) return json({error:'Origin not allowed'},403);
  try {
   const raw=await req.text(); if(raw.length>24000) return json({error:'Request too large'},413);
   const body=JSON.parse(raw); let userId:string|null=null; let role='customer';
@@ -290,4 +297,4 @@ Deno.serve(async req=>{
   console.error('oms.request_failed',{message:error instanceof Error?error.message:'Unknown error'});
   return json({error:error instanceof Error?error.message:'Request failed'},400);
  }
-});
+}
