@@ -1,6 +1,7 @@
 import {db,checked,rpc,razorpay,paymentConfigured} from '../_shared/server.js';
 import {requireUUID,sha256,validHmac,canViewOrder,publicOrder} from '../_shared/security.js';
 import {roadQuote,addressLocation} from '../_shared/delivery.js';
+import {shopStatus,ORDERING_MODES} from '../_shared/hours.js';
 import {normalizeBillingSettings} from '../_shared/billing.js';
 
 const origin=Deno.env.get('SITE_ORIGIN')||'https://maxy747.github.io';
@@ -30,9 +31,10 @@ Deno.serve(async req=>{
   // select('*') keeps this working before and after the delivery_enabled column exists.
   const settings=async()=>checked(await db.from('checkout_settings').select('*').eq('id',true).single());
   const deliveryOn=(row:any)=>row.delivery_enabled!==false;
+  const orderingMode=(row:any)=>ORDERING_MODES.includes(row.ordering_mode)?row.ordering_mode:'auto';
   if(body.action==='config') {
    const current=await settings();
-   return json({role,codEnabled:current.cod_enabled,deliveryEnabled:deliveryOn(current),siteTheme:SITE_THEMES.includes(current.site_theme)?current.site_theme:'light',stockTag:current.show_stock_tag!==false,payments:paymentConfigured(),deliveryRouting:Boolean(Deno.env.get('ORS_API_KEY')),testMode:!(Deno.env.get('RAZORPAY_KEY_ID')||'').startsWith('rzp_live_')});
+   return json({role,codEnabled:current.cod_enabled,deliveryEnabled:deliveryOn(current),orderingMode:orderingMode(current),shopOpen:shopStatus(orderingMode(current)).open,siteTheme:SITE_THEMES.includes(current.site_theme)?current.site_theme:'light',stockTag:current.show_stock_tag!==false,payments:paymentConfigured(),deliveryRouting:Boolean(Deno.env.get('ORS_API_KEY')),testMode:!(Deno.env.get('RAZORPAY_KEY_ID')||'').startsWith('rzp_live_')});
   }
   if(body.action==='set_cod') {
    if(role!=='admin') return json({error:'Admin access required'},403);
@@ -57,6 +59,17 @@ Deno.serve(async req=>{
    if(typeof body.enabled!=='boolean') throw new Error('Invalid delivery setting');
    const updated=checked(await db.from('checkout_settings').update({delivery_enabled:body.enabled}).eq('id',true).select('delivery_enabled').single());
    return json({deliveryEnabled:updated.delivery_enabled});
+  }
+  if(body.action==='set_ordering_mode') {
+   if(role!=='admin') return json({error:'Admin access required'},403);
+   if(!ORDERING_MODES.includes(body.mode)) throw new Error('Invalid ordering setting');
+   const updated=checked(await db.from('checkout_settings').update({ordering_mode:body.mode}).eq('id',true).select('ordering_mode').single());
+   return json({orderingMode:updated.ordering_mode,shopOpen:shopStatus(updated.ordering_mode).open});
+  }
+  // Online ordering follows opening hours (or the admin override). Counter sales are separate and unaffected.
+  if(['delivery_address','delivery_quote','create'].includes(body.action)) {
+   const status=shopStatus(orderingMode(await settings()));
+   if(!status.open) throw new Error(`We're closed right now (${status.message.replace('Closed now · ','')}). Please order during opening hours.`);
   }
   if(['delivery_address','delivery_quote'].includes(body.action)&&!deliveryOn(await settings())) throw new Error('Home delivery is currently unavailable. Please choose takeaway or dine in.');
   if(body.action==='delivery_address') {

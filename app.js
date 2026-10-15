@@ -1,6 +1,6 @@
 import { isSupabaseConfigured, supabase } from './supabaseClient.js';
 import { createOrdering } from './orders.js';
-import { escapeHTML, money } from './oms-policy.js';
+import { escapeHTML, money, OPENS_AT } from './oms-policy.js';
 import { createCategories } from './categories.js';
 import { createSpecials } from './specials.js';
 import { createFeaturedSelector, featuredPrice } from './featured-dish.js';
@@ -549,6 +549,8 @@ function setupEventListeners() {
   setupGallery();
   updateOpenStatus();
   setInterval(updateOpenStatus, 60000);
+  updateClosedNotice();
+  window.addEventListener('shopstatus', () => { renderMenu(); updateFeaturedDish(); updateOpenStatus(); updateClosedNotice(); });
   setupImageParallax();
   setupFeaturedDishOrder();
 
@@ -623,6 +625,8 @@ function renderMenu(animate = false) {
     return;
   }
 
+  // While the shop is closed every dish stays visible but greyed out and can't be added.
+  const shopState = ordering.getShop();
   container.innerHTML = filtered.map(item => {
     const currentPortion = selectedPortions[item.id] || 'quarter';
     let currentPrice = item.price;
@@ -639,7 +643,7 @@ function renderMenu(animate = false) {
     const hasPhoto = hasDishPhoto(item.image);
 
     return `
-      <div class="food-card" id="card-${id}">
+      <div class="food-card${shopState.open ? '' : ' is-closed'}" id="card-${id}">
         <div class="card-img-container${hasPhoto ? '' : ' photo-missing'}">
           ${hasPhoto ? `<img src="${escapeHTML(item.image)}" alt="${name}" class="card-img" role="button" tabindex="0" aria-label="Preview ${name}" onerror="this.closest('.card-img-container').classList.add('photo-missing'); this.remove();">` : ''}
           <div class="card-photo-placeholder" aria-hidden="true"><i class="fa-solid fa-utensils"></i><span>Photo coming soon</span></div>
@@ -664,7 +668,7 @@ function renderMenu(animate = false) {
             <div class="price-display">
               <span class="price-amount">₹${currentPrice}</span>
             </div>
-            ${item.available === false ? '<button class="add-cart-btn" disabled>OUT OF STOCK</button>' : cartEntry ? `
+            ${item.available === false ? '<button class="add-cart-btn" disabled>OUT OF STOCK</button>' : !shopState.open ? `<button class="add-cart-btn add-cart-closed" disabled>${escapeHTML(shopState.button)}</button>` : cartEntry ? `
               <div class="card-qty-control" aria-label="Quantity for ${name}">
                 <button type="button" onclick="updateCartItemQty(${cartIdArg}, -1)" aria-label="Remove one ${name}">−</button>
                 <span>${cartEntry.quantity}</span>
@@ -821,6 +825,8 @@ window.addToCart = function(itemId, clickEvent) {
   const item = menuItems.find(i => i.id === itemId);
   if (!item) return;
   if (item.available === false) return showToast('This dish is currently unavailable.');
+  const shop = ordering.getShop();
+  if (!shop.open) return showToast(shop.message);
 
   const portion = item.portionType === 'multi' ? (selectedPortions[itemId] || 'quarter') : 'single';
   let price = item.price;
@@ -1342,14 +1348,23 @@ function placeGlassIndicator(nav, animate) {
 }
 
 // "Open now" line in Contact, from the 11 am – 11 pm daily hours in India time.
+function updateClosedNotice() {
+  const notice = document.getElementById('shopClosedNotice');
+  if (!notice) return;
+  const status = ordering.getShop();
+  notice.hidden = status.open;
+  notice.querySelector('span').textContent = status.manual
+    ? "We're not taking online orders right now. Please check back soon or call 7593 881 112."
+    : `We're closed right now. Online orders open again at ${OPENS_AT}, browse the menu meanwhile.`;
+}
+
 function updateOpenStatus() {
   const target = document.getElementById('openStatus');
   if (!target) return;
-  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date());
-  const minutes = Number(parts.find(part => part.type === 'hour').value) * 60 + Number(parts.find(part => part.type === 'minute').value);
-  const open = minutes >= 11 * 60 && minutes < 23 * 60;
-  target.classList.toggle('is-open', open);
-  target.textContent = open ? 'Open now · closes 11 pm' : 'Closed now · opens 11 am';
+  // Same rule the menu and the server use (hours + the admin's override).
+  const status = ordering.getShop();
+  target.classList.toggle('is-open', status.open);
+  target.textContent = status.message;
 }
 
 let smoothScrollFrame = 0;
@@ -1471,7 +1486,7 @@ function updateFeaturedDish() {
     el.setAttribute('aria-pressed', String(el.dataset.heroPortion === portion));
     el.disabled = featuredPrice(item,el.dataset.heroPortion) === null;
   });
-  button.disabled = price === null;
+  button.disabled = price === null || !ordering.getShop().open;
   if (price === null) { cancelAnimationFrame(priceElement._priceAnimationFrame); priceElement.textContent = 'Unavailable'; }
   else animatePrice(priceElement, price, {hero:true});
   if (item) {

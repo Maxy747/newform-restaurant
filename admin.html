@@ -222,6 +222,18 @@
 
     <section id="section-settings" class="adm-section" hidden>
       <div class="adm-section-head"><h2>Settings</h2></div>
+      <div class="adm-card adm-setting adm-ordering">
+        <div>
+          <h3>Online ordering</h3>
+          <p class="adm-muted"><strong>Auto</strong> takes orders 11 am – 11 pm (India time). Use <strong>Open now</strong> to stay open late, or <strong>Closed now</strong> for holidays. When closed, the menu stays visible but greyed out and the server refuses online orders. Counter billing is unaffected.</p>
+          <p class="adm-ordering-status" id="orderingStatus" role="status"></p>
+        </div>
+        <div class="adm-segment" id="orderingMode" role="radiogroup" aria-label="Online ordering">
+          <button type="button" role="radio" data-mode="auto" aria-checked="true">Auto</button>
+          <button type="button" role="radio" data-mode="open" aria-checked="false">Open now</button>
+          <button type="button" role="radio" data-mode="closed" aria-checked="false">Closed now</button>
+        </div>
+      </div>
       <div class="adm-card adm-setting">
         <div>
           <h3>Cash on delivery</h3>

@@ -1,6 +1,6 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient.js';
 import { createOmsApi } from './oms-client.js';
-import { escapeHTML as e, money, statusLabel as label, nextStatuses, canClaim, indiaDayRange, stepTimes, orderNumber, orderRef } from './oms-policy.js';
+import { escapeHTML as e, money, statusLabel as label, nextStatuses, canClaim, indiaDayRange, stepTimes, orderNumber, orderRef, shopStatus, OPENS_AT, CLOSES_AT } from './oms-policy.js';
 import { BOARD_COLUMNS, groupOrders, findNewOrders, ageLabel, minutesSince } from './admin-policy.js';
 import { createMenuAdmin } from './admin-menu.js';
 import { createCounter } from './admin-counter.js';
@@ -193,6 +193,7 @@ async function evaluateSession(session) {
   document.querySelector('[data-orders-view="history"]').hidden = !isManager();
   $('codSwitch').setAttribute('aria-checked', String(Boolean(config.codEnabled)));
   $('deliverySwitch').setAttribute('aria-checked', String(config.deliveryEnabled !== false));
+  showOrderingMode(config.orderingMode);
   showSiteTheme(config.siteTheme);
   $('stockTagSwitch').setAttribute('aria-checked', String(config.stockTag !== false));
   if (!savedAdminTheme() && config.siteTheme) applyTheme(config.siteTheme);
@@ -1139,6 +1140,28 @@ $('stockTagSwitch').onclick = run(async () => {
   $('stockTagSwitch').setAttribute('aria-checked', String(result.stockTag));
   toast(result.stockTag ? '"Representative image" tag shown on the menu' : '"Representative image" tag hidden on the menu', 'success');
 });
+
+// Online ordering: Auto (opening hours) / Open now / Closed now.
+function showOrderingMode(mode) {
+  const current = ['auto', 'open', 'closed'].includes(mode) ? mode : 'auto';
+  state.orderingMode = current;
+  document.querySelectorAll('#orderingMode [data-mode]').forEach(button => button.setAttribute('aria-checked', String(button.dataset.mode === current)));
+  const status = shopStatus(current);
+  $('orderingStatus').textContent = status.open ? `Taking online orders now${current === 'auto' ? ` · until ${CLOSES_AT}` : ' (manual)'}` : `Not taking online orders${current === 'auto' ? ` · opens ${OPENS_AT}` : ' (manual)'}`;
+  $('orderingStatus').classList.toggle('is-open', status.open);
+}
+document.querySelectorAll('#orderingMode [data-mode]').forEach(button => button.onclick = run(async () => {
+  const mode = button.dataset.mode;
+  if (mode === state.orderingMode) return;
+  if (mode === 'closed') {
+    const choice = await ask({ title: 'Stop online orders?', message: 'The menu stays visible but customers cannot order until you switch back to Auto or Open now.', choices: [{ label: 'Close online ordering', value: 'yes', tone: 'danger' }, { label: 'Keep taking orders', value: null }] });
+    if (!choice) return;
+  }
+  const result = await api('set_ordering_mode', { mode });
+  showOrderingMode(result.orderingMode);
+  toast(mode === 'auto' ? 'Online ordering follows opening hours' : mode === 'open' ? 'Online ordering open now' : 'Online ordering closed', 'success');
+}));
+setInterval(() => { if (state.orderingMode) showOrderingMode(state.orderingMode); }, 60000);
 
 $('deliverySwitch').onclick = run(async () => {
   const enabled = $('deliverySwitch').getAttribute('aria-checked') !== 'true';

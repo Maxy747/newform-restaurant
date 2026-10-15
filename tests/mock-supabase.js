@@ -71,14 +71,16 @@ const invoiceView = i => ({ ...i, order: { payment_status: orders.find(o => o.id
 const sum = (rows, key) => Math.round(rows.reduce((total, row) => total + Number(row[key]), 0) * 100) / 100;
 const kitchenRedact = order => { const { phone, delivery_address, customer_name, delivery_latitude, delivery_longitude, ...rest } = order; return rest; };
 
+const mockOrderingMode = () => { try { return localStorage.getItem('mock_ordering_mode') || 'auto'; } catch { return 'auto'; } };
 async function oms(body) {
   const r = role();
   const view = order => r === 'kitchen' ? kitchenRedact(withDriver(order)) : withDriver(order);
   switch (body.action) {
-    case 'config': return { role: signedIn() ? r : 'customer', codEnabled, deliveryEnabled, siteTheme, stockTag, payments: false, testMode: true, deliveryRouting: true };
+    case 'config': return { role: signedIn() ? r : 'customer', codEnabled, deliveryEnabled, orderingMode: mockOrderingMode(), siteTheme, stockTag, payments: false, testMode: true, deliveryRouting: true };
     case 'set_cod': codEnabled = body.enabled; return { codEnabled };
     case 'set_stock_tag': stockTag = body.enabled; try { localStorage.setItem('mock_stock_tag', stockTag ? 'on' : 'off'); } catch { /* ignore */ } return { stockTag };
     case 'set_site_theme': siteTheme = body.theme; try { localStorage.setItem('mock_site_theme', siteTheme); } catch { /* ignore */ } return { siteTheme };
+    case 'set_ordering_mode': try { localStorage.setItem('mock_ordering_mode', body.mode); } catch { /* ignore */ } return { orderingMode: body.mode };
     case 'set_delivery': deliveryEnabled = body.enabled; try { localStorage.setItem('mock_delivery', body.enabled ? 'on' : 'off'); } catch { /* ignore */ } return { deliveryEnabled };
     case 'list': {
       let rows = [...orders].sort((a, b) => b.created_at.localeCompare(a.created_at));

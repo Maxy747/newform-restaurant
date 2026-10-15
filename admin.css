@@ -669,3 +669,13 @@ button.adm-dish-tile:active { transform: scale(.98); }
   .adm-segmented button { flex: 1; justify-content: center; padding: 6px 8px; }
   .adm-gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 }
+
+/* Online ordering control */
+.adm-ordering { align-items: start; }
+.adm-ordering-status { margin: 6px 0 0; display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px; border-radius: 999px; font-size: .82rem; font-weight: 700; background: var(--danger-soft); color: var(--danger); }
+.adm-ordering-status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.adm-ordering-status.is-open { background: var(--ok-soft); color: var(--ok); }
+#orderingMode button[aria-checked="true"] { background: var(--accent-soft); color: var(--accent-text); }
+.adm-ordering #orderingMode { display: inline-flex; flex-direction: row; flex-wrap: nowrap; white-space: nowrap; align-self: center; }
+.adm-ordering-status { width: fit-content; }
+@media (max-width: 520px) { .adm-ordering #orderingMode { width: 100%; } .adm-ordering #orderingMode button { flex: 1; padding: 8px 6px; } }

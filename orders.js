@@ -1,5 +1,5 @@
 import {supabase as defaultSupabase,isSupabaseConfigured as defaultConfigured} from './supabaseClient.js';
-import {escapeHTML as e,money,statusLabel as label,hasDeliveryDetails,cashOption,stepTimes,trackingCopy,orderNumber,orderRef} from './oms-policy.js';
+import {escapeHTML as e,money,statusLabel as label,hasDeliveryDetails,cashOption,stepTimes,trackingCopy,orderNumber,orderRef,shopStatus} from './oms-policy.js';
 import {createOmsApi} from './oms-client.js';
 import logoSrc from './assets/newform-logo-splash.webp';
 
@@ -18,6 +18,14 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
  const showModal=id=>{closeAll();$('overlay').classList.add('active');$(id).classList.add('active');};
  const staff=()=>['admin','staff','kitchen','delivery'].includes(role);
  const api=createOmsApi(supabase,isSupabaseConfigured);
+ // Open/closed = opening hours (or the admin's override), re-checked every minute; the server enforces it too.
+ const shop=()=>shopStatus(config.orderingMode||'auto');
+ let shopOpen=null;
+ function syncShop() {
+  const status=shop();
+  if(status.open!==shopOpen){shopOpen=status.open;window.dispatchEvent(new CustomEvent('shopstatus',{detail:status}));}
+  if(!placing){const button=$('placeOrderBtn');if(button){button.disabled=!status.open;button.innerHTML=status.open?'<i class="fa-solid fa-bag-shopping"></i> PLACE ORDER':status.button;}}
+ }
  const run=fn=>async event=>{
   const button=event?.currentTarget; if(button?.disabled)return;
   if(button)button.disabled=true;
@@ -87,6 +95,7 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
    profile=result.data;
   }
   try{const next=await api('config');role=next.role;config=next;}catch { /* Site remains browseable if backend isn't deployed. */ }
+  syncShop();
   // Staff who just signed in here go straight to the admin console.
   if(staffLoginRedirect&&user){staffLoginRedirect=false;if(staff()){location.assign('admin.html');return;}}
   fillCheckout();
@@ -100,7 +109,7 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
  async function refreshVisible() {
   if(document.hidden)return;
   if(active('cartDrawer')) {
-   try {const next=await api('config');config={...config,codEnabled:next.codEnabled,deliveryEnabled:next.deliveryEnabled};updateCheckout();}catch { /* Server rechecks COD at checkout. */ }
+   try {const next=await api('config');config={...config,codEnabled:next.codEnabled,deliveryEnabled:next.deliveryEnabled,orderingMode:next.orderingMode};updateCheckout();syncShop();}catch { /* Server rechecks COD at checkout. */ }
   }
   if(active('trackingModal')&&detailId)await refreshDetail().catch(()=>{});
   if(active('accountModal')&&getSession())await refreshHistory().catch(()=>{});
@@ -143,6 +152,10 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
  }
  function init() {
   $('orderType').onchange=()=>{quoteVersion++;updateCheckout();};
+  // Hours tick over on their own; the admin override is re-read every couple of minutes.
+  setInterval(syncShop,30000);
+  setInterval(async()=>{if(document.hidden)return;try{const next=await api('config');config={...config,orderingMode:next.orderingMode};syncShop();}catch { /* keep last known */ }},120000);
+  syncShop();
   $('custAddress').addEventListener('input',invalidateQuote);
   $('useDeliveryLocation').onclick=run(calculateDeliveryCharge);
   $('changeAddressBtn').onclick=()=>{addressEditing=true;updateCheckout();$('custName').focus();};
@@ -283,6 +296,7 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
  const paymentName=method=>({cash:'Pay at counter',cod:'Cash on delivery',whatsapp:'WhatsApp',razorpay:'Online'})[method]||method;
  async function placeOrder() {
   if(placing)return;if(!getCart().length)return toast('Your cart is empty.');
+  if(!shop().open)return toast(shop().message);
   placing=true;const button=$('placeOrderBtn');button.disabled=true;button.textContent='SAVING ORDER…';
   try {
    const payload={customer:{name:$('custName').value.trim(),phone:$('custPhone').value.trim(),address:$('custAddress').value.trim(),table:$('tableNumber').value.trim(),order_type:$('orderType').value},items:getCart().map(i=>({id:i.id,portion:i.portion?.toLowerCase()||'single',quantity:i.quantity})),method:document.querySelector('[name="paymentMethod"]:checked')?.value};
@@ -308,7 +322,7 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
    await openDetail(order.id);
    toast(`Order ${orderNumber(order)} placed.`);
    // Customer chooses Send WhatsApp from confirmation; no automatic external message.
-  } catch(error){toast(error.message);}finally{placing=false;button.disabled=false;button.innerHTML='<i class="fa-solid fa-bag-shopping"></i> PLACE ORDER';}
+  } catch(error){toast(error.message);}finally{placing=false;button.disabled=false;button.innerHTML='<i class="fa-solid fa-bag-shopping"></i> PLACE ORDER';syncShop();}
  }
  function closeTracking(){detailId=null;detailVersion++;$('trackingModal').classList.remove('active');$('overlay').classList.remove('active');}
  async function openDetail(id) {
@@ -374,5 +388,5 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
    });
   } finally{paying=false;}
  }
- return {init,sessionChanged,renderAccount,placeOrder,updateCheckout,closeTracking,openDetail,getRole:()=>role};
+ return {init,sessionChanged,renderAccount,placeOrder,updateCheckout,closeTracking,openDetail,getRole:()=>role,getShop:shop};
 }
