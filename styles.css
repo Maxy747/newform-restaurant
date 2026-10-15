@@ -2661,3 +2661,19 @@ html.lightbox-open { overflow: hidden; }
   .card-stock-tag { left: 6px; bottom: 6px; padding: 2px 6px; font-size: .56rem; }
 }
 html.hide-stock-tag .card-stock-tag { display: none; }
+
+/* Phones: a more compact welcome. Smaller logo, title, tags and buttons; buttons no longer
+   stretch across the screen. */
+@media (max-width: 768px) {
+  .splash-inner { gap: 10px; }
+  .splash-logo { width: 54px; height: 54px; }
+  .splash-place { font-size: .58rem; letter-spacing: .2em; }
+  .splash-title { font-size: clamp(2.1rem, 10.5vw, 2.8rem); }
+  .splash-title strong { margin-top: 8px; font-size: clamp(.9rem, 4.2vw, 1.1rem); }
+  .splash-tags { gap: 6px; margin: 2px 0 4px; }
+  .splash-tags span { padding: 4px 10px; font-size: .6rem; }
+  .splash-actions { max-width: 250px; gap: 8px; }
+  .splash .splash-cta, .splash .splash-look { min-width: 0; min-height: 42px; padding: 9px 18px; font-size: .7rem; letter-spacing: .12em; }
+  .splash .splash-cta::before { inset: -4px; }
+  .splash-meta { font-size: .72rem; gap: 6px 10px; }
+}
