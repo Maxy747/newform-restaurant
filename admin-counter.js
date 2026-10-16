@@ -4,6 +4,8 @@ import { PORTIONS, unitPrice, addToTicket, setQuantity, ticketTotals, ticketItem
 import { menuPrices } from './admin-policy.js';
 
 const PORTION_SHORT = { quarter: 'Qtr', half: 'Half', full: 'Full' };
+// Tile buttons are narrow, so drop the ".00" on whole-rupee prices.
+const tilePrice = value => `₹${Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 
 export function createCounter({ supabase, api, toast, run, ask, billingEnabled }) {
   const $ = id => document.getElementById(id);
@@ -32,7 +34,7 @@ export function createCounter({ supabase, api, toast, run, ask, billingEnabled }
     $('counterGrid').innerHTML = shown.map(item => {
       const multi = menuPrices(item);
       const prices = multi
-        ? `<div class="adm-portions">${PORTIONS.filter(p => unitPrice(item, p)).map(p => `<button type="button" class="adm-btn" data-add="${e(item.id)}" data-portion="${p}" aria-label="Add ${e(item.name)}, ${p}, ${money(unitPrice(item, p))}">${PORTION_SHORT[p]} <b>${money(unitPrice(item, p))}</b></button>`).join('')}</div>`
+        ? `<div class="adm-portions">${PORTIONS.filter(p => unitPrice(item, p)).map(p => `<button type="button" class="adm-btn" data-add="${e(item.id)}" data-portion="${p}" aria-label="Add ${e(item.name)}, ${p}, ${money(unitPrice(item, p))}"><small>${PORTION_SHORT[p]}</small><b>${tilePrice(unitPrice(item, p))}</b></button>`).join('')}</div>`
         : `<b class="adm-dish-price">${money(unitPrice(item))}</b>`;
       const tag = multi ? 'div' : 'button';
       return `<${tag} ${multi ? '' : `type="button" data-add="${e(item.id)}" data-portion="single" aria-label="Add ${e(item.name)}, ${money(unitPrice(item))}" `}class="adm-dish-tile"><span class="adm-diet adm-diet-${e(item.diet)}" aria-hidden="true"></span><strong>${e(item.name)}</strong>${prices}</${tag}>`;
