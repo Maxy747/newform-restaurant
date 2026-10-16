@@ -554,14 +554,14 @@ body:has(#gate:not([hidden])) { padding-bottom: 0; }
 .adm-chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
 .adm-chips button { flex: none; border: 1px solid var(--border); background: var(--surface); color: var(--muted); border-radius: 999px; padding: 6px 12px; font-weight: 700; font-size: .82rem; cursor: pointer; }
 .adm-chips button[aria-selected="true"] { background: var(--accent-soft); color: var(--accent-text); border-color: var(--accent); }
-.adm-counter-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; align-content: start; }
-.adm-dish-tile { display: grid; gap: 6px; align-content: start; text-align: left; min-height: 84px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font: inherit; }
+.adm-counter-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); grid-auto-rows: max-content; gap: 8px; align-content: start; }
+.adm-dish-tile { display: grid; grid-template-rows: auto 1fr auto; gap: 6px; text-align: left; min-height: 84px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font: inherit; }
 button.adm-dish-tile { cursor: pointer; }
 button.adm-dish-tile:hover { border-color: var(--accent); }
 button.adm-dish-tile:active { transform: scale(.98); }
 .adm-dish-tile strong { font-size: .9rem; line-height: 1.25; }
-.adm-dish-price { color: var(--accent-text); }
-.adm-portions { display: flex; flex-wrap: wrap; gap: 4px; }
+.adm-dish-price { color: var(--accent-text); align-self: end; }
+.adm-portions { display: flex; flex-wrap: wrap; gap: 4px; align-self: end; }
 .adm-portions .adm-btn { flex: 1 1 auto; min-height: 36px; padding: 4px 8px; font-size: .76rem; gap: 4px; }
 .adm-ticket { gap: 12px; align-content: start; }
 .adm-ticket-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
