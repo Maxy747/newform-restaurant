@@ -45,7 +45,6 @@ const run = fn => async event => {
   try { await fn(event); } catch (error) { toast(error.message, 'error'); } finally { if (button) button.disabled = false; }
 };
 
-const shortId = id => '#' + String(id).slice(0, 8).toUpperCase();
 const time = value => new Date(value).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 const todayIST = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 const can = section => SECTIONS[section]?.includes(state.role);
@@ -427,7 +426,7 @@ async function refreshHistory() {
 // ---------- order detail ----------
 async function openOrder(id) {
   state.detailId = id;
-  $('orderDialogTitle').textContent = 'Order ' + shortId(id);
+  $('orderDialogTitle').textContent = 'Order'; // the daily number arrives with the detail fetch
   $('orderDialogBody').innerHTML = '<p class="adm-empty">Loading order…</p>';
   if (!$('orderDialog').open) $('orderDialog').showModal();
   await refreshDetail();
@@ -686,7 +685,7 @@ async function refreshTickets() {
   if (!isManager()) return;
   const { tickets } = await api('ticket_list');
   $('ticketList').innerHTML = tickets.map(ticket => `<button type="button" class="adm-row" data-open="${e(ticket.order_id)}">
-      <strong>${e(ticket.subject)}</strong><span>Order ${e(shortId(ticket.order_id))}</span><span class="adm-badge">${e(label(ticket.status))}</span><span class="adm-muted">${e(time(ticket.updated_at || ticket.created_at))}</span></button>`).join('')
+      <strong>${e(ticket.subject)}</strong><span>Order ${e(orderNumber({ id: ticket.order_id, daily_number: ticket.order?.daily_number }))}</span><span class="adm-badge">${e(label(ticket.status))}</span><span class="adm-muted">${e(time(ticket.updated_at || ticket.created_at))}</span></button>`).join('')
     || '<p class="adm-empty">No open tickets. Nice.</p>';
 }
 

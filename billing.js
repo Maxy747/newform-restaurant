@@ -1,5 +1,5 @@
 // Invoice and credit-note rendering, shared by the printable invoice page and the admin console.
-import { escapeHTML as e, statusLabel as label } from './oms-policy.js';
+import { escapeHTML as e, statusLabel as label, orderNumber } from './oms-policy.js';
 import { placeOfSupply } from './supabase/functions/_shared/billing.js';
 export { GSTIN, normalizeBillingSettings, placeOfSupply } from './supabase/functions/_shared/billing.js';
 
@@ -35,7 +35,7 @@ export function renderInvoice(invoice) {
   const lines = invoice.lines.map((item, index) => `<tr><td>${index + 1}</td><td>${e(item.name)}${item.portion && item.portion !== 'single' ? ` <small>(${e(item.portion)})</small>` : ''}</td><td class="inv-num">${e(item.quantity)}</td><td class="inv-num">${e(rupees2(item.price))}</td><td class="inv-num">${e(rupees2(item.quantity * item.price))}</td></tr>`).join('');
   return `<article class="inv-doc">
     <header class="inv-head">${sellerBlock(seller)}
-      <div class="inv-title"><strong>${e(docTitle(seller))}</strong>${meta([['Invoice no.', invoice.invoice_no], ['Date', billDate(invoice.issued_at)], ['Order', '#' + invoice.order_id.slice(0, 8).toUpperCase()], ['Payment', PAYMENT_NAMES[invoice.payment_method] || label(invoice.payment_method)]])}</div>
+      <div class="inv-title"><strong>${e(docTitle(seller))}</strong>${meta([['Invoice no.', invoice.invoice_no], ['Date', billDate(invoice.issued_at)], ['Order', orderNumber({ id: invoice.order_id, daily_number: invoice.order?.daily_number })], ['Payment', PAYMENT_NAMES[invoice.payment_method] || label(invoice.payment_method)]])}</div>
     </header>
     ${buyerBlock(buyer, seller)}
     <table class="inv-lines"><thead><tr><th>#</th><th>Item${seller.sac ? ` <small>· SAC ${e(seller.sac)}</small>` : ''}</th><th class="inv-num">Qty</th><th class="inv-num">Rate</th><th class="inv-num">Amount</th></tr></thead><tbody>${lines}</tbody></table>

@@ -227,7 +227,7 @@ async function handle(req:Request):Promise<Response>{
   }
   if(body.action==='ticket_list') {
    if(!['admin','staff'].includes(role)) return json({error:'Staff access required'},403);
-   const tickets=checked(await db.from('support_tickets').select('*').neq('status','resolved').order('updated_at',{ascending:false}).limit(100));
+   const tickets=checked(await db.from('support_tickets').select('*,order:orders(daily_number)').neq('status','resolved').order('updated_at',{ascending:false}).limit(100));
    return json({tickets});
   }
   const order=await access(body.id);
@@ -240,7 +240,7 @@ async function handle(req:Request):Promise<Response>{
   }
   if(body.action==='invoice') {
    if(!manager) await access(order.id,false); // kitchen and drivers only get invoices for their own orders
-   const invoice=checked(await db.from('invoices').select('id,order_id,invoice_no,financial_year,issued_at,seller,buyer,lines,payment_method,taxable,cgst,sgst,delivery_fee,round_off,total,credit_notes(id,note_no,issued_at,reason,taxable,cgst,sgst,other,total)').eq('order_id',order.id).maybeSingle());
+   const invoice=checked(await db.from('invoices').select('id,order_id,invoice_no,financial_year,issued_at,seller,buyer,lines,payment_method,taxable,cgst,sgst,delivery_fee,round_off,total,credit_notes(id,note_no,issued_at,reason,taxable,cgst,sgst,other,total),order:orders(daily_number)').eq('order_id',order.id).maybeSingle());
    if(!invoice) throw new Error('No invoice has been issued for this order yet');
    return json({invoice});
   }

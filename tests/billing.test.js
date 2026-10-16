@@ -58,6 +58,8 @@ test('invoice and credit note render escaped, with GST split and place of supply
   assert.ok(!html.includes('Delivery charges')); // zero lines are left out
   assert.ok(html.includes('Table 4') && html.includes('(half)') && html.includes('₹761.00'));
   assert.equal(docTitle({ gstin: null }), 'Bill');
+  assert.ok(html.includes('<dd>#ABCDEF12</dd>')); // no daily number: short reference
+  assert.ok(renderInvoice({ ...invoice, order: { daily_number: 3 } }).includes('<dd>#3</dd>'));
   const note = renderCreditNote({ note_no: 'NFC/26-27/00001', issued_at: '2026-10-10T08:00:00Z', reason: 'Missing <item>', taxable: 95.14, cgst: 2.38, sgst: 2.38, other: 0, total: 99.9 }, invoice);
   assert.ok(note.includes('Credit note') && note.includes('Against invoice') && note.includes('Missing &lt;item&gt;'));
 });
