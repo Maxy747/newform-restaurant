@@ -2713,3 +2713,6 @@ html.hide-stock-tag .card-stock-tag { display: none; }
   .social-links { display: grid; grid-template-columns: 1fr 1fr; }
   .social-btn { min-width: 0; }
 }
+
+/* Hero "Order now" while the shop is closed: reads as a status, not a broken button. */
+#heroOrderNowBtn.is-closed { opacity: 1; background: var(--btn-minimal-bg); color: var(--text-muted); border: 1px dashed var(--glass-border); box-shadow: none; font-size: .72rem; letter-spacing: .08em; cursor: not-allowed; }

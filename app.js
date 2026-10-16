@@ -1486,7 +1486,11 @@ function updateFeaturedDish() {
     el.setAttribute('aria-pressed', String(el.dataset.heroPortion === portion));
     el.disabled = featuredPrice(item,el.dataset.heroPortion) === null;
   });
-  button.disabled = price === null || !ordering.getShop().open;
+  // Closed: say so on the button (same wording as the menu cards) instead of a silent, dead "Order now".
+  const shop = ordering.getShop();
+  button.disabled = price === null || !shop.open;
+  button.classList.toggle('is-closed', !shop.open);
+  button.textContent = shop.open ? 'ORDER NOW' : shop.button;
   if (price === null) { cancelAnimationFrame(priceElement._priceAnimationFrame); priceElement.textContent = 'Unavailable'; }
   else animatePrice(priceElement, price, {hero:true});
   if (item) {
