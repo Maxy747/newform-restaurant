@@ -32,6 +32,24 @@
       if (localStorage.getItem('newform_stock_tag_v1') === 'off') document.documentElement.classList.add('hide-stock-tag');
     } catch (error) { /* storage blocked: tag shows until the server answers */ }
   </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Restaurant",
+    "name": "NEWFORM Multi Cuisine Restaurant",
+    "servesCuisine": ["Arabian", "Kerala", "Chinese", "Multi cuisine"],
+    "telephone": "+91 7593881112",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "Main Rd, Mandayapuram",
+      "addressLocality": "Kalpetta",
+      "addressRegion": "Kerala",
+      "postalCode": "673121",
+      "addressCountry": "IN"
+    },
+    "sameAs": ["https://www.facebook.com/newformrestaurant", "https://www.instagram.com/newform_restaurant/"]
+  }
+  </script>
 </head>
 <body>
 
@@ -328,6 +346,13 @@
           <p class="contact-note">Weddings, functions and tour groups</p>
         </article>
       </div>
+      <div class="social-row">
+        <span class="social-row-label">Follow us for new dishes and offers</span>
+        <div class="social-links">
+          <a class="contact-btn social-btn social-btn-instagram" href="https://www.instagram.com/newform_restaurant/" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-instagram" aria-hidden="true"></i> Instagram</a>
+          <a class="contact-btn social-btn social-btn-facebook" href="https://www.facebook.com/newformrestaurant" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-facebook-f" aria-hidden="true"></i> Facebook</a>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -337,6 +362,10 @@
     <img src="assets/newform_logo.png" alt="NEWFORM Multi Cuisine Restaurant Logo" style="width:56px; height:56px; margin-bottom:10px; display:inline-block;">
     <p style="font-family:var(--font-heading); font-weight:700; letter-spacing:2px;">NEWFORM MULTI CUISINE RESTAURANT</p>
     <p>Main Rd, Mandayapuram, Kalpetta, Kerala 673121 · 7593 881 112</p>
+    <p class="footer-social">
+      <a href="https://www.instagram.com/newform_restaurant/" target="_blank" rel="noopener noreferrer" aria-label="NEWFORM on Instagram"><i class="fa-brands fa-instagram" aria-hidden="true"></i></a>
+      <a href="https://www.facebook.com/newformrestaurant" target="_blank" rel="noopener noreferrer" aria-label="NEWFORM on Facebook"><i class="fa-brands fa-facebook-f" aria-hidden="true"></i></a>
+    </p>
     <p style="margin-top:8px; font-size:0.75rem; color:var(--text-dim);">&copy; 2026 NEWFORM Restaurant.</p>
   </footer>
 

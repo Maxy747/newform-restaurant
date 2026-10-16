@@ -2696,3 +2696,20 @@ html.hide-stock-tag .card-stock-tag { display: none; }
 .shop-closed-notice i { color: #d97706; }
 .shop-closed-notice[hidden] { display: none; }
 #placeOrderBtn:disabled { opacity: .6; cursor: not-allowed; }
+
+/* Socials: "Follow us" row under the Contact cards and icon links in the footer. */
+.social-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 18px; margin-top: 18px; padding: 16px 20px; border-radius: var(--radius-lg); border: 1px solid var(--glass-border); background: var(--card-bg); box-shadow: var(--shadow-card); }
+.social-row-label { font-family: var(--font-heading); font-weight: 700; color: var(--text-title); }
+.social-links { display: flex; flex-wrap: wrap; gap: 10px; }
+.social-btn { min-width: 140px; color: #fff; border-color: transparent; }
+.social-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.social-btn-instagram { background: linear-gradient(45deg, #f58529, #dd2a7b 50%, #8134af 80%, #515bd4); }
+.social-btn-facebook { background: #1877f2; }
+.footer-social { display: flex; justify-content: center; gap: 12px; margin: 12px 0 4px; }
+.footer-social a { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--glass-border); color: var(--text-main); font-size: 1.05rem; text-decoration: none; transition: color .2s ease, border-color .2s ease, transform .2s ease; }
+.footer-social a:hover { color: var(--gold-primary); border-color: var(--gold-primary); transform: translateY(-2px); }
+@media (max-width: 768px) {
+  .social-row { flex-direction: column; align-items: stretch; text-align: center; padding: 14px; }
+  .social-links { display: grid; grid-template-columns: 1fr 1fr; }
+  .social-btn { min-width: 0; }
+}
