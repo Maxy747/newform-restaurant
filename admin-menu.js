@@ -1,8 +1,11 @@
 import { escapeHTML as e } from './oms-policy.js';
 import { buildMenuRow, menuPrices } from './admin-policy.js';
+import { resizePhoto } from './image-resize.js';
 
 const STORAGE_MARKER = '/storage/v1/object/public/menu-images/';
-const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+// Large inputs are fine: photos are resized in the browser before upload.
+const MAX_PHOTO_BYTES = 25 * 1024 * 1024;
+const PHOTO_WIDTH = 1000;
 
 // Menu and category management. Writes go straight to Supabase and rely on the existing admin-only RLS policies.
 export function createMenuAdmin({ supabase, toast, run, isAdmin }) {
@@ -136,9 +139,10 @@ export function createMenuAdmin({ supabase, toast, run, isAdmin }) {
   }
 
   async function uploadPhoto(file) {
-    const extension = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }[file.type];
-    const path = `${crypto.randomUUID()}.${extension}`;
-    const { error } = await supabase.storage.from('menu-images').upload(path, file, { cacheControl: '31536000', upsert: false, contentType: file.type });
+    // Camera originals are 2-4 MB; a 1000px WebP is ~100-200 KB and still sharp on phones.
+    const photo = await resizePhoto(file, PHOTO_WIDTH);
+    const path = `${crypto.randomUUID()}.${photo.extension}`;
+    const { error } = await supabase.storage.from('menu-images').upload(path, photo.blob, { cacheControl: '31536000', upsert: false, contentType: photo.blob.type });
     if (error) throw new Error(`Photo upload failed: ${error.message}`);
     return { path, url: supabase.storage.from('menu-images').getPublicUrl(path).data.publicUrl };
   }
@@ -252,7 +256,7 @@ export function createMenuAdmin({ supabase, toast, run, isAdmin }) {
     event.target.value = '';
     if (!file) return;
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) { toast('Choose a JPG, PNG or WEBP photo.', 'error'); return; }
-    if (file.size > MAX_PHOTO_BYTES) { toast('Photos must be 5 MB or smaller.', 'error'); return; }
+    if (file.size > MAX_PHOTO_BYTES) { toast('Photos must be 25 MB or smaller.', 'error'); return; }
     photoFile = file; photoRemoved = false;
     setPreview(null);
     previewUrl = URL.createObjectURL(file);

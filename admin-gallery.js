@@ -2,33 +2,13 @@
 // browser to a 1600px photo plus an 800px thumbnail, so the public site stays fast), edit
 // captions and delete photos. Rows live in gallery_photos; uploads in the gallery-photos bucket.
 import { escapeHTML as e } from './oms-policy.js';
+import { encode, decode } from './image-resize.js';
 
 const BUCKET = 'gallery-photos';
 const FULL_WIDTH = 1600;
 const THUMB_WIDTH = 800;
 const MAX_INPUT_BYTES = 25 * 1024 * 1024;
 const ACCEPTED = ['image/jpeg', 'image/png', 'image/webp'];
-
-// Draws the photo at most maxWidth wide and encodes it. Safari can't encode WebP from a
-// canvas (it silently returns PNG), so fall back to JPEG there.
-async function encode(bitmap, maxWidth) {
-  const scale = Math.min(1, maxWidth / bitmap.width);
-  const width = Math.round(bitmap.width * scale), height = Math.round(bitmap.height * scale);
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height);
-  const toBlob = (type, quality) => new Promise(resolve => canvas.toBlob(resolve, type, quality));
-  let blob = await toBlob('image/webp', 0.8);
-  if (!blob || blob.type !== 'image/webp') blob = await toBlob('image/jpeg', 0.84);
-  if (!blob) throw new Error('This browser could not process the photo.');
-  return { blob, width, height, extension: blob.type === 'image/webp' ? 'webp' : 'jpg' };
-}
-
-async function decode(file) {
-  try { return await createImageBitmap(file, { imageOrientation: 'from-image' }); }
-  catch { return createImageBitmap(file); }
-}
 
 export function createGalleryAdmin({ supabase, toast, run, ask }) {
   const $ = id => document.getElementById(id);
