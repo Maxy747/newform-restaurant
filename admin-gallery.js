@@ -1,12 +1,14 @@
 // Website gallery manager (Settings -> Website gallery). Admins add photos (resized in the
-// browser to a 1600px photo plus an 800px thumbnail, so the public site stays fast), edit
+// browser into an 800px thumbnail; the original is kept unless it is over 8 MB), edit
 // captions and delete photos. Rows live in gallery_photos; uploads in the gallery-photos bucket.
 import { escapeHTML as e } from './oms-policy.js';
-import { encode, decode } from './image-resize.js';
+import { encode, decode, originalOrResized } from './image-resize.js';
 
 const BUCKET = 'gallery-photos';
-const FULL_WIDTH = 1600;
+const FULL_WIDTH = 2560;
 const THUMB_WIDTH = 800;
+// gallery-photos bucket limit (8 MB); originals up to this size are stored untouched.
+const MAX_STORED_BYTES = 8 * 1024 * 1024;
 const MAX_INPUT_BYTES = 25 * 1024 * 1024;
 const ACCEPTED = ['image/jpeg', 'image/png', 'image/webp'];
 
@@ -57,7 +59,7 @@ export function createGalleryAdmin({ supabase, toast, run, ask }) {
         if (file.size > MAX_INPUT_BYTES) { toast(`${file.name} is over 25 MB.`, 'error'); continue; }
         const bitmap = await decode(file);
         let full, thumb;
-        try { [full, thumb] = [await encode(bitmap, FULL_WIDTH), await encode(bitmap, THUMB_WIDTH)]; }
+        try { [full, thumb] = [await originalOrResized(file, bitmap, FULL_WIDTH, MAX_STORED_BYTES), await encode(bitmap, THUMB_WIDTH)]; }
         finally { bitmap.close?.(); }
         const id = crypto.randomUUID();
         const paths = [`${id}-full.${full.extension}`, `${id}-800.${thumb.extension}`];
