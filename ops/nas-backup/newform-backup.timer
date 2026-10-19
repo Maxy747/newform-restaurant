@@ -1,0 +1,12 @@
+[Unit]
+Description=Nightly Newform database backup
+
+[Timer]
+# Dosimeter's local time; set it with: sudo timedatectl set-timezone Asia/Kolkata
+OnCalendar=*-*-* 03:30:00
+RandomizedDelaySec=10min
+# Run at the next boot if Dosimeter was off at 03:30.
+Persistent=true
+
+[Install]
+WantedBy=timers.target
