@@ -1084,7 +1084,7 @@ function invoiceBlock(order, invoice) {
   if (!isManager()) return '';
   if (invoice) return `<section class="adm-detail-block"><h3>Invoice</h3>
     <p><strong>${e(invoice.invoice_no)}</strong></p>
-    <div class="adm-head-actions"><a class="adm-btn" href="${e(invoiceLink(order.id))}" target="_blank" rel="noopener"><i class="fa-solid fa-print"></i> Print invoice</a>${state.role === 'admin' ? '<button type="button" class="adm-btn" id="creditBtn"><i class="fa-solid fa-rotate-left"></i> Credit note</button>' : ''}</div></section>`;
+    <div class="adm-head-actions"><a class="adm-btn" href="${e(invoiceLink(order.id))}" target="_blank" rel="noopener"><i class="fa-solid fa-print"></i> Print invoice</a>${state.role === 'admin' ? '<button type="button" class="adm-btn" id="creditBtn"><i class="fa-solid fa-file-circle-minus"></i> Reduce bill</button>' : ''}</div></section>`;
   if (!state.billing?.enabled || order.order_status === 'cancelled') return '';
   if (order.order_status === 'completed' && order.payment_status === 'paid') return `<section class="adm-detail-block"><h3>Invoice</h3>
     <p class="adm-muted">This order finished before invoicing was turned on.</p>
@@ -1166,12 +1166,12 @@ let creditTarget = null;
 async function openCreditNote(orderId) {
   const { invoice } = await api('invoice', { id: orderId });
   const credited = creditedTotal(invoice), remaining = Math.round((Number(invoice.total) - credited) * 100) / 100;
-  if (remaining <= 0) { toast('This invoice has already been fully credited.'); return; }
+  if (remaining <= 0) { toast('This bill has already been reduced to zero.'); return; }
   creditTarget = { invoice, remaining, orderId };
   const form = $('creditForm');
   form.reset();
-  $('creditTitle').textContent = `Credit note for ${invoice.invoice_no}`;
-  $('creditInfo').textContent = `Invoice total ${rupees2(invoice.total)} · already credited ${rupees2(credited)} · up to ${rupees2(remaining)} can be credited.`;
+  $('creditTitle').textContent = `Reduce bill ${invoice.invoice_no}`;
+  $('creditInfo').textContent = `Bill total ${rupees2(invoice.total)} · already reduced by ${rupees2(credited)} · can be reduced by up to ${rupees2(remaining)}.`;
   form.elements.amount.max = remaining.toFixed(2);
   form.elements.amount.value = remaining.toFixed(2);
   $('creditError').hidden = true;
@@ -1191,7 +1191,7 @@ $('creditForm').onsubmit = async event => {
   try {
     await api('credit_note', { invoiceId: creditTarget.invoice.id, amount, reason });
     $('creditDialog').close();
-    toast('Credit note issued', 'success');
+    toast('Bill reduced (credit note issued)', 'success');
     if (state.section === 'billing') refreshBilling().catch(error => toast(error.message, 'error'));
   } catch (error) { fail(error.message); }
   finally { button.disabled = false; }

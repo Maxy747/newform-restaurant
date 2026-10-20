@@ -404,14 +404,14 @@
 
   <dialog id="creditDialog" class="adm-ask" aria-labelledby="creditTitle">
     <form id="creditForm" method="dialog" class="adm-form" novalidate>
-      <h2 id="creditTitle">Credit note</h2>
+      <h2 id="creditTitle">Reduce bill</h2>
       <p class="adm-muted" id="creditInfo"></p>
-      <label>Amount to credit (₹)<input name="amount" type="number" min="0.01" step="0.01" inputmode="decimal" required></label>
+      <label>Reduce the bill by (₹)<input name="amount" type="number" min="0.01" step="0.01" inputmode="decimal" required></label>
       <label>Reason<input name="reason" maxlength="200" required placeholder="e.g. Refund for missing item"></label>
-      <p class="adm-muted">Credit notes are permanent. They don't move money: refund the customer separately (cash, UPI or Razorpay).</p>
+      <p class="adm-muted">This issues a credit note, the GST document that lowers an issued bill. It's permanent and <strong>doesn't send money back</strong>: use <strong>Refund</strong> for online payments, or hand back cash/UPI yourself.</p>
       <p class="adm-error" id="creditError" role="alert" hidden></p>
       <div class="adm-ask-choices">
-        <button type="submit" class="adm-btn adm-btn-danger" id="creditSave">Issue credit note</button>
+        <button type="submit" class="adm-btn adm-btn-danger" id="creditSave">Reduce bill</button>
         <button type="button" class="adm-btn" data-close>Cancel</button>
       </div>
     </form>
