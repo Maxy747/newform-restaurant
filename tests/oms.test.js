@@ -564,5 +564,75 @@ test('PostgreSQL migration and order/payment/RLS lifecycle',async t=>{
   await db.exec('reset role');
   assert.equal((await q("select column_default from information_schema.columns where table_name='checkout_settings' and column_name='site_theme'"))[0].column_default,"'ivory'::text");
  });
+ await t.test('admin Razorpay refunds: admin-only, capped at what was paid, idempotent per request',async()=>{
+  const migration=await readFile(new URL('../supabase/migrations/20261020090000_razorpay_refunds.sql',import.meta.url),'utf8');
+  await db.exec(migration);await db.exec(migration); // safe to re-run
+  const order=async rz=>{
+   const id=(await q('select public.oms_create_order($1,$2,$3,$4,$5,$6) id',[user,crypto.randomUUID(),'7'.repeat(64),JSON.stringify({name:'Online Customer',phone:'9999999999',order_type:'takeaway'}),JSON.stringify([{id:'multi',portion:'quarter',quantity:2}]),'razorpay']))[0].id;
+   await q('update public.payments set razorpay_order_id=$1 where order_id=$2',[rz,id]);
+   return id;
+  };
+  const id=await order('order_refund');
+  const request=(amount,{who=admin,req=crypto.randomUUID(),reason='Out of stock',oid=id}={})=>q('select public.oms_request_refund($1,$2,$3,$4,$5) r',[who,oid,req,amount,reason]).then(r=>r[0].r);
+  const record=(refund,rz,status,failure=null)=>q('select public.oms_record_refund($1,$2,$3,$4)',[refund,rz,status,failure]);
+  await assert.rejects(request(100),/Only paid online orders/); // not paid yet
+  await q('select public.oms_apply_payment($1,$2,$3,$4,$5,$6,$7)',['refund_paid','order_refund','pay_refund',50400,'INR','paid',0]);
+  await assert.rejects(request(100,{who:user}),/Admin access/); // staff can't refund
+  await assert.rejects(request(100,{who:kitchen}),/Admin access/);
+  await assert.rejects(request(0),/amount/);
+  await assert.rejects(request(100,{reason:' a '}),/reason/);
+  await assert.rejects(request(50401),/up to ₹504\.00/);
+  const cash=(await q("select id from public.orders where payment_method<>'razorpay' limit 1"))[0].id;
+  await assert.rejects(request(100,{oid:cash}),/paid online/);
+
+  // Partial refund, then replaying the same request returns the same row instead of reserving again.
+  const req=crypto.randomUUID();
+  const first=await request(10000,{req});
+  assert.equal(first.status,'requested');assert.equal(first.payment_id,'pay_refund');
+  assert.equal((await request(10000,{req})).id,first.id);
+  await assert.rejects(request(20000,{req}),/already used/);
+  assert.equal((await q('select count(*)::int n from public.refunds where order_id=$1',[id]))[0].n,1);
+  await assert.rejects(request(40401),/up to ₹404\.00/); // unconfirmed requests still reserve their amount
+
+  // Razorpay accepts it, then processes it; processed is final.
+  await assert.rejects(record(first.id,'bad id','pending'),/Invalid Razorpay refund/);
+  await record(first.id,'rfnd_one','pending');
+  await assert.rejects(record(first.id,'rfnd_other','processed'),/identity mismatch/);
+  await record(null,'rfnd_one','processed'); // the webhook finds it by Razorpay's id
+  await record(null,'rfnd_one','failed');
+  await record(null,'rfnd_dashboard','processed'); // Dashboard refunds have no row and are ignored
+  assert.deepEqual((await q('select status,razorpay_refund_id from public.refunds where id=$1',[first.id]))[0],{status:'processed',razorpay_refund_id:'rfnd_one'});
+  const events=(await q("select event_type from public.order_events where order_id=$1 and event_type like 'refund.%' order by id",[id])).map(r=>r.event_type);
+  assert.deepEqual(events,['refund.requested','refund.pending','refund.processed']);
+
+  // A refusal frees its reservation, so the full remainder can still be refunded.
+  const refused=await request(40400);
+  await record(refused.id,null,'failed','The payment has been fully refunded already.');
+  assert.equal((await q('select failure_reason from public.refunds where id=$1',[refused.id]))[0].failure_reason,'The payment has been fully refunded already.');
+  const rest=await request(40400);
+  await assert.rejects(request(1),/Nothing is left/);
+  await record(rest.id,'rfnd_two','processed');
+  // Razorpay's payment sync marks the order refunded; no more refunds.
+  await q('select public.oms_apply_payment($1,$2,$3,$4,$5,$6,$7)',['refund:rfnd_two','order_refund','pay_refund',50400,'INR','refunded',50400]);
+  assert.equal((await q('select payment_status from public.orders where id=$1',[id]))[0].payment_status,'refunded');
+  await assert.rejects(request(1),/already been fully refunded/);
+
+  // A Dashboard refund larger than ours caps what Admin can refund.
+  const other=await order('order_refund_2');
+  await q('select public.oms_apply_payment($1,$2,$3,$4,$5,$6,$7)',['refund2_paid','order_refund_2','pay_refund_2',50400,'INR','paid',0]);
+  await q('select public.oms_apply_payment($1,$2,$3,$4,$5,$6,$7)',['refund2_dash','order_refund_2','pay_refund_2',50400,'INR','refunded',30000]);
+  await assert.rejects(request(20401,{oid:other}),/up to ₹204\.00/);
+  assert.ok((await request(20400,{oid:other})).id);
+
+  await assert.rejects(q("insert into public.refunds(order_id,request_id,amount_paise,reason) values($1,$2,0,'Out of stock')",[id,crypto.randomUUID()]),/check constraint/);
+  await db.exec('set role authenticated');
+  await assert.rejects(q('select * from public.refunds'),/permission denied/);
+  await assert.rejects(request(100),/permission denied/);
+  await db.exec('reset role');
+  await db.exec('set role service_role');
+  await assert.rejects(q('delete from public.refunds'),/permission denied/);
+  await assert.rejects(q('update public.refunds set amount_paise=1'),/permission denied/);
+  await db.exec('reset role');
+ });
  } finally {await db.close();}
 });

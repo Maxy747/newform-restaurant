@@ -4,6 +4,7 @@ import {roadQuote,addressLocation} from '../_shared/delivery.js';
 import {shopStatus,ORDERING_MODES} from '../_shared/hours.js';
 import {normalizeBillingSettings} from '../_shared/billing.js';
 import {parseOrigins,originAllowed,corsOrigin} from '../_shared/origins.js';
+import {providerPaymentStatus,refundPaise,refundRejected,refundStatus,matchingRefund} from '../_shared/refunds.js';
 
 const origins=parseOrigins(Deno.env.get('SITE_ORIGINS'),Deno.env.get('SITE_ORIGIN'));
 // Access-Control-Allow-Origin is set per request in Deno.serve below (it depends on the caller's origin).
@@ -236,7 +237,14 @@ async function handle(req:Request):Promise<Response>{
    const tickets=['kitchen','delivery'].includes(role)?[]:checked(await db.from('support_tickets').select('*,ticket_messages(id,author_role,message,created_at)').eq('order_id',order.id).order('created_at'));
    // Ignores a missing invoices table so order tracking keeps working before the billing migration.
    const issued=['kitchen','delivery'].includes(role)?null:await db.from('invoices').select('id,invoice_no').eq('order_id',order.id).maybeSingle();
-   return json({order:publicOrder(order,role),events,tickets,invoice:issued&&!issued.error?issued.data:null});
+   // Online payment and refunds for managers (refunds needs the 20261020090000_razorpay_refunds migration; ignored before it).
+   let payment=null,refunds:any[]=[];
+   if(manager&&order.payment_method==='razorpay') {
+    payment=checked(await db.from('payments').select('amount_paise,refunded_paise,status').eq('order_id',order.id).maybeSingle());
+    const rows=await db.from('refunds').select('id,request_id,amount_paise,reason,status,razorpay_refund_id,failure_reason,created_at').eq('order_id',order.id).order('created_at');
+    if(!rows.error) refunds=rows.data;
+   }
+   return json({order:publicOrder(order,role),events,tickets,invoice:issued&&!issued.error?issued.data:null,payment,refunds});
   }
   if(body.action==='invoice') {
    if(!manager) await access(order.id,false); // kitchen and drivers only get invoices for their own orders
@@ -267,6 +275,45 @@ async function handle(req:Request):Promise<Response>{
    if(['kitchen','delivery'].includes(role)) return json({error:'Support access required'},403);
    const ticket=await rpc('oms_ticket',{p_order:order.id,p_ticket:body.ticketId?requireUUID(body.ticketId):null,p_subject:body.subject||null,p_message:body.message,p_staff:['admin','staff'].includes(role),p_status:body.status||null});
    return json({ticket});
+  }
+  // Admin refund of an online payment, full or partial (requires the 20261020090000_razorpay_refunds migration).
+  if(body.action==='refund') {
+   if(!userId||role!=='admin') return json({error:'Admin access required'},403);
+   const listed=async(paymentId:string)=>razorpay(`payments/${paymentId}/refunds?count=100`);
+   const record=(row:any,refund:any)=>rpc('oms_record_refund',{p_refund:row.id,p_rz_refund:refund.id,p_status:refundStatus(refund),p_failure:refund.status==='failed'?'Razorpay reported the refund as failed':null});
+   // The row id is the Razorpay receipt: look for an earlier attempt's refund first, and a retry can't create a second one.
+   const settle=async(row:any,paymentId:string)=>{
+    const earlier=matchingRefund(await listed(paymentId),row.id);
+    if(earlier) { await record(row,earlier); return earlier; }
+    try {
+     const created=await razorpay(`payments/${paymentId}/refund`,{method:'POST',body:JSON.stringify({amount:row.amount_paise,speed:'normal',receipt:row.id,notes:{restaurant_order:row.order_id,reason:row.reason}})});
+     await record(row,created);
+     return created;
+    } catch(error) {
+     if(!refundRejected(error)) throw new Error("Razorpay didn't confirm the refund. Press Refund again: retrying is safe and won't refund twice.");
+     const raced=matchingRefund(await listed(paymentId),row.id); // a concurrent retry may have created it
+     if(raced) { await record(row,raced); return raced; }
+     const reason=(error as any).description||'no reason given';
+     await rpc('oms_record_refund',{p_refund:row.id,p_rz_refund:null,p_status:'failed',p_failure:reason});
+     throw new Error('Razorpay refused the refund: '+reason);
+    }
+   };
+   const amount=refundPaise(body.amount),requestId=requireUUID(body.requestId);
+   const payment=checked(await db.from('payments').select('razorpay_payment_id').eq('order_id',order.id).maybeSingle());
+   if(!payment?.razorpay_payment_id) throw new Error('Only paid online orders can be refunded');
+   // Finish any earlier attempt on this order that Razorpay never confirmed before reserving more.
+   const stale=checked(await db.from('refunds').select('*').eq('order_id',order.id).eq('status','requested').neq('request_id',requestId));
+   for(const row of stale) await settle(row,payment.razorpay_payment_id);
+   const claim=await rpc('oms_request_refund',{p_actor:userId,p_order:order.id,p_request:requestId,p_amount:amount,p_reason:typeof body.reason==='string'?body.reason.slice(0,200):''});
+   const refund=claim.status==='requested'?await settle(claim,claim.payment_id):{id:claim.razorpay_refund_id,status:claim.status};
+   console.info('order.refund',{id:order.id,refund:refund.id});
+   // The webhook also does this; syncing now shows the refunded amount straight away.
+   try {
+    const p=await razorpay('payments/'+claim.payment_id);
+    const status=providerPaymentStatus(p);
+    if(refund.id&&status==='refunded') await rpc('oms_apply_payment',{p_event:'refund:'+refund.id,p_rz_order:p.order_id,p_payment:p.id,p_amount:p.amount,p_currency:p.currency,p_status:status,p_refunded:p.amount_refunded||0});
+   } catch(error) { console.error('order.refund_sync_failed',{id:order.id,message:error instanceof Error?error.message:'Unknown error'}); }
+   return json({refund:{id:refund.id,status:refundStatus(refund)}});
   }
   if(body.action==='pay'||body.action==='verify') {
    await access(order.id,false); // Staff permissions cannot authorize paying someone else's order.

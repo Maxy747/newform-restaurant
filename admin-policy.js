@@ -84,3 +84,14 @@ export function menuPrices(item) {
   if (typeof prices === 'string') { try { prices = JSON.parse(prices); } catch { prices = null; } }
   return item.portionType === 'multi' && prices ? prices : null;
 }
+
+// Online payment refunds in paise, mirroring oms_request_refund: refunds made in the Razorpay Dashboard only show
+// in refunded_paise, so the larger of that and our own non-failed refunds counts as already refunded.
+export function refundSummary(payment, refunds = []) {
+  if (!payment) return null;
+  const paid = Number(payment.amount_paise) || 0;
+  const ours = refunds.filter(refund => refund.status !== 'failed').reduce((sum, refund) => sum + Number(refund.amount_paise), 0);
+  const refunded = Math.max(Number(payment.refunded_paise) || 0, ours);
+  const remaining = payment.status === 'paid' ? Math.max(0, paid - refunded) : 0;
+  return { paid, refunded, remaining, confirming: refunds.some(refund => refund.status === 'requested') };
+}

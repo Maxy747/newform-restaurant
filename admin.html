@@ -417,6 +417,22 @@
     </form>
   </dialog>
 
+  <dialog id="refundDialog" class="adm-ask" aria-labelledby="refundTitle">
+    <form id="refundForm" method="dialog" class="adm-form" novalidate>
+      <h2 id="refundTitle">Refund</h2>
+      <p class="adm-muted" id="refundInfo"></p>
+      <label>Amount to refund (₹)<input name="amount" type="number" min="0.01" step="0.01" inputmode="decimal" required></label>
+      <div><button type="button" class="adm-btn" data-full>Full refundable amount</button></div>
+      <label>Reason<input name="reason" maxlength="200" required placeholder="e.g. Chicken Mandhi out of stock"></label>
+      <p class="adm-muted">Razorpay sends the money back to the customer's original payment method, usually within 5–7 working days. Refunds can't be undone. Cancel the order separately if nothing is being served.</p>
+      <p class="adm-error" id="refundError" role="alert" hidden></p>
+      <div class="adm-ask-choices">
+        <button type="submit" class="adm-btn adm-btn-danger" id="refundSave">Refund</button>
+        <button type="button" class="adm-btn" data-close>Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="counterDoneDialog" class="adm-ask" aria-labelledby="counterDoneTitle">
     <h2 id="counterDoneTitle"></h2>
     <p id="counterDoneMessage" class="adm-muted"></p>

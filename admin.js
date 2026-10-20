@@ -1,7 +1,7 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient.js';
 import { createOmsApi } from './oms-client.js';
 import { escapeHTML as e, money, statusLabel as label, nextStatuses, canClaim, indiaDayRange, stepTimes, orderNumber, orderRef, shopStatus, OPENS_AT, CLOSES_AT } from './oms-policy.js';
-import { BOARD_COLUMNS, groupOrders, findNewOrders, ageLabel, minutesSince } from './admin-policy.js';
+import { BOARD_COLUMNS, groupOrders, findNewOrders, ageLabel, minutesSince, refundSummary } from './admin-policy.js';
 import { createMenuAdmin } from './admin-menu.js';
 import { createCounter } from './admin-counter.js';
 import { createCashCount } from './admin-cash.js';
@@ -435,7 +435,7 @@ async function openOrder(id) {
 async function refreshDetail() {
   const id = state.detailId, version = ++detailVersion;
   // Managers need the roster for the driver picker; it is fetched once and dropped after any assignment.
-  const [{ order: fetched, events, tickets, invoice }] = await Promise.all([api('detail', { id }), isManager() && !state.drivers.length ? loadDrivers().catch(() => {}) : null]);
+  const [{ order: fetched, events, tickets, invoice, payment, refunds = [] }] = await Promise.all([api('detail', { id }), isManager() && !state.drivers.length ? loadDrivers().catch(() => {}) : null]);
   if (version !== detailVersion || id !== state.detailId) return;
   const o = withPending(fetched);
   $('orderDialogTitle').textContent = `Order ${orderNumber(o)}`;
@@ -457,6 +457,7 @@ async function refreshDetail() {
       <dl class="adm-totals"><dt>Subtotal</dt><dd>${money(o.subtotal)}</dd><dt>GST</dt><dd>${money(o.tax)}</dd>${o.order_type === 'delivery' ? `<dt>Delivery${o.delivery_distance_m != null ? ` · ${(o.delivery_distance_m / 1000).toFixed(1)} km` : ''}</dt><dd>${money(o.delivery_fee || 0)}</dd>` : ''}<dt class="adm-total">Total</dt><dd class="adm-total">${money(o.total)}</dd></dl>
     </section>
     ${invoiceBlock(o, invoice)}
+    ${refundBlock(o, payment, refunds)}
     <section class="adm-detail-block"><h3>${e(typeName(o.order_type))}</h3>
       ${o.customer_name ? `<p><strong>${e(o.customer_name)}</strong></p>` : ''}
       ${o.phone ? `<p><a class="adm-link" href="tel:${e(o.phone.replace(/[^0-9+]/g, ''))}"><i class="fa-solid fa-phone"></i> ${e(o.phone)}</a></p>` : ''}
@@ -477,6 +478,7 @@ async function refreshDetail() {
   if ($('releaseBtn')) $('releaseBtn').onclick = run(() => releaseOrder(o));
   if ($('issueInvoiceBtn')) $('issueInvoiceBtn').onclick = run(async () => { await api('issue_invoice', { id: o.id }); toast('Invoice issued', 'success'); await refreshDetail(); });
   if ($('creditBtn')) $('creditBtn').onclick = run(() => openCreditNote(o.id));
+  if ($('refundBtn')) $('refundBtn').onclick = () => openRefund(o, payment, refunds);
   if (isManager()) renderTickets(o, tickets);
 }
 
@@ -1089,6 +1091,76 @@ function invoiceBlock(order, invoice) {
     <div><button type="button" class="adm-btn adm-btn-primary" id="issueInvoiceBtn"><i class="fa-solid fa-file-invoice"></i> Issue invoice</button></div></section>`;
   return '<p class="adm-muted adm-invoice-hint"><i class="fa-solid fa-file-invoice"></i> The invoice is issued automatically once this order is completed and paid.</p>';
 }
+
+// ---------- online refunds ----------
+const REFUND_BADGE = { requested: 'new', pending: 'preparing', processed: 'completed', failed: 'cancelled' };
+const REFUND_LABEL = { requested: 'Confirming', pending: 'On its way', processed: 'Refunded', failed: 'Failed' };
+const paise = value => rupees2(Number(value) / 100);
+
+function refundBlock(order, payment, refunds) {
+  const summary = refundSummary(payment, refunds);
+  if (!isManager() || !summary) return '';
+  const rows = refunds.map(refund => `<li><span><span class="adm-badge adm-badge-${e(REFUND_BADGE[refund.status])}">${e(REFUND_LABEL[refund.status])}</span> ${e(refund.reason)}${refund.failure_reason ? `<br><small class="adm-muted">${e(refund.failure_reason)}</small>` : ''}</span><strong>${e(paise(refund.amount_paise))}</strong></li>`).join('');
+  const button = state.role === 'admin' && (summary.remaining > 0 || summary.confirming) ? '<div><button type="button" class="adm-btn" id="refundBtn"><i class="fa-solid fa-rotate-left"></i> Refund</button></div>' : '';
+  return `<section class="adm-detail-block"><h3>Online payment</h3>
+    <p class="adm-muted">Paid ${e(paise(summary.paid))} · refunded ${e(paise(summary.refunded))}${summary.remaining ? ` · ${e(paise(summary.remaining))} refundable` : ''}</p>
+    ${rows ? `<ul class="adm-items">${rows}</ul>` : ''}${button}</section>`;
+}
+
+// requestId is the idempotency key: it is kept (and the form locked) while Razorpay hasn't confirmed an attempt,
+// so pressing Refund again retries the same refund instead of starting a second one.
+let refundTarget = null;
+function openRefund(order, payment, refunds) {
+  const pending = refunds.find(refund => refund.status === 'requested');
+  const summary = refundSummary(payment, refunds);
+  refundTarget = { order, remaining: summary.remaining, requestId: pending?.request_id || crypto.randomUUID() };
+  const form = $('refundForm');
+  form.reset();
+  $('refundTitle').textContent = `Refund ${orderNumber(order)}`;
+  $('refundInfo').textContent = `Paid online ${paise(summary.paid)} · refunded ${paise(summary.refunded)} · up to ${paise(summary.remaining)} can be refunded.`;
+  form.elements.amount.max = (summary.remaining / 100).toFixed(2);
+  form.elements.amount.value = ((pending ? pending.amount_paise : summary.remaining) / 100).toFixed(2);
+  if (pending) form.elements.reason.value = pending.reason;
+  lockRefund(Boolean(pending));
+  $('refundError').textContent = pending ? 'An earlier refund was not confirmed by Razorpay. Press Refund to retry it safely.' : '';
+  $('refundError').hidden = !pending;
+  $('refundDialog').showModal();
+  if (!pending) form.elements.reason.focus();
+}
+function lockRefund(locked) {
+  const form = $('refundForm');
+  form.elements.amount.readOnly = locked;
+  form.elements.reason.readOnly = locked;
+  form.querySelector('[data-full]').disabled = locked;
+}
+$('refundForm').querySelector('[data-full]').onclick = () => { $('refundForm').elements.amount.value = (refundTarget.remaining / 100).toFixed(2); };
+
+$('refundForm').onsubmit = async event => {
+  event.preventDefault();
+  const button = $('refundSave');
+  if (button.disabled || !refundTarget) return;
+  const form = event.currentTarget, amount = Number(form.elements.amount.value), reason = form.elements.reason.value.trim();
+  const fail = message => { $('refundError').textContent = message; $('refundError').hidden = false; };
+  const locked = form.elements.amount.readOnly;
+  if (!locked && (!(amount > 0) || Math.round(amount * 100) > refundTarget.remaining)) return fail(`Enter an amount from ₹0.01 to ${paise(refundTarget.remaining)}.`);
+  if (reason.length < 3) return fail('Give a short reason (at least 3 characters).');
+  button.disabled = true;
+  try {
+    const { refund } = await api('refund', { id: refundTarget.order.id, requestId: refundTarget.requestId, amount, reason });
+    $('refundDialog').close();
+    toast(refund.status === 'failed' ? 'Razorpay reported this refund as failed' : `Refund of ${rupees2(amount)} sent to Razorpay`, refund.status === 'failed' ? 'error' : 'success');
+  } catch (error) {
+    fail(error.message);
+    // Keep the same request only if the server holds it unconfirmed; otherwise a corrected retry is a new request.
+    const { refunds } = await api('detail', { id: refundTarget.order.id }).catch(() => ({ refunds: [] }));
+    const held = refunds?.find(refund => refund.request_id === refundTarget.requestId && refund.status === 'requested');
+    lockRefund(Boolean(held));
+    if (!held) refundTarget.requestId = crypto.randomUUID();
+  } finally {
+    button.disabled = false;
+    if (state.detailId === refundTarget.order.id) refreshDetail().catch(() => {});
+  }
+};
 
 let creditTarget = null;
 async function openCreditNote(orderId) {

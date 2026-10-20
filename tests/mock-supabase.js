@@ -27,6 +27,7 @@ let orders = [
   mk(10, 'ready', 14, 'delivery', [line('Beef Fry', 2, 180), line('Porotta', 6, 15)], { assigned_driver: 'u1' }),
   mk(7, 'completed', 95, 'dine_in', [line('Chicken Biriyani', 2, 160)], { payment_status: 'paid' }),
   mk(8, 'cancelled', 120, 'delivery', [line('Prawns Varattu', 1, 300)]),
+  mk(11, 'preparing', 16, 'takeaway', [line('Chicken Mandhi', 2, 240, 'quarter'), line('Lime Juice', 1, 40)], { payment_method: 'razorpay', payment_status: 'paid' }),
 ];
 // Older completed orders so 7/30-day reports have shape.
 for (let day = 1; day <= 29; day++) for (let k = 0; k < 2 + (day * 7) % 5; k++) {
@@ -48,6 +49,9 @@ let siteTheme = (() => { try { return localStorage.getItem('mock_site_theme') ||
 let stockTag = (() => { try { return localStorage.getItem('mock_stock_tag') !== 'off'; } catch { return true; } })();
 let codEnabled = true, deliveryEnabled = (() => { try { return localStorage.getItem('mock_delivery') !== 'off'; } catch { return true; } })(), counter = 50;
 const listeners = new Set();
+// Online payments and Admin refunds (paise), keyed by order id.
+const payments = {}, refunds = {};
+orders.filter(o => o.payment_method === 'razorpay').forEach(o => { payments[o.id] = { amount_paise: Math.round(o.total * 100), refunded_paise: 0, status: o.payment_status }; refunds[o.id] = []; });
 const signal = () => listeners.forEach(fn => setTimeout(fn, 50));
 // Billing: invoices for completed, paid orders, numbered per financial year like the database does.
 let billing = { enabled: true, legal_name: 'Newform Multi Cuisine Restaurant', address: 'Kuttikunnu Rd, Mandayapuram\nKalpetta, Wayanad, Kerala 673121', phone: '7593 881 112', gstin: '32ABCDE1234F1Z5', fssai: '11223344556677', sac: '996331', prefix: 'NF', footer: 'Thank you for dining with us!' };
@@ -208,7 +212,23 @@ async function oms(body) {
       const order = orders.find(o => o.id === body.id);
       if (!order) throw new Error('Order not found or access denied');
       const invoice = r === 'kitchen' || r === 'delivery' ? null : invoices.find(i => i.order_id === order.id);
-      return { order: view(order), events: events[order.id] || [], tickets: tickets.filter(t => t.order_id === order.id), invoice: invoice ? { id: invoice.id, invoice_no: invoice.invoice_no } : null };
+      const online = (r === 'admin' || r === 'staff') && payments[order.id];
+      return { order: view(order), events: events[order.id] || [], tickets: tickets.filter(t => t.order_id === order.id), invoice: invoice ? { id: invoice.id, invoice_no: invoice.invoice_no } : null, payment: online ? { ...payments[order.id] } : null, refunds: online ? refunds[order.id].map(x => ({ ...x })) : [] };
+    }
+    case 'refund': {
+      if (r !== 'admin') throw new Error('Admin access required');
+      const payment = payments[body.id], amount = Math.round(Number(body.amount) * 100);
+      if (!payment || payment.status !== 'paid') throw new Error('Only paid online orders can be refunded');
+      const list = refunds[body.id], held = list.find(x => x.request_id === body.requestId);
+      if (held) return { refund: { id: held.razorpay_refund_id, status: held.status } };
+      const remaining = payment.amount_paise - Math.max(payment.refunded_paise, list.filter(x => x.status !== 'failed').reduce((sum, x) => sum + x.amount_paise, 0));
+      if (!(amount > 0) || amount > remaining) throw new Error(`You can refund up to ₹${(remaining / 100).toFixed(2)}`);
+      const row = { id: 'rf-' + Date.now(), request_id: body.requestId, amount_paise: amount, reason: body.reason, status: 'processed', razorpay_refund_id: 'rfnd_mock' + list.length, failure_reason: null, created_at: new Date().toISOString() };
+      list.push(row);
+      payment.refunded_paise += amount;
+      if (payment.refunded_paise >= payment.amount_paise) { payment.status = 'refunded'; orders.find(o => o.id === body.id).payment_status = 'refunded'; }
+      events[body.id].push({ id: events[body.id].length + 1, event_type: 'refund.processed', detail: `Refund of ₹${(amount / 100).toFixed(2)} processed`, created_at: row.created_at });
+      signal(); return { refund: { id: row.razorpay_refund_id, status: row.status } };
     }
     case 'transition': {
       const order = orders.find(o => o.id === body.id);

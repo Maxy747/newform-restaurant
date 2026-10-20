@@ -98,9 +98,11 @@ RAZORPAY_WEBHOOK_SECRET
 
 Use Razorpay test keys first. The site labels test checkout, and keeps online payment disabled until all three are configured. No fake success mode exists. Enable automatic capture in Razorpay or arrange capture separately: authorized-but-uncaptured payments stay pending.
 
-Register the webhook URL `https://crlivalipmeypovsubca.supabase.co/functions/v1/razorpay-webhook` for `payment.captured`, `payment.failed`, and `refund.processed`, using the same webhook secret. Test success, failure, retries, a closed browser, duplicate events, delayed events and refunds before switching to live keys. Actual money movement/refunds must be initiated through Razorpay by an authorized operator; cancellation does not automatically refund.
+Register the webhook URL `https://crlivalipmeypovsubca.supabase.co/functions/v1/razorpay-webhook` for `payment.captured`, `payment.failed`, `refund.processed` and `refund.failed`, using the same webhook secret. Test success, failure, retries, a closed browser, duplicate events, delayed events and refunds before switching to live keys. Cancellation does not automatically refund. Admins refund online payments from the order drawer (**Online payment → Refund**, full or partial, migration `20261020090000_razorpay_refunds`); refunds made in the Razorpay Dashboard are picked up too.
 
 If creating the provider order times out, the backend retains a creation claim instead of risking duplicate provider orders. Reconcile using the restaurant UUID stored as the Razorpay receipt, set the correct `razorpay_order_id` in `payments`, or clear `creation_started_at` only after confirming no provider order was created. Never create a second restaurant order to retry payment.
+
+Admin refunds: each `refunds` row's id is sent to Razorpay as the refund `receipt`, which Razorpay treats as an idempotency key. Before creating a refund, `oms-api` looks up the payment's refunds for that receipt, so retrying after a timeout never refunds twice. A row stays `requested` until Razorpay confirms it, and its amount stays reserved. The next refund on that order, or pressing Refund again, finishes it. Razorpay refusals (4xx) mark the row `failed` and free the amount. `oms_request_refund` caps the total at what was paid, counting Dashboard refunds (`refunded_paise`). Only admins can refund; staff see the history.
 
 Partial refunds retain `paid` with `refunded_paise` tracked; full refunds become `refunded`. Revenue currently reports the totals of fully paid orders, not net accounting revenue after partial refunds.
 

@@ -6,6 +6,10 @@ export const paymentConfigured=()=> Boolean(Deno.env.get('RAZORPAY_KEY_ID')&&Den
 export async function razorpay(path,options={}) {
   if(!paymentConfigured()) throw new Error('Online payment setup is pending. Choose cash or WhatsApp.');
   const response=await fetch('https://api.razorpay.com/v1/'+path,{...options,headers:{Authorization:'Basic '+btoa(Deno.env.get('RAZORPAY_KEY_ID')+':'+Deno.env.get('RAZORPAY_KEY_SECRET')),'Content-Type':'application/json'},signal:AbortSignal.timeout(15000)});
-  if(!response.ok) throw new Error('Payment provider unavailable. Please retry or contact the restaurant.');
+  if(!response.ok) {
+   // status/description let callers tell a refusal (4xx) from an outage; the message stays customer-safe.
+   const detail=await response.json().catch(()=>null);
+   throw Object.assign(new Error('Payment provider unavailable. Please retry or contact the restaurant.'),{status:response.status,description:String(detail?.error?.description||'').slice(0,300)});
+  }
   return response.json();
 }
