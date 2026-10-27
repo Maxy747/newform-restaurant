@@ -111,7 +111,7 @@ Most non-veg items are available in:
 
 ```bash
 # Clone the repository
-git clone https://github.com/JUUDER/newform-restaurant.git
+git clone https://github.com/Maxy747/newform-restaurant.git
 
 # Navigate to folder
 cd newform-restaurant

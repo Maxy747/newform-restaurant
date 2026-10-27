@@ -11,15 +11,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/JUUDER/newform-restaurant.git"
+    "url": "git+https://github.com/Maxy747/newform-restaurant.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/JUUDER/newform-restaurant/issues"
+    "url": "https://github.com/Maxy747/newform-restaurant/issues"
   },
-  "homepage": "https://github.com/JUUDER/newform-restaurant#readme",
+  "homepage": "https://github.com/Maxy747/newform-restaurant#readme",
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",
     "vite": "^8.2.2"

@@ -5,7 +5,7 @@
 - Codex checkout: `C:/Users/MoeLustHer/Documents/ChatGPT/Max`, branch `max`.
 - Claude checkout: `C:/Users/MoeLustHer/Documents/ChatGPT/newform-claude`, branch `codex/claude-work`.
 - Deploy repository: `https://github.com/Maxy747/newform-restaurant` (remote `maxy747`, production branch `main`).
-- Original upstream remote `origin` is JUUDER's repository, not the deployment destination.
+- `Maxy747/newform-restaurant` is the only project repository; do not push anywhere else.
 - These are Git worktrees: source files and dependencies are separate; Git objects and refs are shared.
 - Never check out, reset, clean, or modify files in the other agent's directory. Never force-push.
 
