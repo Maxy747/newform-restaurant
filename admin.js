@@ -195,6 +195,7 @@ async function evaluateSession(session) {
   showOrderingMode(config.orderingMode);
   showSiteTheme(config.siteTheme);
   showSiteUi(config.siteUi);
+  showSitePages(config.sitePages);
   showSplashStyle(config.splashStyle);
   $('stockTagSwitch').setAttribute('aria-checked', String(config.stockTag !== false));
   if (!savedAdminTheme() && config.siteTheme) applyTheme(config.siteTheme);
@@ -1296,6 +1297,22 @@ document.querySelectorAll('#splashStylePicker [data-splash-style]').forEach(butt
     const result = await api('set_splash_style', { style: button.dataset.splashStyle });
     showSplashStyle(result.splashStyle);
     toast(`Welcome splash set to ${result.splashStyle === 'modern' ? 'Modern' : 'Classic'}`, 'success');
+  });
+});
+
+// Website layout: one scrolling page, or a separate page per tab.
+function showSitePages(pages) {
+  const current = pages === 'multi' ? 'multi' : 'single';
+  document.querySelectorAll('#sitePagesPicker [data-site-pages]').forEach(button => {
+    button.setAttribute('aria-checked', String(button.dataset.sitePages === current));
+  });
+}
+document.querySelectorAll('#sitePagesPicker [data-site-pages]').forEach(button => {
+  button.onclick = run(async () => {
+    if (button.getAttribute('aria-checked') === 'true') return;
+    const result = await api('set_site_pages', { pages: button.dataset.sitePages });
+    showSitePages(result.sitePages);
+    toast(`Website set to ${result.sitePages === 'multi' ? 'multi page' : 'single page'}`, 'success');
   });
 });
 

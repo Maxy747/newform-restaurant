@@ -13,6 +13,8 @@ const headers={'Access-Control-Allow-Headers':'authorization, apikey, content-ty
 const SITE_THEMES=['light','ivory','dark'];
 // Website UIs: 'classic' is the frozen pre-overhaul snapshot under /classic/ (see checkout_settings.site_ui).
 const SITE_UIS=['classic','modern'];
+// Website layouts: one scrolling page or separate pages (see checkout_settings.site_pages).
+const SITE_PAGES=['single','multi'];
 // Welcome splash styles (see checkout_settings.splash_style).
 const SPLASH_STYLES=['classic','modern'];
 const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers});
@@ -46,7 +48,7 @@ async function handle(req:Request):Promise<Response>{
   const orderingMode=(row:any)=>ORDERING_MODES.includes(row.ordering_mode)?row.ordering_mode:'auto';
   if(body.action==='config') {
    const current=await settings();
-   return json({role,codEnabled:current.cod_enabled,deliveryEnabled:deliveryOn(current),orderingMode:orderingMode(current),shopOpen:shopStatus(orderingMode(current)).open,siteTheme:SITE_THEMES.includes(current.site_theme)?current.site_theme:'light',siteUi:SITE_UIS.includes(current.site_ui)?current.site_ui:'modern',splashStyle:SPLASH_STYLES.includes(current.splash_style)?current.splash_style:'classic',stockTag:current.show_stock_tag!==false,payments:paymentConfigured(),deliveryRouting:Boolean(Deno.env.get('ORS_API_KEY')),testMode:!(Deno.env.get('RAZORPAY_KEY_ID')||'').startsWith('rzp_live_')});
+   return json({role,codEnabled:current.cod_enabled,deliveryEnabled:deliveryOn(current),orderingMode:orderingMode(current),shopOpen:shopStatus(orderingMode(current)).open,siteTheme:SITE_THEMES.includes(current.site_theme)?current.site_theme:'light',siteUi:SITE_UIS.includes(current.site_ui)?current.site_ui:'modern',splashStyle:SPLASH_STYLES.includes(current.splash_style)?current.splash_style:'classic',sitePages:SITE_PAGES.includes(current.site_pages)?current.site_pages:'single',stockTag:current.show_stock_tag!==false,payments:paymentConfigured(),deliveryRouting:Boolean(Deno.env.get('ORS_API_KEY')),testMode:!(Deno.env.get('RAZORPAY_KEY_ID')||'').startsWith('rzp_live_')});
   }
   if(body.action==='set_cod') {
    if(role!=='admin') return json({error:'Admin access required'},403);
@@ -65,6 +67,12 @@ async function handle(req:Request):Promise<Response>{
    if(!SITE_UIS.includes(body.ui)) throw new Error('Invalid website UI');
    const updated=checked(await db.from('checkout_settings').update({site_ui:body.ui}).eq('id',true).select('site_ui').single());
    return json({siteUi:updated.site_ui});
+  }
+  if(body.action==='set_site_pages') {
+   if(role!=='admin') return json({error:'Admin access required'},403);
+   if(!SITE_PAGES.includes(body.pages)) throw new Error('Invalid website layout');
+   const updated=checked(await db.from('checkout_settings').update({site_pages:body.pages}).eq('id',true).select('site_pages').single());
+   return json({sitePages:updated.site_pages});
   }
   if(body.action==='set_splash_style') {
    if(role!=='admin') return json({error:'Admin access required'},403);

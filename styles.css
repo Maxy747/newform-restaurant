@@ -2797,3 +2797,20 @@ html.dish-sheet-open { overflow: hidden; padding-right: var(--scrollbar-gap, 0px
   .cat-tab[data-category="specials"]::before { animation: none; opacity: .75; }
   .cat-tab[data-category="specials"]::after { animation: none; display: none; }
 }
+
+/* ---------- Multi-page layout (Settings → Pages) ---------- */
+/* Each nav tab is its own page: only the current page's sections show. The header, phone bar
+   and cart stay put while the pages cross-fade (app.js goToPage adds page-leaving/entering). */
+html.pages-multi:not([data-current-page="home"]) [data-page="home"],
+html.pages-multi:not([data-current-page="menu"]) [data-page="menu"],
+html.pages-multi:not([data-current-page="gallery"]) [data-page="gallery"],
+html.pages-multi:not([data-current-page="about"]) [data-page="about"],
+html.pages-multi:not([data-current-page="contact"]) [data-page="contact"] { display: none !important; }
+/* Short pages still fill the screen so the footer sits low, not halfway up. */
+html.pages-multi :is(#gallerySection, #aboutSection, #contactSection) { min-height: calc(100svh - 200px); }
+html.pages-multi :is([data-page], footer) { transition: opacity .26s ease; }
+html.page-leaving :is([data-page], footer) { opacity: 0; }
+html.page-entering :is([data-page], footer) { opacity: 0; transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  html.pages-multi :is([data-page], footer) { transition: none; }
+}

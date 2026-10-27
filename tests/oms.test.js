@@ -581,6 +581,15 @@ test('PostgreSQL migration and order/payment/RLS lifecycle',async t=>{
   await assert.rejects(q("update public.checkout_settings set splash_style='classic'"),/permission denied/);
   await db.exec('reset role');
   await q("update public.checkout_settings set splash_style='classic'");
+  const pagesMigration=await readFile(new URL('../supabase/migrations/20261028150000_site_pages.sql',import.meta.url),'utf8');
+  await db.exec(pagesMigration);await db.exec(pagesMigration); // safe to re-run
+  assert.equal((await q('select site_pages from public.checkout_settings'))[0].site_pages,'single');
+  await q("update public.checkout_settings set site_pages='multi'");
+  await assert.rejects(q("update public.checkout_settings set site_pages='tabs'"),/site_pages_check/);
+  await db.exec('set role authenticated');
+  await assert.rejects(q("update public.checkout_settings set site_pages='single'"),/permission denied/);
+  await db.exec('reset role');
+  await q("update public.checkout_settings set site_pages='single'");
  });
  await t.test('admin Razorpay refunds: admin-only, capped at what was paid, idempotent per request',async()=>{
   const migration=await readFile(new URL('../supabase/migrations/20261020090000_razorpay_refunds.sql',import.meta.url),'utf8');

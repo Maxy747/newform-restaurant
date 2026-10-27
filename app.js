@@ -180,7 +180,7 @@ const ordering = createOrdering({
   toast: message => showToast(message),
   closeAll: () => closeAllModals(),
   onPlaced: () => { cart = []; lastClearedCart = null; saveCartData(); updateCartBadge(); renderMenu(); closeCart(); },
-  onStaffChange: (isStaff, siteTheme, stockTag, siteUi, splashStyle) => { syncSiteUi(siteUi); syncSplashStyle(splashStyle); syncStaffTheme(isStaff, siteTheme); syncStockTag(stockTag); }
+  onStaffChange: (isStaff, siteTheme, stockTag, siteUi, splashStyle, sitePages) => { syncSiteUi(siteUi); syncSitePages(sitePages); syncSplashStyle(splashStyle); syncStaffTheme(isStaff, siteTheme); syncStockTag(stockTag); }
 });
 
 // LocalStorage Keys
@@ -547,6 +547,7 @@ function setupEventListeners() {
   setupCategoryVisibility();
   setupMenuReveal();
   setupSectionNav();
+  setupPages();
   setupScrollReveal();
   setupPlaceParallax();
   setupGallery();
@@ -575,6 +576,68 @@ function syncSiteUi(ui) {
   if (ui !== 'classic' && ui !== 'modern') return;
   try { localStorage.setItem(SITE_UI_CACHE_KEY, ui); } catch { /* storage blocked */ }
   if (ui === 'classic' && import.meta.env.PROD) location.replace(`classic/${location.hash}`);
+}
+
+// Website layout the admin picked (Settings → Pages): 'single' scrolls through every section;
+// 'multi' shows one page per nav tab (data-page in index.html) and cross-fades between them while
+// the header, phone bar and cart stay. Cached so the inline <head> script picks the page before paint.
+const SITE_PAGES_CACHE_KEY = 'newform_site_pages_v1';
+const PAGE_FOR_HASH = { '': 'home', '#': 'home', '#menuSection': 'menu', '#placeBand': 'gallery', '#gallerySection': 'gallery', '#aboutSection': 'about', '#contactSection': 'contact' };
+const HASH_FOR_PAGE = { home: '', menu: '#menuSection', gallery: '#gallerySection', about: '#aboutSection', contact: '#contactSection' };
+const PAGE_FADE_MS = 260;
+const isMultiPage = () => document.documentElement.classList.contains('pages-multi');
+const currentPage = () => document.documentElement.dataset.currentPage || 'home';
+
+function syncSitePages(mode) {
+  if (mode !== 'single' && mode !== 'multi') return;
+  try { localStorage.setItem(SITE_PAGES_CACHE_KEY, mode); } catch { /* storage blocked */ }
+  if ((mode === 'multi') === isMultiPage()) return;
+  const root = document.documentElement;
+  root.classList.toggle('pages-multi', mode === 'multi');
+  if (mode === 'multi') root.dataset.currentPage = PAGE_FOR_HASH[location.hash] || 'home';
+  else delete root.dataset.currentPage;
+  window.dispatchEvent(new Event('scroll')); // re-run the nav highlight and menu bar for the new layout
+}
+
+let pageSwitch = null;
+let setSpyActive = () => {}; // set by setupSectionNav: moves the nav highlight
+async function goToPage(page, { push = true } = {}) {
+  const root = document.documentElement;
+  if (page === currentPage()) return smoothScrollTo(0);
+  if (push) history.pushState(null, '', `${location.pathname}${location.search}${HASH_FOR_PAGE[page]}`);
+  setSpyActive(page); // the nav bubble glides over while the old page fades out
+  const token = pageSwitch = {};
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    root.classList.add('page-leaving');
+    await new Promise(resolve => setTimeout(resolve, PAGE_FADE_MS));
+    if (pageSwitch !== token) return; // a newer tap took over
+  }
+  root.classList.remove('page-leaving');
+  root.classList.add('page-entering');
+  root.dataset.currentPage = page;
+  window.scrollTo({ top: 0, behavior: 'instant' });
+  window.dispatchEvent(new Event('scroll'));
+  // Two frames so the hidden state paints first and the fade-in runs; the timer covers paused frames.
+  const reveal = () => { if (pageSwitch === token) root.classList.remove('page-entering'); };
+  requestAnimationFrame(() => requestAnimationFrame(reveal));
+  setTimeout(reveal, 120);
+}
+
+// In multi-page mode every in-page section link (nav, hero, splash, footer) opens its page instead
+// of scrolling. Capture phase, so the single-page scroll handlers on those links never run.
+function setupPages() {
+  document.addEventListener('click', event => {
+    if (!isMultiPage() || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    const link = event.target.closest?.('a[href^="#"]');
+    const page = link && PAGE_FOR_HASH[link.getAttribute('href')];
+    if (!page) return;
+    event.preventDefault();
+    event.stopPropagation();
+    goToPage(page);
+  }, true);
+  window.addEventListener('popstate', () => {
+    if (isMultiPage()) goToPage(PAGE_FOR_HASH[location.hash] || 'home', { push: false });
+  });
 }
 
 // Welcome splash style the admin picked (Settings → Welcome splash). Cached for the inline chooser in
@@ -1278,6 +1341,8 @@ function setupMenuReveal() {
 
   const searchInput = document.getElementById('searchInput');
   const update = () => {
+    // Multi-page: the Menu page has no hero above it, so the bar shows straight away.
+    if (isMultiPage()) return controls.classList.remove('awaiting-scroll');
     const canScrollPast = document.documentElement.scrollHeight - window.innerHeight > MENU_REVEAL_SCROLL_Y;
     // Never hide the bar while someone is using it or has an active search.
     const inUse = controls.contains(document.activeElement) || Boolean(searchInput?.value);
@@ -1326,6 +1391,7 @@ function setupSectionNav() {
     spyLinks.forEach(link => link.classList.toggle('active', link.dataset.spy === key));
     if (key !== activeKey) { activeKey = key; document.querySelectorAll('.glass-nav').forEach(nav => placeGlassIndicator(nav, true)); }
   };
+  setSpyActive = setActive;
   // Keep the glass bubble glued to the active item when the layout changes.
   const replace = () => document.querySelectorAll('.glass-nav').forEach(nav => placeGlassIndicator(nav, false));
   window.addEventListener('resize', replace, { passive: true });
@@ -1336,10 +1402,13 @@ function setupSectionNav() {
     const line = window.innerHeight * 0.4;
     const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
     let key = 'home';
-    if (menu && menu.getBoundingClientRect().top <= line) key = 'menu';
-    if (sections.gallery && sections.gallery.getBoundingClientRect().top <= line) key = 'gallery';
-    if (sections.about && sections.about.getBoundingClientRect().top <= line) key = 'about';
-    if ((sections.contact && sections.contact.getBoundingClientRect().top <= line) || atBottom) key = 'contact';
+    if (isMultiPage()) key = currentPage();
+    else {
+      if (menu && menu.getBoundingClientRect().top <= line) key = 'menu';
+      if (sections.gallery && sections.gallery.getBoundingClientRect().top <= line) key = 'gallery';
+      if (sections.about && sections.about.getBoundingClientRect().top <= line) key = 'about';
+      if ((sections.contact && sections.contact.getBoundingClientRect().top <= line) || atBottom) key = 'contact';
+    }
     setActive(key);
     // Hide the sticky search / category bar once the whole menu is above it.
     const controls = document.querySelector('.controls-wrapper');

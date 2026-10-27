@@ -38,6 +38,14 @@
     try {
       if (localStorage.getItem('newform_stock_tag_v1') === 'off') document.documentElement.classList.add('hide-stock-tag');
     } catch (error) { /* storage blocked: tag shows until the server answers */ }
+    // Multi-page layout (Settings → Pages, cached from the last visit): show only the page the
+    // link points at before first paint. app.js re-checks with the server and runs the page switching.
+    try {
+      if (localStorage.getItem('newform_site_pages_v1') === 'multi') {
+        document.documentElement.classList.add('pages-multi');
+        document.documentElement.dataset.currentPage = { '#menuSection': 'menu', '#placeBand': 'gallery', '#gallerySection': 'gallery', '#aboutSection': 'about', '#contactSection': 'contact' }[location.hash] || 'home';
+      }
+    } catch (error) { /* storage blocked: single page until the server answers */ }
   </script>
   <script type="application/ld+json">
   {
@@ -178,7 +186,7 @@
   </a>
 
   <!-- Hero Section - REPLICATING MINIMALIST TEMPLATE WITH OFFICIAL NEWFORM LOGO -->
-  <section class="hero-minimal">
+  <section class="hero-minimal" data-page="home">
     <div class="hero-grid">
       <!-- Phones: this group fills exactly the first screen. Desktop: display:contents. -->
       <div class="hero-first-screen">
@@ -232,7 +240,7 @@
   </section>
 
   <!-- Search & Category Controls Bar -->
-  <div class="controls-wrapper">
+  <div class="controls-wrapper" data-page="menu">
     <div class="controls-container">
       <div class="search-filter-row">
         <div class="search-box">
@@ -271,7 +279,7 @@
   </div>
 
   <!-- Food Menu Grid Section -->
-  <main class="menu-section" id="menuSection">
+  <main class="menu-section" id="menuSection" data-page="menu">
     <div class="section-header">
       <h2 class="section-title">OUR MENU</h2>
       <span class="item-count" id="itemCount">0 DISHES</span>
@@ -284,7 +292,7 @@
   </main>
 
   <!-- Our place: full-width photo band with a gentle parallax -->
-  <section class="place-band" id="placeBand" aria-labelledby="placeTitle">
+  <section class="place-band" id="placeBand" aria-labelledby="placeTitle" data-page="gallery">
     <div class="place-media" aria-hidden="true">
       <img src="/gallery/exterior-front-dusk-800.webp" srcset="/gallery/exterior-front-dusk-800.webp 800w, /gallery/exterior-front-dusk-full.webp 1536w" sizes="100vw" alt="" width="1536" height="1024" loading="lazy" decoding="async">
     </div>
@@ -298,7 +306,7 @@
   </section>
 
   <!-- Gallery -->
-  <section id="gallerySection" class="site-section gallery-section" aria-labelledby="galleryTitle">
+  <section id="gallerySection" class="site-section gallery-section" aria-labelledby="galleryTitle" data-page="gallery">
     <div class="section-wrap">
       <span class="section-kicker reveal">GALLERY</span>
       <h2 id="galleryTitle" class="section-title reveal" style="--i:1">Take a look around</h2>
@@ -332,7 +340,7 @@
   </section>
 
   <!-- About -->
-  <section id="aboutSection" class="site-section about-section" aria-labelledby="aboutTitle">
+  <section id="aboutSection" class="site-section about-section" aria-labelledby="aboutTitle" data-page="about">
     <div class="section-wrap about-grid">
       <div class="about-copy">
         <span class="section-kicker">ABOUT NEWFORM</span>
@@ -363,7 +371,7 @@
   </section>
 
   <!-- Contact -->
-  <section id="contactSection" class="site-section contact-section" aria-labelledby="contactTitle">
+  <section id="contactSection" class="site-section contact-section" aria-labelledby="contactTitle" data-page="contact">
     <div class="section-wrap">
       <span class="section-kicker">CONTACT</span>
       <h2 id="contactTitle" class="section-title">Visit, call or message us</h2>
