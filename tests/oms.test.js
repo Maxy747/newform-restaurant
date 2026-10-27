@@ -563,6 +563,15 @@ test('PostgreSQL migration and order/payment/RLS lifecycle',async t=>{
   await assert.rejects(q('update public.checkout_settings set show_stock_tag=false'),/permission denied/);
   await db.exec('reset role');
   assert.equal((await q("select column_default from information_schema.columns where table_name='checkout_settings' and column_name='site_theme'"))[0].column_default,"'ivory'::text");
+  const uiMigration=await readFile(new URL('../supabase/migrations/20261028090000_site_ui.sql',import.meta.url),'utf8');
+  await db.exec(uiMigration);await db.exec(uiMigration); // safe to re-run
+  assert.equal((await q('select site_ui from public.checkout_settings'))[0].site_ui,'modern');
+  await q("update public.checkout_settings set site_ui='classic'");
+  await assert.rejects(q("update public.checkout_settings set site_ui='retro'"),/site_ui_check/);
+  await db.exec('set role authenticated');
+  await assert.rejects(q("update public.checkout_settings set site_ui='modern'"),/permission denied/);
+  await db.exec('reset role');
+  await q("update public.checkout_settings set site_ui='modern'");
  });
  await t.test('admin Razorpay refunds: admin-only, capped at what was paid, idempotent per request',async()=>{
   const migration=await readFile(new URL('../supabase/migrations/20261020090000_razorpay_refunds.sql',import.meta.url),'utf8');

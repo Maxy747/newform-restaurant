@@ -11,6 +11,8 @@ const origins=parseOrigins(Deno.env.get('SITE_ORIGINS'),Deno.env.get('SITE_ORIGI
 const headers={'Access-Control-Allow-Headers':'authorization, apikey, content-type, x-client-info','Access-Control-Allow-Methods':'POST, OPTIONS','Content-Type':'application/json','Cache-Control':'no-store','Vary':'Origin'};
 // Website themes an admin can pick for every visitor (see checkout_settings.site_theme).
 const SITE_THEMES=['light','ivory','dark'];
+// Website UIs: 'classic' is the frozen pre-overhaul snapshot under /classic/ (see checkout_settings.site_ui).
+const SITE_UIS=['classic','modern'];
 const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers});
 Deno.serve(async req=>{
  const response=await handle(req);
@@ -42,7 +44,7 @@ async function handle(req:Request):Promise<Response>{
   const orderingMode=(row:any)=>ORDERING_MODES.includes(row.ordering_mode)?row.ordering_mode:'auto';
   if(body.action==='config') {
    const current=await settings();
-   return json({role,codEnabled:current.cod_enabled,deliveryEnabled:deliveryOn(current),orderingMode:orderingMode(current),shopOpen:shopStatus(orderingMode(current)).open,siteTheme:SITE_THEMES.includes(current.site_theme)?current.site_theme:'light',stockTag:current.show_stock_tag!==false,payments:paymentConfigured(),deliveryRouting:Boolean(Deno.env.get('ORS_API_KEY')),testMode:!(Deno.env.get('RAZORPAY_KEY_ID')||'').startsWith('rzp_live_')});
+   return json({role,codEnabled:current.cod_enabled,deliveryEnabled:deliveryOn(current),orderingMode:orderingMode(current),shopOpen:shopStatus(orderingMode(current)).open,siteTheme:SITE_THEMES.includes(current.site_theme)?current.site_theme:'light',siteUi:SITE_UIS.includes(current.site_ui)?current.site_ui:'modern',stockTag:current.show_stock_tag!==false,payments:paymentConfigured(),deliveryRouting:Boolean(Deno.env.get('ORS_API_KEY')),testMode:!(Deno.env.get('RAZORPAY_KEY_ID')||'').startsWith('rzp_live_')});
   }
   if(body.action==='set_cod') {
    if(role!=='admin') return json({error:'Admin access required'},403);
@@ -55,6 +57,12 @@ async function handle(req:Request):Promise<Response>{
    if(!SITE_THEMES.includes(body.theme)) throw new Error('Invalid website theme');
    const updated=checked(await db.from('checkout_settings').update({site_theme:body.theme}).eq('id',true).select('site_theme').single());
    return json({siteTheme:updated.site_theme});
+  }
+  if(body.action==='set_site_ui') {
+   if(role!=='admin') return json({error:'Admin access required'},403);
+   if(!SITE_UIS.includes(body.ui)) throw new Error('Invalid website UI');
+   const updated=checked(await db.from('checkout_settings').update({site_ui:body.ui}).eq('id',true).select('site_ui').single());
+   return json({siteUi:updated.site_ui});
   }
   if(body.action==='set_stock_tag') {
    if(role!=='admin') return json({error:'Admin access required'},403);

@@ -180,7 +180,7 @@ const ordering = createOrdering({
   toast: message => showToast(message),
   closeAll: () => closeAllModals(),
   onPlaced: () => { cart = []; lastClearedCart = null; saveCartData(); updateCartBadge(); renderMenu(); closeCart(); },
-  onStaffChange: (isStaff, siteTheme, stockTag) => { syncStaffTheme(isStaff, siteTheme); syncStockTag(stockTag); }
+  onStaffChange: (isStaff, siteTheme, stockTag, siteUi) => { syncSiteUi(siteUi); syncStaffTheme(isStaff, siteTheme); syncStockTag(stockTag); }
 });
 
 // LocalStorage Keys
@@ -342,8 +342,8 @@ function setupFoodPhotoPreview() {
     document.documentElement.style.overflow = 'hidden';
     dialog.showModal();
   };
-  // On phones a menu photo opens the dish sheet instead (setupDishSheet).
-  const previewable = target => target && !(target.matches('.card-img') && isPhoneMenu());
+  // Menu tile photos open the dish sheet instead (setupDishSheet).
+  const previewable = target => target && !target.matches('.card-img');
   document.addEventListener('click', event => {
     const target = event.target.closest('.card-img, .center-dish-img:not(.hero-shop-logo), [data-cart-detail]');
     if (previewable(target)) open(target);
@@ -567,6 +567,16 @@ function setupEventListeners() {
 // Representative stock photos (public/menu-stock) stand in until the restaurant uploads its own.
 // Their "Representative image" tag can be switched off by an admin (Settings); the choice is
 // cached so the next visit hides it before first paint (see the inline <head> script).
+// Website UI the admin picked (Settings → Website UI): this site is Modern; Classic is the frozen
+// pre-overhaul snapshot built into /classic/ (classic branch). The choice is cached so the next
+// visit redirects before first paint (see the inline <head> script). Dev servers have no /classic/.
+const SITE_UI_CACHE_KEY = 'newform_site_ui_v1';
+function syncSiteUi(ui) {
+  if (ui !== 'classic' && ui !== 'modern') return;
+  try { localStorage.setItem(SITE_UI_CACHE_KEY, ui); } catch { /* storage blocked */ }
+  if (ui === 'classic' && import.meta.env.PROD) location.replace(`classic/${location.hash}`);
+}
+
 const STOCK_TAG_CACHE_KEY = 'newform_stock_tag_v1';
 function syncStockTag(show) {
   if (typeof show !== 'boolean') return;
@@ -594,11 +604,6 @@ function getTagTone(tag) {
   if (normalizedTag === 'popular') return 'tag-popular';
   if (normalizedTag === 'spicy') return 'tag-spicy';
   return '';
-}
-
-// Phones get the compact two-up grid; tapping a dish opens its details as a bottom sheet.
-function isPhoneMenu() {
-  return matchMedia('(max-width: 768px)').matches;
 }
 
 function dishMeta(item) {
@@ -718,13 +723,13 @@ async function closeDishSheet() {
 function setupDishSheet() {
   const sheet = document.getElementById('dishSheet');
   if (!sheet) return;
-  const opensSheet = target => isPhoneMenu() && !target.closest('button, .portion-selector, .card-qty-control');
+  const opensSheet = target => !target.closest('button, .portion-selector, .card-qty-control');
   document.getElementById('foodGrid')?.addEventListener('click', event => {
     const card = event.target.closest('.food-card[data-dish]');
     if (card && opensSheet(event.target)) openDishSheet(card.dataset.dish, card.querySelector('.card-img'));
   });
   document.getElementById('foodGrid')?.addEventListener('keydown', event => {
-    if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('.card-img') && isPhoneMenu()) {
+    if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('.card-img')) {
       event.preventDefault();
       openDishSheet(event.target.closest('.food-card').dataset.dish, event.target);
     }
@@ -747,10 +752,10 @@ function setupDishSheet() {
   setupSheetDrag(sheet, closeDishSheet);
 }
 
-// Card ADD on phones: dishes with portions open the sheet to choose one first.
+// Tile ADD: dishes with portions open the sheet to choose one first.
 window.addFromCard = function(itemId, clickEvent) {
   const item = menuItems.find(menuItem => menuItem.id === itemId);
-  if (item?.portionType === 'multi' && isPhoneMenu()) return openDishSheet(itemId, clickEvent?.currentTarget);
+  if (item?.portionType === 'multi') return openDishSheet(itemId, clickEvent?.currentTarget);
   window.addToCart(itemId, clickEvent);
 };
 
@@ -1020,8 +1025,8 @@ window.addToCart = function(itemId, clickEvent) {
   updateCartBadge();
   updateClearCartControls();
   const button = clickEvent?.currentTarget;
-  // Phone cards are too narrow for the "Added to cart" label; swap straight to the quantity stepper.
-  if (!button || isPhoneMenu()) {
+  // Menu tiles are too narrow for the "Added to cart" label; swap straight to the quantity stepper.
+  if (!button || button.closest('#foodGrid')) {
     renderMenu();
   } else {
     const defaultLabel = button.dataset.defaultLabel || button.textContent.trim();

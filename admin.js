@@ -194,6 +194,7 @@ async function evaluateSession(session) {
   $('deliverySwitch').setAttribute('aria-checked', String(config.deliveryEnabled !== false));
   showOrderingMode(config.orderingMode);
   showSiteTheme(config.siteTheme);
+  showSiteUi(config.siteUi);
   $('stockTagSwitch').setAttribute('aria-checked', String(config.stockTag !== false));
   if (!savedAdminTheme() && config.siteTheme) applyTheme(config.siteTheme);
   $('addDriverBtn').hidden = state.role !== 'admin';
@@ -1262,6 +1263,22 @@ document.querySelectorAll('#siteThemePicker [data-site-theme]').forEach(button =
     try { localStorage.setItem(THEME_KEY, adminTheme); } catch { /* storage blocked */ }
     const names = { light: 'Light', ivory: 'Ivory', dark: 'Dark' };
     toast(`Website theme set to ${names[result.siteTheme] || result.siteTheme}`, 'success');
+  });
+});
+
+// Website UI every customer gets: Modern (current site) or Classic (pre-redesign snapshot).
+function showSiteUi(ui) {
+  const current = ui === 'classic' ? 'classic' : 'modern';
+  document.querySelectorAll('#siteUiPicker [data-site-ui]').forEach(button => {
+    button.setAttribute('aria-checked', String(button.dataset.siteUi === current));
+  });
+}
+document.querySelectorAll('#siteUiPicker [data-site-ui]').forEach(button => {
+  button.onclick = run(async () => {
+    if (button.getAttribute('aria-checked') === 'true') return;
+    const result = await api('set_site_ui', { ui: button.dataset.siteUi });
+    showSiteUi(result.siteUi);
+    toast(`Website UI set to ${result.siteUi === 'classic' ? 'Classic' : 'Modern'}`, 'success');
   });
 });
 

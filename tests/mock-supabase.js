@@ -46,6 +46,7 @@ const events = {};
 orders.forEach(order => { events[order.id] = [{ id: 1, event_type: 'order.created', detail: 'Order placed', created_at: order.created_at }]; });
 let tickets = [{ id: uuid(90), order_id: uuid(4), subject: 'Can you add extra mayo?', status: 'open', created_at: iso(20), updated_at: iso(20), ticket_messages: [{ id: 1, author_role: 'customer', message: 'Please add extra mayonnaise and no onions.', created_at: iso(20) }] }];
 let siteTheme = (() => { try { return localStorage.getItem('mock_site_theme') || 'ivory'; } catch { return 'ivory'; } })();
+let siteUi = (() => { try { return localStorage.getItem('mock_site_ui') || 'modern'; } catch { return 'modern'; } })();
 let stockTag = (() => { try { return localStorage.getItem('mock_stock_tag') !== 'off'; } catch { return true; } })();
 let codEnabled = true, deliveryEnabled = (() => { try { return localStorage.getItem('mock_delivery') !== 'off'; } catch { return true; } })(), counter = 50;
 const listeners = new Set();
@@ -80,8 +81,9 @@ async function oms(body) {
   const r = role();
   const view = order => r === 'kitchen' ? kitchenRedact(withDriver(order)) : withDriver(order);
   switch (body.action) {
-    case 'config': return { role: signedIn() ? r : 'customer', codEnabled, deliveryEnabled, orderingMode: mockOrderingMode(), siteTheme, stockTag, payments: false, testMode: true, deliveryRouting: true };
+    case 'config': return { role: signedIn() ? r : 'customer', codEnabled, deliveryEnabled, orderingMode: mockOrderingMode(), siteTheme, siteUi, stockTag, payments: false, testMode: true, deliveryRouting: true };
     case 'set_cod': codEnabled = body.enabled; return { codEnabled };
+    case 'set_site_ui': siteUi = body.ui; try { localStorage.setItem('mock_site_ui', siteUi); } catch { /* ignore */ } return { siteUi };
     case 'set_stock_tag': stockTag = body.enabled; try { localStorage.setItem('mock_stock_tag', stockTag ? 'on' : 'off'); } catch { /* ignore */ } return { stockTag };
     case 'set_site_theme': siteTheme = body.theme; try { localStorage.setItem('mock_site_theme', siteTheme); } catch { /* ignore */ } return { siteTheme };
     case 'set_ordering_mode': try { localStorage.setItem('mock_ordering_mode', body.mode); } catch { /* ignore */ } return { orderingMode: body.mode };

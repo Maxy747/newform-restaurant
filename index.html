@@ -18,6 +18,11 @@
   <!-- Welcome splash: shown on every page load (including refreshes). Decided before first paint so
        the site never flashes first. Skipped only for deep links (#…) so shared section links land directly. -->
   <script>
+    // Admin switched the website to Classic (cached from the last visit): go to the frozen
+    // snapshot under classic/ before painting. app.js re-checks with the server. Not on dev servers.
+    try {
+      if (localStorage.getItem('newform_site_ui_v1') === 'classic' && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) location.replace('classic/' + location.hash);
+    } catch (error) { /* storage blocked */ }
     document.documentElement.classList.add(location.hash ? 'no-splash' : 'splash-open');
     // Paint in the website theme the admin picked (cached from the last visit) so there's no flash;
     // app.js confirms it against the server once the page loads.

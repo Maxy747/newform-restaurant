@@ -34,6 +34,17 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+      # Classic: the frozen pre-overhaul site (classic branch), served under /classic/ and picked
+      # by the admin in Settings → Website UI.
+      - uses: actions/checkout@v4
+        with:
+          ref: classic
+          path: classic-src
+      - run: npm ci && npx vite build --outDir ../dist/classic --emptyOutDir
+        working-directory: classic-src
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
       - uses: actions/configure-pages@v5
         with:
           enablement: true
