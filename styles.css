@@ -2841,3 +2841,20 @@ html.dish-sheet-open { overflow: hidden; padding-right: var(--scrollbar-gap, 0px
   :is(.portion-selector, .hero-portion-selector)::before { transition: none; }
   :is(.portion-selector, .hero-portion-selector).is-moving::before { scale: 1; }
 }
+
+/* Specials tab: always glows orange so it stands out, whether or not it's the selected tab. */
+.cat-tab[data-category="specials"] {
+  color: #e8620c;
+  background: rgba(255, 122, 26, .08);
+  border-color: rgba(255, 122, 26, .35);
+  box-shadow: 0 0 12px rgba(255, 122, 26, .35), inset 0 0 6px rgba(255, 160, 60, .15);
+  text-shadow: 0 0 10px rgba(255, 122, 26, .35);
+  animation: specials-glow 2.8s ease-in-out infinite;
+}
+.cat-tab[data-category="specials"]:hover,
+.cat-tab[data-category="specials"].active { color: #d9560a; border-color: rgba(255, 122, 26, .55); }
+@keyframes specials-glow {
+  50% { box-shadow: 0 0 18px rgba(255, 122, 26, .55), inset 0 0 8px rgba(255, 160, 60, .22); }
+}
+html:not([data-theme="light"]) .cat-tab[data-category="specials"] { color: #ff9a4d; }
+@media (prefers-reduced-motion: reduce) { .cat-tab[data-category="specials"] { animation: none; } }

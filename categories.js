@@ -2,7 +2,7 @@ import { escapeHTML } from './oms-policy.js';
 
 // Public category tabs. Categories are managed in the admin console (admin.html).
 export function createCategories({ client, onSelect }) {
-  let rows = [], selected = 'specials';
+  let rows = [], selected = 'all';
   let bar, bubble;
   function syncBubble() {
     const active = bar?.querySelector('.cat-tab.active');

@@ -161,7 +161,7 @@ const DEFAULT_MENU = [
 // App State Management
 let menuItems = [];
 let cart = [];
-let activeCategory = 'specials';
+let activeCategory = 'all';
 const selectSpecials = createSpecials();
 let featuredStorage;
 try { featuredStorage = window.localStorage; } catch {}
