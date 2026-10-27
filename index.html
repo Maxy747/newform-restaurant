@@ -110,14 +110,18 @@
   </template>
   <script>
     // Splash style the admin picked, cached from the last visit (app.js keeps the cache in step
-    // with the server).
+    // with the server). A first visit has no cache: rather than guess, hold a dark cover
+    // (`splash-deciding`) and let splash.js ask the server, then stamp the right one.
     (function () {
       var root = document.documentElement;
       if (!root.classList.contains('splash-open')) return;
-      var style = 'classic';
-      try { if (localStorage.getItem('newform_splash_style_v1') === 'modern' && document.getElementById('splashModern')) style = 'modern'; } catch (error) { /* storage blocked */ }
-      root.dataset.splashStyle = style;
-      document.currentScript.before(document.getElementById(style === 'modern' ? 'splashModern' : 'splashClassic').content.cloneNode(true));
+      var style = null;
+      try { style = localStorage.getItem('newform_splash_style_v1'); } catch (error) { /* storage blocked: ask the server every visit */ }
+      if (style !== 'classic' && style !== 'modern') root.classList.add('splash-deciding');
+      else {
+        root.dataset.splashStyle = style;
+        document.currentScript.before(document.getElementById(style === 'modern' ? 'splashModern' : 'splashClassic').content.cloneNode(true));
+      }
       // The splash hides the page's scrollbar; hold its width as padding so the page underneath is
       // laid out exactly as it will be once the scrollbar returns (no jump at the hand-off).
       var probe = document.createElement('div');

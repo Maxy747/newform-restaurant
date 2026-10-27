@@ -175,6 +175,8 @@ body {
 html { scroll-behavior: smooth; }
 /* Scrollbar width held while the welcome splash hides it (set by the splash chooser in index.html). */
 .splash-open body { padding-right: var(--splash-scrollbar, 0px); }
+/* First visit: dark cover while splash.js asks the server which splash style to show. */
+.splash-deciding body::after { content: ""; position: fixed; inset: 0; z-index: 10001; background: #0b0a09; }
 
 .compact-brand-logo { display: none; }
 
@@ -1595,6 +1597,13 @@ html { scroll-behavior: smooth; }
 }
 .mobile-cart-cta:not([hidden]):hover { filter: brightness(1.08); transform: translateY(-1px); }
 .mobile-cart-cta { transition: padding .3s ease, gap .3s ease; }
+/* Kept out of sight while the welcome splash is up (it would show through the Modern fade and jump
+   when the scrollbar returns), then it glides in once the page is handed over, or whenever the
+   cart gets its first item. `backwards` only, so hover can still lift it afterwards. */
+.splash-open .mobile-cart-cta { visibility: hidden; }
+html:not(.splash-open) .mobile-cart-cta:not([hidden]) { animation: cart-cta-in .55s .15s cubic-bezier(.2, .8, .2, 1) backwards; }
+@keyframes cart-cta-in { from { opacity: 0; transform: translateY(18px) scale(.92); } }
+@media (prefers-reduced-motion: reduce) { html:not(.splash-open) .mobile-cart-cta:not([hidden]) { animation: none; } }
 .mobile-cart-cta .cta-label { max-width: 120px; overflow: hidden; white-space: nowrap; transition: max-width .3s ease, opacity .2s ease; }
 .mobile-cart-cta.is-compact:not(:hover):not(:focus-visible) { gap: 0; padding: 0; width: 50px; height: 50px; justify-content: center; font-size: 1rem; }
 .mobile-cart-cta.is-compact:not(:hover):not(:focus-visible) .cta-label { max-width: 0; opacity: 0; }
