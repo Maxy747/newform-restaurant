@@ -634,7 +634,9 @@ function selectSheetPortion(portion) {
   const item = menuItems.find(menuItem => menuItem.id === dishSheetId);
   if (!body || !item?.prices) return;
   window.selectPortion(item.id, portion);
-  body.querySelector('.portion-selector').style.setProperty('--portion-offset', portionOffset(portion));
+  const selector = body.querySelector('.portion-selector');
+  selector.style.setProperty('--portion-offset', portionOffset(portion));
+  stretchPill(selector);
   body.querySelectorAll('.portion-btn').forEach(button => {
     const active = button.dataset.sheetPortion === portion;
     button.classList.toggle('active', active);
@@ -975,7 +977,9 @@ window.selectPortion = function(itemId, portion) {
   const card = document.getElementById(`card-${itemId}`);
   const item = menuItems.find(menuItem => menuItem.id === itemId);
   if (!card || !item?.prices) return;
-  card.querySelector('.portion-selector').style.setProperty('--portion-offset', portion === 'quarter' ? '0px' : portion === 'half' ? 'calc(100% + 4px)' : 'calc(200% + 8px)');
+  const selector = card.querySelector('.portion-selector');
+  selector.style.setProperty('--portion-offset', portionOffset(portion));
+  stretchPill(selector);
   card.querySelectorAll('.portion-btn').forEach(button => button.classList.toggle('active', button.textContent.toLowerCase().startsWith(portion === 'quarter' ? 'qtr' : portion)));
   animatePrice(card.querySelector('.price-amount'), item.prices[portion]);
 };
@@ -1502,12 +1506,17 @@ function placeGlassIndicator(nav, animate) {
   indicator.style.opacity = '1';
   // No glide on the very first placement; transitions switch on afterwards.
   if (first) { requestAnimationFrame(() => indicator.classList.add('is-ready')); return; }
-  if (!animate || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  indicator.classList.remove('is-moving');
-  void indicator.offsetWidth; // restart the stretch
-  indicator.classList.add('is-moving');
-  clearTimeout(indicator._stretchTimer);
-  indicator._stretchTimer = setTimeout(() => indicator.classList.remove('is-moving'), 320);
+  if (animate) stretchPill(indicator);
+}
+
+// The liquid squash-and-stretch shared by the nav bubble and the portion pills (CSS: .is-moving).
+function stretchPill(element) {
+  if (!element || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  element.classList.remove('is-moving');
+  void element.offsetWidth; // restart the stretch
+  element.classList.add('is-moving');
+  clearTimeout(element._stretchTimer);
+  element._stretchTimer = setTimeout(() => element.classList.remove('is-moving'), 320);
 }
 
 // "Open now" line in Contact, from the 11 am – 11 pm daily hours in India time.
@@ -1642,7 +1651,9 @@ function updateFeaturedDish() {
   if (!priceElement || !selector || !button) return;
   selector.hidden = !item || item.portionType !== 'multi';
   selector.style.display = selector.hidden ? 'none' : '';
-  selector.style.setProperty('--hero-portion-offset', portion === 'quarter' ? '0%' : portion === 'half' ? '100%' : '200%');
+  const heroOffset = portion === 'quarter' ? '0%' : portion === 'half' ? '100%' : '200%';
+  if (selector.style.getPropertyValue('--hero-portion-offset') !== heroOffset) stretchPill(selector);
+  selector.style.setProperty('--hero-portion-offset', heroOffset);
   selector.setAttribute('aria-label', `Choose ${item?.name || 'featured dish'} portion`);
   selector.querySelectorAll('button').forEach(el => {
     el.classList.toggle('active', el.dataset.heroPortion === portion);
