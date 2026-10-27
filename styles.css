@@ -2690,7 +2690,8 @@ html.dish-sheet-open { overflow: hidden; padding-right: var(--scrollbar-gap, 0px
 @keyframes dish-sheet-in { from { transform: translate3d(0, 100%, 0); } }
 @keyframes dish-backdrop-in { from { opacity: 0; } }
 @keyframes dish-backdrop-out { to { opacity: 0; } }
-.dish-sheet-body { overflow-y: auto; overscroll-behavior: contain; padding-bottom: env(safe-area-inset-bottom); }
+/* overflow-x hidden: the portion bubble's stretch at the track ends must never add a sideways scrollbar. */
+.dish-sheet-body { overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; padding-bottom: env(safe-area-inset-bottom); }
 .dish-sheet-media { position: relative; height: var(--dish-media-h); background: var(--card-img-bg); }
 .dish-sheet-media img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .dish-sheet-grab { position: absolute; inset: 0 0 auto; z-index: 2; height: var(--dish-media-h); touch-action: none; }
@@ -2746,19 +2747,42 @@ html.dish-sheet-open { overflow: hidden; padding-right: var(--scrollbar-gap, 0px
   :is(.portion-selector, .hero-portion-selector).is-moving::before { scale: 1; }
 }
 
-/* Specials tab: always glows orange so it stands out, whether or not it's the selected tab. */
-.cat-tab[data-category="specials"] {
-  color: #e8620c;
-  background: rgba(255, 122, 26, .08);
-  border-color: rgba(255, 122, 26, .35);
-  box-shadow: 0 0 12px rgba(255, 122, 26, .35), inset 0 0 6px rgba(255, 160, 60, .15);
-  text-shadow: 0 0 10px rgba(255, 122, 26, .35);
-  animation: specials-glow 2.8s ease-in-out infinite;
+/* Specials tab: the Explore Menu button's look in tab size (brand orange, dark text, breathing
+   glow and a periodic shine; keyframes order-glow/order-shine). Always on, selected or not.
+   The tab row gets a little room around it so the scroller doesn't cut the glow off. */
+.category-scroll { padding: 7px 8px 9px; }
+.cat-tab[data-category="specials"],
+.cat-tab[data-category="specials"]:hover {
+  isolation: isolate;
+  color: #1a0f00;
+  background: linear-gradient(120deg, #ffb340 0%, #ff8a00 55%, #ff6b00 100%);
+  border-color: transparent;
+  box-shadow: 0 3px 10px rgba(255, 122, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .45);
 }
-.cat-tab[data-category="specials"]:hover,
-.cat-tab[data-category="specials"].active { color: #d9560a; border-color: rgba(255, 122, 26, .55); }
-@keyframes specials-glow {
-  50% { box-shadow: 0 0 18px rgba(255, 122, 26, .55), inset 0 0 8px rgba(255, 160, 60, .22); }
+.cat-tab[data-category="specials"]::before {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  z-index: -1;
+  border-radius: inherit;
+  background: radial-gradient(closest-side, rgba(255, 138, 0, .75), rgba(255, 107, 0, 0));
+  filter: blur(6px);
+  pointer-events: none;
+  animation: order-glow 2.6s ease-in-out infinite;
 }
-html:not([data-theme="light"]) .cat-tab[data-category="specials"] { color: #ff9a4d; }
-@media (prefers-reduced-motion: reduce) { .cat-tab[data-category="specials"] { animation: none; } }
+.cat-tab[data-category="specials"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, .55) 50%, transparent 65%) no-repeat;
+  background-size: 250% 100%;
+  background-position: 150% 0;
+  pointer-events: none;
+  animation: order-shine 4.5s ease-in-out infinite 1s;
+}
+.cat-tab[data-category="specials"].active { box-shadow: 0 0 0 2px var(--bg-surface), 0 0 0 3.5px #ff8a00, 0 3px 12px rgba(255, 122, 0, .45); }
+@media (prefers-reduced-motion: reduce) {
+  .cat-tab[data-category="specials"]::before { animation: none; opacity: .75; }
+  .cat-tab[data-category="specials"]::after { animation: none; display: none; }
+}

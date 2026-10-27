@@ -645,7 +645,8 @@ function dishSheetAction(item, portion) {
 function selectSheetPortion(portion) {
   const body = document.getElementById('dishSheetBody');
   const item = menuItems.find(menuItem => menuItem.id === dishSheetId);
-  if (!body || !item?.prices) return;
+  // Tapping the size that's already picked does nothing (no stretch, no price roll).
+  if (!body || !item?.prices || (selectedPortions[item.id] || 'quarter') === portion) return;
   window.selectPortion(item.id, portion);
   const selector = body.querySelector('.portion-selector');
   selector.style.setProperty('--portion-offset', portionOffset(portion));
@@ -987,6 +988,7 @@ function animatePrice(element, nextPrice, { hero = false } = {}) {
 }
 
 window.selectPortion = function(itemId, portion) {
+  const changed = (selectedPortions[itemId] || 'quarter') !== portion;
   selectedPortions[itemId] = portion;
   updateFeaturedDish();
   const card = document.getElementById(`card-${itemId}`);
@@ -994,7 +996,7 @@ window.selectPortion = function(itemId, portion) {
   if (!card || !item?.prices) return;
   const selector = card.querySelector('.portion-selector');
   selector.style.setProperty('--portion-offset', portionOffset(portion));
-  stretchPill(selector);
+  if (changed) stretchPill(selector);
   card.querySelectorAll('.portion-btn').forEach(button => button.classList.toggle('active', button.textContent.toLowerCase().startsWith(portion === 'quarter' ? 'qtr' : portion)));
   animatePrice(card.querySelector('.price-amount'), item.prices[portion]);
 };
