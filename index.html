@@ -118,6 +118,13 @@
       try { if (localStorage.getItem('newform_splash_style_v1') === 'modern' && document.getElementById('splashModern')) style = 'modern'; } catch (error) { /* storage blocked */ }
       root.dataset.splashStyle = style;
       document.currentScript.before(document.getElementById(style === 'modern' ? 'splashModern' : 'splashClassic').content.cloneNode(true));
+      // The splash hides the page's scrollbar; hold its width as padding so the page underneath is
+      // laid out exactly as it will be once the scrollbar returns (no jump at the hand-off).
+      var probe = document.createElement('div');
+      probe.style.cssText = 'position:absolute;top:-99px;width:50px;height:50px;overflow:scroll';
+      document.body.appendChild(probe);
+      root.style.setProperty('--splash-scrollbar', (probe.offsetWidth - probe.clientWidth) + 'px');
+      probe.remove();
     })();
   </script>
 

@@ -173,6 +173,8 @@ body {
 }
 
 html { scroll-behavior: smooth; }
+/* Scrollbar width held while the welcome splash hides it (set by the splash chooser in index.html). */
+.splash-open body { padding-right: var(--splash-scrollbar, 0px); }
 
 .compact-brand-logo { display: none; }
 
