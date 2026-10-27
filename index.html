@@ -43,7 +43,7 @@
     try {
       if (localStorage.getItem('newform_site_pages_v1') === 'multi') {
         document.documentElement.classList.add('pages-multi');
-        document.documentElement.dataset.currentPage = { '#menuSection': 'menu', '#placeBand': 'gallery', '#gallerySection': 'gallery', '#aboutSection': 'about', '#contactSection': 'contact' }[location.hash] || 'home';
+        document.documentElement.dataset.currentPage = { '#menuSection': 'menu', '#placeBand': 'about', '#gallerySection': 'about', '#aboutSection': 'about', '#contactSection': 'contact' }[location.hash] || 'home';
       }
     } catch (error) { /* storage blocked: single page until the server answers */ }
   </script>
@@ -153,8 +153,7 @@
         <span class="glass-indicator" aria-hidden="true"></span>
         <a href="#" class="nav-link active" data-spy="home">HOME</a>
         <a href="#menuSection" class="nav-link" data-spy="menu">MENU</a>
-        <a href="#gallerySection" class="nav-link" data-spy="gallery">GALLERY</a>
-        <a href="#aboutSection" class="nav-link" data-spy="about">ABOUT</a>
+        <a href="#placeBand" class="nav-link" data-spy="about">ABOUT</a>
         <a href="#contactSection" class="nav-link" data-spy="contact">CONTACT</a>
       </nav>
 
@@ -292,9 +291,9 @@
   </main>
 
   <!-- Our place: full-width photo band with a gentle parallax -->
-  <section class="place-band" id="placeBand" aria-labelledby="placeTitle" data-page="gallery">
+  <section class="place-band" id="placeBand" aria-labelledby="placeTitle" data-page="about">
     <div class="place-media" aria-hidden="true">
-      <img src="/gallery/exterior-front-dusk-800.webp" srcset="/gallery/exterior-front-dusk-800.webp 800w, /gallery/exterior-front-dusk-full.webp 1536w" sizes="100vw" alt="" width="1536" height="1024" loading="lazy" decoding="async">
+      <img class="place-slide is-active" src="/gallery/exterior-front-dusk-800.webp" srcset="/gallery/exterior-front-dusk-800.webp 800w, /gallery/exterior-front-dusk-full.webp 1536w" sizes="100vw" alt="" width="1536" height="1024" loading="lazy" decoding="async">
     </div>
     <div class="place-shade" aria-hidden="true"></div>
     <div class="place-copy">
@@ -302,40 +301,6 @@
       <h2 id="placeTitle" class="reveal" style="--i:1">On Main Road, Kalpetta</h2>
       <p class="reveal" style="--i:2">A bright dining hall, an open-air terrace among the palms and easy parking out front. Come hungry, stay a while.</p>
       <a href="#gallerySection" class="place-link reveal" style="--i:3">See the gallery <i class="fa-solid fa-arrow-down" aria-hidden="true"></i></a>
-    </div>
-  </section>
-
-  <!-- Gallery -->
-  <section id="gallerySection" class="site-section gallery-section" aria-labelledby="galleryTitle" data-page="gallery">
-    <div class="section-wrap">
-      <span class="section-kicker reveal">GALLERY</span>
-      <h2 id="galleryTitle" class="section-title reveal" style="--i:1">Take a look around</h2>
-      <div class="gallery-grid">
-        <button type="button" class="gallery-item g-a" data-index="0" style="--i:0" aria-label="Open photo: Newform at dusk, from above">
-          <img src="/gallery/exterior-aerial-dusk-800.webp" srcset="/gallery/exterior-aerial-dusk-800.webp 800w, /gallery/exterior-aerial-dusk-full.webp 1536w" sizes="(max-width: 900px) 50vw, 33vw" alt="Newform at dusk, from above" width="1536" height="1024" loading="lazy" decoding="async">
-          <span class="gallery-caption">Newform at dusk, from above</span>
-        </button>
-        <button type="button" class="gallery-item g-b" data-index="1" style="--i:1" aria-label="Open photo: The front entrance">
-          <img src="/gallery/exterior-front-day-800.webp" srcset="/gallery/exterior-front-day-800.webp 800w, /gallery/exterior-front-day-full.webp 1536w" sizes="(max-width: 900px) 50vw, 33vw" alt="The front entrance" width="1536" height="1024" loading="lazy" decoding="async">
-          <span class="gallery-caption">The front entrance</span>
-        </button>
-        <button type="button" class="gallery-item g-c" data-index="2" style="--i:2" aria-label="Open photo: The terrace dining hall">
-          <img src="/gallery/dining-terrace-800.webp" srcset="/gallery/dining-terrace-800.webp 800w, /gallery/dining-terrace-full.webp 1536w" sizes="(max-width: 900px) 50vw, 33vw" alt="The terrace dining hall" width="1600" height="900" loading="lazy" decoding="async">
-          <span class="gallery-caption">The terrace dining hall</span>
-        </button>
-        <button type="button" class="gallery-item g-d" data-index="3" style="--i:3" aria-label="Open photo: Lights on at sunset">
-          <img src="/gallery/exterior-front-dusk-800.webp" srcset="/gallery/exterior-front-dusk-800.webp 800w, /gallery/exterior-front-dusk-full.webp 1536w" sizes="(max-width: 900px) 50vw, 33vw" alt="Lights on at sunset" width="1536" height="1024" loading="lazy" decoding="async">
-          <span class="gallery-caption">Lights on at sunset</span>
-        </button>
-        <button type="button" class="gallery-item g-e" data-index="4" style="--i:4" aria-label="Open photo: Tables beside the greenery">
-          <img src="/gallery/dining-terrace-garden-800.webp" srcset="/gallery/dining-terrace-garden-800.webp 800w, /gallery/dining-terrace-garden-full.webp 1536w" sizes="(max-width: 900px) 50vw, 33vw" alt="Tables beside the greenery" width="1536" height="1024" loading="lazy" decoding="async">
-          <span class="gallery-caption">Tables beside the greenery</span>
-        </button>
-        <button type="button" class="gallery-item g-f" data-index="5" style="--i:5" aria-label="Open photo: On Main Road, Kalpetta">
-          <img src="/gallery/exterior-street-dusk-800.webp" srcset="/gallery/exterior-street-dusk-800.webp 800w, /gallery/exterior-street-dusk-full.webp 1536w" sizes="(max-width: 900px) 50vw, 33vw" alt="On Main Road, Kalpetta" width="1600" height="900" loading="lazy" decoding="async">
-          <span class="gallery-caption">On Main Road, Kalpetta</span>
-        </button>
-      </div>
     </div>
   </section>
 
@@ -366,6 +331,40 @@
           <div class="info-icon"><i class="fa-solid fa-phone"></i></div>
           <div class="info-text"><h3>HOTLINE ORDERS</h3><p>Call 7593 881 112 / 7593 881 113.</p></div>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Gallery -->
+  <section id="gallerySection" class="site-section gallery-section" aria-labelledby="galleryTitle" data-page="about">
+    <div class="section-wrap">
+      <span class="section-kicker reveal">GALLERY</span>
+      <h2 id="galleryTitle" class="section-title reveal" style="--i:1">Take a look around</h2>
+      <div class="gallery-grid">
+        <button type="button" class="gallery-item g-a" data-index="0" style="--i:0" aria-label="Open photo: Newform at dusk, from above">
+          <img src="/gallery/exterior-aerial-dusk-800.webp" srcset="/gallery/exterior-aerial-dusk-800.webp 800w, /gallery/exterior-aerial-dusk-full.webp 1536w" sizes="(max-width: 900px) 50vw, 33vw" alt="Newform at dusk, from above" width="1536" height="1024" loading="lazy" decoding="async">
+          <span class="gallery-caption">Newform at dusk, from above</span>
+        </button>
+        <button type="button" class="gallery-item g-b" data-index="1" style="--i:1" aria-label="Open photo: The front entrance">
+          <img src="/gallery/exterior-front-day-800.webp" srcset="/gallery/exterior-front-day-800.webp 800w, /gallery/exterior-front-day-full.webp 1536w" sizes="(max-width: 900px) 50vw, 33vw" alt="The front entrance" width="1536" height="1024" loading="lazy" decoding="async">
+          <span class="gallery-caption">The front entrance</span>
+        </button>
+        <button type="button" class="gallery-item g-c" data-index="2" style="--i:2" aria-label="Open photo: The terrace dining hall">
+          <img src="/gallery/dining-terrace-800.webp" srcset="/gallery/dining-terrace-800.webp 800w, /gallery/dining-terrace-full.webp 1536w" sizes="(max-width: 900px) 50vw, 33vw" alt="The terrace dining hall" width="1600" height="900" loading="lazy" decoding="async">
+          <span class="gallery-caption">The terrace dining hall</span>
+        </button>
+        <button type="button" class="gallery-item g-d" data-index="3" style="--i:3" aria-label="Open photo: Lights on at sunset">
+          <img src="/gallery/exterior-front-dusk-800.webp" srcset="/gallery/exterior-front-dusk-800.webp 800w, /gallery/exterior-front-dusk-full.webp 1536w" sizes="(max-width: 900px) 50vw, 33vw" alt="Lights on at sunset" width="1536" height="1024" loading="lazy" decoding="async">
+          <span class="gallery-caption">Lights on at sunset</span>
+        </button>
+        <button type="button" class="gallery-item g-e" data-index="4" style="--i:4" aria-label="Open photo: Tables beside the greenery">
+          <img src="/gallery/dining-terrace-garden-800.webp" srcset="/gallery/dining-terrace-garden-800.webp 800w, /gallery/dining-terrace-garden-full.webp 1536w" sizes="(max-width: 900px) 50vw, 33vw" alt="Tables beside the greenery" width="1536" height="1024" loading="lazy" decoding="async">
+          <span class="gallery-caption">Tables beside the greenery</span>
+        </button>
+        <button type="button" class="gallery-item g-f" data-index="5" style="--i:5" aria-label="Open photo: On Main Road, Kalpetta">
+          <img src="/gallery/exterior-street-dusk-800.webp" srcset="/gallery/exterior-street-dusk-800.webp 800w, /gallery/exterior-street-dusk-full.webp 1536w" sizes="(max-width: 900px) 50vw, 33vw" alt="On Main Road, Kalpetta" width="1600" height="900" loading="lazy" decoding="async">
+          <span class="gallery-caption">On Main Road, Kalpetta</span>
+        </button>
       </div>
     </div>
   </section>
@@ -537,8 +536,8 @@
       <i class="fa-solid fa-utensils"></i>
       <span>Menu</span>
     </a>
-    <a href="#gallerySection" class="nav-item" data-spy="gallery">
-      <i class="fa-regular fa-images"></i><span>Gallery</span>
+    <a href="#placeBand" class="nav-item" data-spy="about">
+      <i class="fa-solid fa-circle-info"></i><span>About</span>
     </a>
     <a href="#contactSection" class="nav-item" data-spy="contact" aria-label="Contact restaurant">
       <i class="fa-solid fa-phone"></i><span>Contact</span>

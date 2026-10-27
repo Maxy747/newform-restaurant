@@ -549,6 +549,7 @@ function setupEventListeners() {
   setupSectionNav();
   setupPages();
   setupScrollReveal();
+  setupPlaceSlideshow();
   setupPlaceParallax();
   setupGallery();
   updateOpenStatus();
@@ -582,8 +583,8 @@ function syncSiteUi(ui) {
 // 'multi' shows one page per nav tab (data-page in index.html) and cross-fades between them while
 // the header, phone bar and cart stay. Cached so the inline <head> script picks the page before paint.
 const SITE_PAGES_CACHE_KEY = 'newform_site_pages_v1';
-const PAGE_FOR_HASH = { '': 'home', '#': 'home', '#menuSection': 'menu', '#placeBand': 'gallery', '#gallerySection': 'gallery', '#aboutSection': 'about', '#contactSection': 'contact' };
-const HASH_FOR_PAGE = { home: '', menu: '#menuSection', gallery: '#gallerySection', about: '#aboutSection', contact: '#contactSection' };
+const PAGE_FOR_HASH = { '': 'home', '#': 'home', '#menuSection': 'menu', '#placeBand': 'about', '#aboutSection': 'about', '#gallerySection': 'about', '#contactSection': 'contact' };
+const HASH_FOR_PAGE = { home: '', menu: '#menuSection', about: '#placeBand', contact: '#contactSection' };
 const PAGE_FADE_MS = 260;
 const isMultiPage = () => document.documentElement.classList.contains('pages-multi');
 const currentPage = () => document.documentElement.dataset.currentPage || 'home';
@@ -601,10 +602,17 @@ function syncSitePages(mode) {
 
 let pageSwitch = null;
 let setSpyActive = () => {}; // set by setupSectionNav: moves the nav highlight
-async function goToPage(page, { push = true } = {}) {
+// Where a link lands inside its page: the page top, or a later section such as the gallery.
+function pageAnchorY(hash) {
+  const target = hash && hash !== HASH_FOR_PAGE[PAGE_FOR_HASH[hash]] ? document.querySelector(hash) : null;
+  if (!target) return 0;
+  return Math.max(0, target.getBoundingClientRect().top + window.scrollY - (document.querySelector('.header')?.offsetHeight || 0) - 12);
+}
+
+async function goToPage(page, { push = true, hash = HASH_FOR_PAGE[page] } = {}) {
   const root = document.documentElement;
-  if (page === currentPage()) return smoothScrollTo(0);
-  if (push) history.pushState(null, '', `${location.pathname}${location.search}${HASH_FOR_PAGE[page]}`);
+  if (page === currentPage()) return smoothScrollTo(pageAnchorY(hash));
+  if (push) history.pushState(null, '', `${location.pathname}${location.search}${hash}`);
   setSpyActive(page); // the nav bubble glides over while the old page fades out
   const token = pageSwitch = {};
   if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -615,7 +623,7 @@ async function goToPage(page, { push = true } = {}) {
   root.classList.remove('page-leaving');
   root.classList.add('page-entering');
   root.dataset.currentPage = page;
-  window.scrollTo({ top: 0, behavior: 'instant' });
+  window.scrollTo({ top: pageAnchorY(hash), behavior: 'instant' });
   window.dispatchEvent(new Event('scroll'));
   // Two frames so the hidden state paints first and the fade-in runs; the timer covers paused frames.
   const reveal = () => { if (pageSwitch === token) root.classList.remove('page-entering'); };
@@ -629,14 +637,15 @@ function setupPages() {
   document.addEventListener('click', event => {
     if (!isMultiPage() || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey) return;
     const link = event.target.closest?.('a[href^="#"]');
-    const page = link && PAGE_FOR_HASH[link.getAttribute('href')];
+    const hash = link?.getAttribute('href');
+    const page = link && PAGE_FOR_HASH[hash];
     if (!page) return;
     event.preventDefault();
     event.stopPropagation();
-    goToPage(page);
+    goToPage(page, { hash: hash === '#' ? '' : hash });
   }, true);
   window.addEventListener('popstate', () => {
-    if (isMultiPage()) goToPage(PAGE_FOR_HASH[location.hash] || 'home', { push: false });
+    if (isMultiPage()) goToPage(PAGE_FOR_HASH[location.hash] || 'home', { push: false, hash: location.hash });
   });
 }
 
@@ -1368,12 +1377,12 @@ function setupMenuReveal() {
 // top nav + phone bar highlight whichever part of the page is on screen.
 function setupSectionNav() {
   const header = document.querySelector('.header');
+  // About covers the "Our place" band, the about text and the photo gallery.
   const sections = {
-    gallery: document.getElementById('gallerySection'),
-    about: document.getElementById('aboutSection'),
+    about: document.getElementById('placeBand'),
     contact: document.getElementById('contactSection'),
   };
-  document.querySelectorAll('a[href="#gallerySection"], a[href="#aboutSection"], a[href="#contactSection"]').forEach(link => {
+  document.querySelectorAll('a[href="#placeBand"], a[href="#gallerySection"], a[href="#aboutSection"], a[href="#contactSection"]').forEach(link => {
     link.addEventListener('click', event => {
       const section = document.querySelector(link.getAttribute('href'));
       if (!section) return;
@@ -1405,7 +1414,6 @@ function setupSectionNav() {
     if (isMultiPage()) key = currentPage();
     else {
       if (menu && menu.getBoundingClientRect().top <= line) key = 'menu';
-      if (sections.gallery && sections.gallery.getBoundingClientRect().top <= line) key = 'gallery';
       if (sections.about && sections.about.getBoundingClientRect().top <= line) key = 'about';
       if ((sections.contact && sections.contact.getBoundingClientRect().top <= line) || atBottom) key = 'contact';
     }
@@ -1463,7 +1471,7 @@ function observeReveal(elements) {
 // band is on screen, moves a single transform, and is skipped for reduced motion.
 function setupPlaceParallax() {
   const band = document.getElementById('placeBand');
-  const image = band?.querySelector('.place-media img');
+  const image = band?.querySelector('.place-media'); // moves the whole slideshow
   if (!band || !image || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   let visible = false;
   let queued = false;
@@ -1472,7 +1480,7 @@ function setupPlaceParallax() {
     const box = band.getBoundingClientRect();
     // -1 when the band enters at the bottom, +1 when it leaves at the top.
     const progress = Math.max(-1, Math.min(1, (window.innerHeight / 2 - (box.top + box.height / 2)) / (window.innerHeight / 2 + box.height / 2)));
-    image.style.transform = `translate3d(0, ${(progress * 9).toFixed(2)}%, 0) scale(1.18)`;
+    image.style.transform = `translate3d(0, ${(progress * 9).toFixed(2)}%, 0)`;
   };
   const onScroll = () => {
     if (!visible || queued) return;
@@ -1482,6 +1490,49 @@ function setupPlaceParallax() {
   new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; if (visible) onScroll(); }).observe(band);
   window.addEventListener('scroll', onScroll, { passive: true });
   window.addEventListener('resize', onScroll, { passive: true });
+}
+
+// "Our place" band slideshow: cross-fades through the gallery photos (the bundled ones first,
+// then the admin's once they load), with a slow zoom on each. Runs only while the band is on
+// screen and the tab is visible; never moves on to a photo that hasn't loaded yet.
+const PLACE_SLIDE_MS = 5500;
+let refreshPlaceSlides = () => {};
+function setupPlaceSlideshow() {
+  const band = document.getElementById('placeBand');
+  const media = band?.querySelector('.place-media');
+  if (!band || !media) return;
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let index = 0, timer = 0, visible = false;
+  const slides = () => [...media.querySelectorAll('.place-slide')];
+  // Hidden slides are lazy and browsers won't fetch an invisible lazy image, so fetch the
+  // upcoming one explicitly a slide ahead.
+  const preload = offset => { const list = slides(); const slide = list[(index + offset) % list.length]; if (slide) slide.loading = 'eager'; };
+  const advance = () => {
+    const list = slides();
+    const next = list[(index + 1) % list.length];
+    if (list.length < 2) return;
+    if (!next.complete || !next.naturalWidth) return preload(1);
+    list[index].classList.remove('is-active');
+    index = (index + 1) % list.length;
+    next.classList.add('is-active');
+    preload(1);
+  };
+  const sync = () => {
+    const run = visible && !document.hidden && !reduced && slides().length > 1;
+    if (run) preload(1);
+    if (run && !timer) timer = setInterval(advance, PLACE_SLIDE_MS);
+    if (!run && timer) { clearInterval(timer); timer = 0; }
+  };
+  refreshPlaceSlides = () => {
+    const photos = [...document.querySelectorAll('.gallery-grid .gallery-item img')];
+    if (photos.length < 2) return;
+    media.innerHTML = photos.map((photo, i) => `<img class="place-slide${i === 0 ? ' is-active' : ''}" src="${escapeHTML(photo.getAttribute('src'))}" srcset="${escapeHTML(photo.getAttribute('srcset') || '')}" sizes="100vw" alt="" decoding="async"${i === 0 ? '' : ' loading="lazy"'}>`).join('');
+    index = 0;
+    sync();
+  };
+  refreshPlaceSlides();
+  new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; sync(); }).observe(band);
+  document.addEventListener('visibilitychange', sync);
 }
 
 // Gallery: photos come from the gallery_photos table (admins manage them in Settings); the
@@ -1575,6 +1626,7 @@ async function loadGalleryPhotos(grid) {
         </button>`;
   }).join('');
   observeReveal(grid.querySelectorAll('.gallery-item'));
+  refreshPlaceSlides();
 }
 
 // Liquid-glass nav: one bubble sits under the active item and glides (with a brief
