@@ -2732,11 +2732,15 @@ html.hide-stock-tag .card-stock-tag { display: none; }
 .card-meta .card-badge { max-width: 100%; overflow: hidden; padding: 3px 8px; font-size: .56rem; letter-spacing: .4px; text-overflow: ellipsis; white-space: nowrap; }
 #foodGrid .food-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; min-height: 2.5em; margin-bottom: 8px; font-size: 1.05rem; line-height: 1.25; overflow-wrap: anywhere; }
 #foodGrid .food-desc, #foodGrid .portion-selector { display: none; }
-#foodGrid .card-footer { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 8px; margin-top: auto; padding-top: 0; border-top: 0; }
+/* Every tile keeps a row for "Customisable" above ADD (empty when the dish has no portions),
+   so prices and ADD buttons line up across the grid. */
+#foodGrid .card-footer { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: 15px auto; grid-template-areas: ". note" "price action"; align-items: center; gap: 3px 8px; margin-top: auto; padding-top: 0; border-top: 0; }
+#foodGrid .card-footer .price-display { grid-area: price; }
+#foodGrid .card-footer :is(.add-cart-btn, .card-qty-control) { grid-area: action; }
 #foodGrid .price-amount { font-size: 1.1rem; line-height: 1.2; color: var(--text-main); }
 /* The closed-shop banner above the grid already explains it; don't repeat it on every card. */
 #foodGrid .food-card.is-closed :is(.add-cart-closed, .card-customisable) { display: none; }
-#foodGrid .add-cart-btn:disabled { width: auto; min-height: 30px; padding: 4px 8px; font-size: .6rem; }
+#foodGrid .add-cart-btn:disabled { width: auto; min-height: 36px; padding: 4px 8px; font-size: .6rem; }
 #foodGrid .card-stock-tag { left: 8px; bottom: 8px; }
 @media (max-width: 768px) {
   #foodGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 14px; }
@@ -2756,7 +2760,7 @@ html.hide-stock-tag .card-stock-tag { display: none; }
 #foodGrid .card-qty-control button { width: 28px; height: 28px; }
 .dish-sheet .card-meta :is(.diet-icon, .card-badge) { position: static; }
 .card-customisable { justify-self: center; font-size: .64rem; color: var(--text-muted); }
-#foodGrid .card-customisable { grid-column: 2; }
+#foodGrid .card-customisable { grid-area: note; align-self: end; line-height: 1; }
 
 /* ---------- Dish details bottom sheet ---------- */
 html.dish-sheet-open { overflow: hidden; }
@@ -2790,6 +2794,7 @@ html.dish-sheet-open { overflow: hidden; }
 .dish-sheet-title h3 { margin: 6px 0 4px; font-family: var(--font-heading); font-size: 1.3rem; line-height: 1.25; color: var(--text-title); }
 .dish-sheet-price { margin: 0; font-family: var(--font-heading); font-size: 1.1rem; font-weight: 800; color: var(--text-main); }
 .dish-sheet-action { flex: none; display: grid; justify-items: center; gap: 5px; width: 112px; padding-top: 4px; }
+.dish-sheet-action .card-customisable { order: -1; }
 .dish-sheet-action .add-cart-btn, .dish-sheet-action .card-qty-control { width: 100%; min-height: 44px; }
 .dish-sheet-action .card-qty-control button { width: 34px; height: 34px; }
 .dish-sheet-action .add-cart-btn:disabled { padding: 8px; font-size: .68rem; }
