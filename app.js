@@ -610,6 +610,40 @@ function dishMeta(item) {
 
 let dishSheetId = null;
 
+function portionOffset(portion) {
+  return portion === 'quarter' ? '0px' : portion === 'half' ? 'calc(100% + 4px)' : 'calc(200% + 8px)';
+}
+
+function dishSheetAction(item, portion) {
+  const shop = ordering.getShop();
+  const name = escapeHTML(item.name);
+  const cartEntry = cart.find(entry => entry.cartId === `${item.id}_${portion}`);
+  if (item.available === false) return '<button class="add-cart-btn" disabled>OUT OF STOCK</button>';
+  if (!shop.open) return `<button class="add-cart-btn add-cart-closed" disabled>${escapeHTML(shop.button)}</button>`;
+  if (!cartEntry) return '<button type="button" class="add-cart-btn" data-sheet-add>ADD</button>';
+  return `<div class="card-qty-control" aria-label="Quantity for ${name}">
+    <button type="button" data-sheet-qty="-1" aria-label="Remove one ${name}">−</button>
+    <span>${cartEntry.quantity}</span>
+    <button type="button" data-sheet-qty="1" aria-label="Add one ${name}">+</button>
+  </div>`;
+}
+
+// Portion taps update the sheet in place so the selector slides and the price rolls, as on the cards.
+function selectSheetPortion(portion) {
+  const body = document.getElementById('dishSheetBody');
+  const item = menuItems.find(menuItem => menuItem.id === dishSheetId);
+  if (!body || !item?.prices) return;
+  window.selectPortion(item.id, portion);
+  body.querySelector('.portion-selector').style.setProperty('--portion-offset', portionOffset(portion));
+  body.querySelectorAll('.portion-btn').forEach(button => {
+    const active = button.dataset.sheetPortion === portion;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+  });
+  animatePrice(body.querySelector('.dish-sheet-price'), item.prices[portion]);
+  body.querySelector('.dish-sheet-cart').innerHTML = dishSheetAction(item, portion);
+}
+
 function renderDishSheet() {
   const sheet = document.getElementById('dishSheet');
   const body = document.getElementById('dishSheetBody');
@@ -619,19 +653,10 @@ function renderDishSheet() {
   const multi = item.portionType === 'multi' && item.prices;
   const portion = multi ? (selectedPortions[item.id] || 'quarter') : 'single';
   const price = multi ? (item.prices[portion] || item.prices.quarter) : item.price;
-  const cartEntry = cart.find(entry => entry.cartId === `${item.id}_${portion}`);
   const shop = ordering.getShop();
   const name = escapeHTML(item.name);
   const hasPhoto = hasDishPhoto(item.image);
-  const portions = [['quarter', 'Quarter'], ['half', 'Half'], ['full', 'Full']];
-  const action = item.available === false ? '<button class="add-cart-btn" disabled>OUT OF STOCK</button>'
-    : !shop.open ? `<button class="add-cart-btn add-cart-closed" disabled>${escapeHTML(shop.button)}</button>`
-    : cartEntry ? `<div class="card-qty-control" aria-label="Quantity for ${name}">
-        <button type="button" data-sheet-qty="-1" aria-label="Remove one ${name}">−</button>
-        <span>${cartEntry.quantity}</span>
-        <button type="button" data-sheet-qty="1" aria-label="Add one ${name}">+</button>
-      </div>`
-    : '<button type="button" class="add-cart-btn" data-sheet-add>ADD</button>';
+  const portions = [['quarter', 'Qtr'], ['half', 'Half'], ['full', 'Full']];
   body.innerHTML = `
     <div class="dish-sheet-media${hasPhoto ? '' : ' photo-missing'}">
       ${hasPhoto ? `<img src="${escapeHTML(item.image)}" alt="${name}" draggable="false">` : ''}
@@ -643,16 +668,15 @@ function renderDishSheet() {
         <div class="dish-sheet-title">
           ${dishMeta(item)}
           <h3 id="dishSheetName">${name}</h3>
-          <p class="dish-sheet-price">₹${Number(price).toLocaleString('en-IN')}</p>
+          <p class="dish-sheet-price price-amount" data-price="${Number(price)}">₹${Number(price).toLocaleString('en-IN')}</p>
         </div>
         <div class="dish-sheet-action">
-          ${action}
+          <div class="dish-sheet-cart">${dishSheetAction(item, portion)}</div>
           ${multi ? '<small class="card-customisable">Customisable</small>' : ''}
         </div>
       </div>
-      ${multi ? `<div class="dish-sheet-portions" role="radiogroup" aria-label="Portion">
-        ${portions.map(([key, label]) => `<button type="button" role="radio" aria-checked="${portion === key}" data-sheet-portion="${key}">
-          <span>${label}</span><strong>₹${Number(item.prices[key])}</strong></button>`).join('')}
+      ${multi ? `<div class="portion-selector dish-sheet-portions" style="--portion-offset:${portionOffset(portion)}">
+        ${portions.map(([key, label]) => `<button type="button" class="portion-btn${portion === key ? ' active' : ''}" aria-pressed="${portion === key}" data-sheet-portion="${key}">${label}<span class="portion-price"> (₹${Number(item.prices[key])})</span></button>`).join('')}
       </div>` : ''}
       ${item.description ? `<p class="dish-sheet-desc">${escapeHTML(item.description)}</p>` : ''}
       ${!shop.open && item.available !== false ? `<p class="dish-sheet-note">${escapeHTML(shop.message)}</p>` : ''}
@@ -708,8 +732,7 @@ function setupDishSheet() {
     const id = dishSheetId;
     const portionButton = event.target.closest('[data-sheet-portion]');
     if (portionButton) {
-      window.selectPortion(id, portionButton.dataset.sheetPortion);
-      renderMenu();
+      selectSheetPortion(portionButton.dataset.sheetPortion);
     } else if (event.target.closest('[data-sheet-add]')) {
       window.addToCart(id);
     } else if (event.target.closest('[data-sheet-qty]')) {
