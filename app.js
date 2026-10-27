@@ -180,7 +180,7 @@ const ordering = createOrdering({
   toast: message => showToast(message),
   closeAll: () => closeAllModals(),
   onPlaced: () => { cart = []; lastClearedCart = null; saveCartData(); updateCartBadge(); renderMenu(); closeCart(); },
-  onStaffChange: (isStaff, siteTheme, stockTag) => { syncStaffTheme(isStaff, siteTheme); syncStockTag(stockTag); }
+  onStaffChange: (isStaff, siteTheme, stockTag, siteUi) => { syncSiteUi(siteUi); syncStaffTheme(isStaff, siteTheme); syncStockTag(stockTag); }
 });
 
 // LocalStorage Keys
@@ -291,7 +291,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   ordering.init();
   renderMenu();
   updateCartBadge();
-  registerServiceWorker();
+  // No service worker here: the Modern site's worker at the site root already covers /classic/.
 });
 
 // Admin Security Management
@@ -1573,6 +1573,14 @@ function showToast(message) {
 }
 
 // Register PWA Service Worker
+// Website UI the admin picked (Settings → Website UI). This copy is Classic; send visitors to
+// Modern at the site root when that's the choice, and remember it for the next visit.
+function syncSiteUi(ui) {
+  if (ui !== 'classic' && ui !== 'modern') return;
+  try { localStorage.setItem('newform_site_ui_v1', ui); } catch { /* storage blocked */ }
+  if (ui === 'modern') location.replace('../' + location.hash);
+}
+
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js')

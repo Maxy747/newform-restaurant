@@ -18,6 +18,9 @@
   <!-- Welcome splash: shown on every page load (including refreshes). Decided before first paint so
        the site never flashes first. Skipped only for deep links (#…) so shared section links land directly. -->
   <script>
+    // Classic is the frozen pre-overhaul site under /classic/. If the admin switched the website
+    // to Modern (cached from the last visit), go straight there; app.js re-checks with the server.
+    try { if (localStorage.getItem('newform_site_ui_v1') === 'modern') location.replace('../' + location.hash); } catch (error) { /* storage blocked */ }
     document.documentElement.classList.add(location.hash ? 'no-splash' : 'splash-open');
     // Paint in the website theme the admin picked (cached from the last visit) so there's no flash;
     // app.js confirms it against the server once the page loads.
@@ -108,7 +111,7 @@
         </button>
 
         <!-- Shown only to restaurant staff accounts -->
-        <a id="ordersBtn" href="admin.html" class="btn-minimal admin-link-btn" aria-label="Admin console" hidden>
+        <a id="ordersBtn" href="../admin.html" class="btn-minimal admin-link-btn" aria-label="Admin console" hidden>
           <i class="fa-solid fa-gauge" aria-hidden="true"></i><span class="admin-link-label">ADMIN</span>
         </a>
 
