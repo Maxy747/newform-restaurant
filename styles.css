@@ -2820,6 +2820,7 @@ html.dish-sheet-open { overflow: hidden; }
   isolation: isolate;
 }
 :is(.portion-selector, .hero-portion-selector)::before {
+  box-sizing: border-box; /* keep the 1px rim inside the slot so Full doesn't poke out */
   z-index: 0;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, .9);
