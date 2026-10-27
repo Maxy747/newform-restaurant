@@ -283,6 +283,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   categories.init();
   setupInfoCardMotion();
   setupFoodPhotoPreview();
+  setupDishSheet();
   await checkAdminState();
   await loadMenuData();
   await categories.load();
@@ -341,12 +342,14 @@ function setupFoodPhotoPreview() {
     document.documentElement.style.overflow = 'hidden';
     dialog.showModal();
   };
+  // On phones a menu photo opens the dish sheet instead (setupDishSheet).
+  const previewable = target => target && !(target.matches('.card-img') && isPhoneMenu());
   document.addEventListener('click', event => {
     const target = event.target.closest('.card-img, .center-dish-img:not(.hero-shop-logo), [data-cart-detail]');
-    if (target) open(target);
+    if (previewable(target)) open(target);
   });
   document.addEventListener('keydown', event => {
-    if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('.card-img, .center-dish-img:not(.hero-shop-logo), [data-cart-detail]')) {
+    if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('.card-img, .center-dish-img:not(.hero-shop-logo), [data-cart-detail]') && previewable(event.target)) {
       event.preventDefault();
       open(event.target);
     }
@@ -593,6 +596,139 @@ function getTagTone(tag) {
   return '';
 }
 
+// Phones get the compact two-up grid; tapping a dish opens its details as a bottom sheet.
+function isPhoneMenu() {
+  return matchMedia('(max-width: 768px)').matches;
+}
+
+function dishMeta(item) {
+  return `<div class="card-meta">
+    <span class="diet-icon ${escapeHTML(item.diet)}" aria-label="${item.diet === 'veg' ? 'Vegetarian' : 'Non-vegetarian'}"></span>
+    ${item.tag ? `<span class="card-badge ${getTagTone(item.tag)}">${escapeHTML(item.tag)}</span>` : ''}
+  </div>`;
+}
+
+let dishSheetId = null;
+
+function renderDishSheet() {
+  const sheet = document.getElementById('dishSheet');
+  const body = document.getElementById('dishSheetBody');
+  if (!sheet?.open || !body) return;
+  const item = menuItems.find(menuItem => menuItem.id === dishSheetId);
+  if (!item) return closeDishSheet();
+  const multi = item.portionType === 'multi' && item.prices;
+  const portion = multi ? (selectedPortions[item.id] || 'quarter') : 'single';
+  const price = multi ? (item.prices[portion] || item.prices.quarter) : item.price;
+  const cartEntry = cart.find(entry => entry.cartId === `${item.id}_${portion}`);
+  const shop = ordering.getShop();
+  const name = escapeHTML(item.name);
+  const hasPhoto = hasDishPhoto(item.image);
+  const portions = [['quarter', 'Quarter'], ['half', 'Half'], ['full', 'Full']];
+  const action = item.available === false ? '<button class="add-cart-btn" disabled>OUT OF STOCK</button>'
+    : !shop.open ? `<button class="add-cart-btn add-cart-closed" disabled>${escapeHTML(shop.button)}</button>`
+    : cartEntry ? `<div class="card-qty-control" aria-label="Quantity for ${name}">
+        <button type="button" data-sheet-qty="-1" aria-label="Remove one ${name}">−</button>
+        <span>${cartEntry.quantity}</span>
+        <button type="button" data-sheet-qty="1" aria-label="Add one ${name}">+</button>
+      </div>`
+    : '<button type="button" class="add-cart-btn" data-sheet-add>ADD</button>';
+  body.innerHTML = `
+    <div class="dish-sheet-media${hasPhoto ? '' : ' photo-missing'}">
+      ${hasPhoto ? `<img src="${escapeHTML(item.image)}" alt="${name}" draggable="false">` : ''}
+      <div class="card-photo-placeholder" aria-hidden="true"><i class="fa-solid fa-utensils"></i><span>Photo coming soon</span></div>
+      ${hasPhoto && isStockPhoto(item.image) ? '<span class="card-stock-tag">Representative image</span>' : ''}
+    </div>
+    <div class="dish-sheet-info">
+      <div class="dish-sheet-head">
+        <div class="dish-sheet-title">
+          ${dishMeta(item)}
+          <h3 id="dishSheetName">${name}</h3>
+          <p class="dish-sheet-price">₹${Number(price).toLocaleString('en-IN')}</p>
+        </div>
+        <div class="dish-sheet-action">
+          ${action}
+          ${multi ? '<small class="card-customisable">Customisable</small>' : ''}
+        </div>
+      </div>
+      ${multi ? `<div class="dish-sheet-portions" role="radiogroup" aria-label="Portion">
+        ${portions.map(([key, label]) => `<button type="button" role="radio" aria-checked="${portion === key}" data-sheet-portion="${key}">
+          <span>${label}</span><strong>₹${Number(item.prices[key])}</strong></button>`).join('')}
+      </div>` : ''}
+      ${item.description ? `<p class="dish-sheet-desc">${escapeHTML(item.description)}</p>` : ''}
+      ${!shop.open && item.available !== false ? `<p class="dish-sheet-note">${escapeHTML(shop.message)}</p>` : ''}
+    </div>`;
+}
+
+let dishSheetOpener = null;
+
+function openDishSheet(itemId, opener) {
+  const sheet = document.getElementById('dishSheet');
+  if (!sheet || !menuItems.some(item => item.id === itemId)) return;
+  dishSheetId = itemId;
+  dishSheetOpener = opener || null;
+  if (!sheet.open) {
+    sheet.showModal();
+    document.documentElement.classList.add('dish-sheet-open');
+  }
+  renderDishSheet();
+  sheet.querySelector('.dish-sheet-body').scrollTop = 0;
+}
+
+async function closeDishSheet() {
+  const sheet = document.getElementById('dishSheet');
+  if (!sheet?.open || sheet.classList.contains('is-closing')) return;
+  sheet.classList.add('is-closing');
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    await new Promise(resolve => setTimeout(resolve, 260));
+  }
+  sheet.close();
+  sheet.classList.remove('is-closing');
+  sheet.style.removeProperty('--sheet-drag');
+  document.documentElement.classList.remove('dish-sheet-open');
+  dishSheetOpener?.focus?.({ preventScroll: true });
+  dishSheetId = null;
+}
+
+function setupDishSheet() {
+  const sheet = document.getElementById('dishSheet');
+  if (!sheet) return;
+  const opensSheet = target => isPhoneMenu() && !target.closest('button, .portion-selector, .card-qty-control');
+  document.getElementById('foodGrid')?.addEventListener('click', event => {
+    const card = event.target.closest('.food-card[data-dish]');
+    if (card && opensSheet(event.target)) openDishSheet(card.dataset.dish, card.querySelector('.card-img'));
+  });
+  document.getElementById('foodGrid')?.addEventListener('keydown', event => {
+    if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('.card-img') && isPhoneMenu()) {
+      event.preventDefault();
+      openDishSheet(event.target.closest('.food-card').dataset.dish, event.target);
+    }
+  });
+  sheet.addEventListener('click', event => {
+    if (event.target === sheet || event.target.closest('.dish-sheet-close')) return closeDishSheet();
+    const id = dishSheetId;
+    const portionButton = event.target.closest('[data-sheet-portion]');
+    if (portionButton) {
+      window.selectPortion(id, portionButton.dataset.sheetPortion);
+      renderMenu();
+    } else if (event.target.closest('[data-sheet-add]')) {
+      window.addToCart(id);
+    } else if (event.target.closest('[data-sheet-qty]')) {
+      const item = menuItems.find(menuItem => menuItem.id === id);
+      const portion = item?.portionType === 'multi' ? (selectedPortions[id] || 'quarter') : 'single';
+      window.updateCartItemQty(`${id}_${portion}`, Number(event.target.closest('[data-sheet-qty]').dataset.sheetQty));
+    }
+  });
+  sheet.addEventListener('cancel', event => { event.preventDefault(); closeDishSheet(); });
+  setupSheetDrag(sheet, closeDishSheet);
+}
+
+// Card ADD on phones: dishes with portions open the sheet to choose one first.
+window.addFromCard = function(itemId, clickEvent) {
+  const item = menuItems.find(menuItem => menuItem.id === itemId);
+  if (item?.portionType === 'multi' && isPhoneMenu()) return openDishSheet(itemId, clickEvent?.currentTarget);
+  window.addToCart(itemId, clickEvent);
+};
+
 function renderMenu(animate = false) {
   updateFeaturedDish();
   setupDescriptionScroll.resizeObserver?.disconnect();
@@ -643,15 +779,14 @@ function renderMenu(animate = false) {
     const hasPhoto = hasDishPhoto(item.image);
 
     return `
-      <div class="food-card${shopState.open ? '' : ' is-closed'}" id="card-${id}">
+      <div class="food-card${shopState.open ? '' : ' is-closed'}" id="card-${id}" data-dish="${id}">
         <div class="card-img-container${hasPhoto ? '' : ' photo-missing'}">
           ${hasPhoto ? `<img src="${escapeHTML(item.image)}" alt="${name}" class="card-img" role="button" tabindex="0" aria-label="Preview ${name}" onerror="this.closest('.card-img-container').classList.add('photo-missing'); this.remove();">` : ''}
           <div class="card-photo-placeholder" aria-hidden="true"><i class="fa-solid fa-utensils"></i><span>Photo coming soon</span></div>
-          <div class="diet-icon ${escapeHTML(item.diet)}"></div>
-          ${item.tag ? `<span class="card-badge ${getTagTone(item.tag)}">${escapeHTML(item.tag)}</span>` : ''}
           ${hasPhoto && isStockPhoto(item.image) ? '<span class="card-stock-tag">Representative image</span>' : ''}
         </div>
         <div class="card-body">
+          ${dishMeta(item)}
           <h3 class="food-name">${name}</h3>
           <p class="food-desc"><span class="food-desc-text">${escapeHTML(item.description)}</span></p>
           ${item.available === false ? '<small class="danger">Out of stock</small>' : ''}
@@ -675,8 +810,9 @@ function renderMenu(animate = false) {
                 <button type="button" onclick="updateCartItemQty(${cartIdArg}, 1)" aria-label="Add one ${name}">+</button>
               </div>
             ` : `
-              <button class="add-cart-btn" onclick="addToCart(${idArg}, event)">+ ADD</button>
+              <button class="add-cart-btn" onclick="addFromCard(${idArg}, event)">+ ADD</button>
             `}
+            ${item.portionType === 'multi' ? '<small class="card-customisable">Customisable</small>' : ''}
           </div>
         </div>
       </div>
@@ -684,6 +820,7 @@ function renderMenu(animate = false) {
   }).join('');
   balanceSpecialsGrid();
   setupDescriptionScroll(container);
+  renderDishSheet();
   if (animate && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
     [...container.querySelectorAll('.food-card')].slice(0,12).forEach((card,index) => {
       card.animate([{opacity:0,transform:'translateY(14px) scale(.98)'},{opacity:1,transform:'translateY(0) scale(1)'}],
@@ -856,7 +993,10 @@ window.addToCart = function(itemId, clickEvent) {
   updateCartBadge();
   updateClearCartControls();
   const button = clickEvent?.currentTarget;
-  if (button) {
+  // Phone cards are too narrow for the "Added to cart" label; swap straight to the quantity stepper.
+  if (!button || isPhoneMenu()) {
+    renderMenu();
+  } else {
     const defaultLabel = button.dataset.defaultLabel || button.textContent.trim();
     button.dataset.defaultLabel = defaultLabel;
     button.classList.remove('button-added');
@@ -1504,7 +1644,7 @@ function openAccountModal() { document.getElementById('overlay').classList.add('
 function setupSheetDrag(sheet, onClose) {
   if (!sheet) return;
   let startY = null, dragged = 0;
-  const grab = sheet.querySelectorAll('.sheet-handle, .modal-header');
+  const grab = sheet.querySelectorAll('.sheet-handle, .modal-header, [data-sheet-grab-zone]');
   const end = () => {
     if (startY === null) return;
     sheet.classList.remove('is-dragging');

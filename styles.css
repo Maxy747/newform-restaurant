@@ -2716,3 +2716,95 @@ html.hide-stock-tag .card-stock-tag { display: none; }
 
 /* Hero "Order now" while the shop is closed: reads as a status, not a broken button. */
 #heroOrderNowBtn.is-closed { opacity: 1; background: var(--btn-minimal-bg); color: var(--text-muted); border: 1px dashed var(--glass-border); box-shadow: none; font-size: .72rem; letter-spacing: .08em; cursor: not-allowed; }
+
+/* ---------- Menu meta row (diet mark + tag) ---------- */
+/* Desktop keeps both floating over the photo; phones show them as a row under it. */
+.card-meta { display: contents; }
+.card-customisable { display: none; }
+
+/* ---------- Phones: compact two-up dish grid ---------- */
+@media (max-width: 768px) {
+  #foodGrid { gap: 22px 14px; }
+  #foodGrid .food-card { background: none; border: 0; border-radius: 0; box-shadow: none; overflow: visible; -webkit-backdrop-filter: none; backdrop-filter: none; cursor: pointer; }
+  #foodGrid .card-img-container { height: auto; aspect-ratio: 1; border-radius: 22px; box-shadow: 0 6px 18px rgb(15 23 42 / .1); }
+  #foodGrid .card-img, #foodGrid .food-card:hover .card-img { transform: none; }
+  #foodGrid .card-body { flex: 1; padding: 10px 2px 0; background: none; }
+  #foodGrid .card-meta { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-height: 20px; margin-bottom: 5px; }
+  #foodGrid .food-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; min-height: 2.5em; margin-bottom: 8px; font-size: 1rem; line-height: 1.25; }
+  #foodGrid .food-desc, #foodGrid .portion-selector { display: none; }
+  #foodGrid .card-footer { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 8px; margin-top: auto; padding-top: 0; border-top: 0; }
+  #foodGrid .price-amount { font-size: 1.05rem; color: var(--text-main); }
+  #foodGrid .card-customisable { grid-column: 2; }
+  /* The closed-shop banner above the grid already explains it; don't repeat it on every card. */
+  #foodGrid .food-card.is-closed :is(.add-cart-closed, .card-customisable) { display: none; }
+  #foodGrid .add-cart-btn:disabled { width: auto; min-height: 30px; padding: 4px 8px; font-size: .6rem; }
+  #foodGrid .card-stock-tag { left: 8px; bottom: 8px; }
+}
+
+/* Shared by phone cards and the dish sheet: the light "ADD" tile and its stepper. */
+@media (max-width: 768px) {
+  #foodGrid .add-cart-btn, #foodGrid .card-qty-control { width: 82px; min-height: 36px; }
+}
+.dish-sheet .card-meta :is(.diet-icon, .card-badge) { position: static; }
+.dish-sheet .card-meta .card-badge { max-width: 100%; overflow: hidden; padding: 3px 8px; font-size: .56rem; letter-spacing: .4px; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 768px) {
+  #foodGrid .card-meta :is(.diet-icon, .card-badge) { position: static; }
+  #foodGrid .card-meta .card-badge { max-width: 100%; overflow: hidden; padding: 3px 8px; font-size: .56rem; letter-spacing: .4px; text-overflow: ellipsis; white-space: nowrap; }
+}
+@media (max-width: 768px) {
+  #foodGrid .add-cart-btn:not(:disabled), .dish-sheet .add-cart-btn:not(:disabled) {
+    padding: 0; border: 1px solid var(--glass-border); border-radius: 12px;
+    background: var(--bg-surface); color: var(--gold-primary); box-shadow: 0 3px 10px rgb(15 23 42 / .1);
+    font-size: .9rem; letter-spacing: .04em;
+  }
+  #foodGrid .card-qty-control, .dish-sheet .card-qty-control { justify-content: space-between; padding: 3px; border-radius: 12px; background: var(--bg-surface); box-shadow: 0 3px 10px rgb(15 23 42 / .1); }
+  #foodGrid .card-qty-control button { width: 28px; height: 28px; }
+}
+.card-customisable { justify-self: center; font-size: .64rem; color: var(--text-muted); }
+@media (max-width: 768px) { #foodGrid .card-customisable { display: block; } }
+
+/* ---------- Dish details bottom sheet ---------- */
+html.dish-sheet-open { overflow: hidden; }
+.dish-sheet {
+  --dish-media-h: min(76vw, 42dvh);
+  position: fixed; inset: auto 0 0; width: 100%; max-width: 520px; max-height: 92dvh;
+  margin: 0 auto; padding: 0; border: 0; border-radius: 26px 26px 0 0; overflow: hidden;
+  background: var(--bg-surface); color: var(--text-main);
+  box-shadow: 0 -12px 40px rgb(0 0 0 / .25);
+  transform: translate3d(0, var(--sheet-drag, 0px), 0);
+  transition: transform .32s cubic-bezier(.22, 1, .36, 1);
+}
+.dish-sheet[open] { display: flex; flex-direction: column; animation: dish-sheet-in .42s cubic-bezier(.22, 1, .36, 1); }
+.dish-sheet.is-dragging { transition: none; }
+.dish-sheet.is-closing { transform: translate3d(0, 105%, 0); transition: transform .26s ease-in; }
+.dish-sheet::backdrop { background: rgb(0 0 0 / .55); animation: dish-backdrop-in .3s ease; }
+.dish-sheet.is-closing::backdrop { animation: dish-backdrop-out .26s ease forwards; }
+@keyframes dish-sheet-in { from { transform: translate3d(0, 100%, 0); } }
+@keyframes dish-backdrop-in { from { opacity: 0; } }
+@keyframes dish-backdrop-out { to { opacity: 0; } }
+.dish-sheet-body { overflow-y: auto; overscroll-behavior: contain; padding-bottom: env(safe-area-inset-bottom); }
+.dish-sheet-media { position: relative; height: var(--dish-media-h); background: var(--card-img-bg); }
+.dish-sheet-media img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.dish-sheet-grab { position: absolute; inset: 0 0 auto; z-index: 2; height: var(--dish-media-h); touch-action: none; }
+.dish-sheet .sheet-handle { display: block; width: 42px; height: 5px; margin: 8px auto 0; border-radius: 3px; background: rgb(255 255 255 / .9); box-shadow: 0 1px 4px rgb(0 0 0 / .35); }
+.dish-sheet-close { position: absolute; top: 12px; right: 12px; z-index: 3; width: 38px; height: 38px; border: 0; border-radius: 50%; background: rgb(0 0 0 / .55); color: #fff; font-size: 1.05rem; cursor: pointer; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.dish-sheet-info { display: grid; gap: 14px; padding: 16px 18px 24px; }
+.dish-sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.dish-sheet-title { min-width: 0; }
+.dish-sheet .card-meta { display: flex; align-items: center; gap: 8px; }
+.dish-sheet-title h3 { margin: 6px 0 4px; font-family: var(--font-heading); font-size: 1.3rem; line-height: 1.25; color: var(--text-title); }
+.dish-sheet-price { margin: 0; font-family: var(--font-heading); font-size: 1.1rem; font-weight: 800; color: var(--text-main); }
+.dish-sheet-action { flex: none; display: grid; justify-items: center; gap: 5px; width: 112px; padding-top: 4px; }
+.dish-sheet-action .add-cart-btn, .dish-sheet-action .card-qty-control { width: 100%; min-height: 44px; }
+.dish-sheet-action .card-qty-control button { width: 34px; height: 34px; }
+.dish-sheet-action .add-cart-btn:disabled { padding: 8px; font-size: .68rem; }
+.dish-sheet .card-customisable { display: block; }
+.dish-sheet-portions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.dish-sheet-portions button { display: grid; gap: 2px; padding: 10px 6px; border: 1px solid var(--glass-border); border-radius: 12px; background: none; color: var(--text-muted); font: inherit; font-size: .8rem; cursor: pointer; transition: border-color .2s ease, background .2s ease, color .2s ease; }
+.dish-sheet-portions button strong { font-family: var(--font-heading); font-size: .95rem; color: var(--text-main); }
+.dish-sheet-portions button[aria-checked="true"] { border-color: var(--gold-primary); background: var(--btn-minimal-bg); color: var(--gold-primary); }
+.dish-sheet-desc { margin: 0; font-size: .95rem; line-height: 1.55; color: var(--text-muted); }
+.dish-sheet-note { margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--btn-minimal-bg); font-size: .85rem; color: var(--text-muted); }
+@media (prefers-reduced-motion: reduce) {
+  .dish-sheet, .dish-sheet[open], .dish-sheet::backdrop { animation: none; transition: none; }
+}
