@@ -1,5 +1,5 @@
 /* Classic welcome splash (Admin → Settings → Welcome splash → Classic). This is the splash as it
-   was on 28 Oct 2026, kept unchanged; the inline chooser in index.html stamps it from
+   was on 28 Oct 2026 with one "Order now" button; the inline chooser in index.html stamps it from
    <template id="splashClassic"> and splash.js drives it. */
 /* ---------- Welcome splash (every page load; shown/hidden by the inline <head> check) ----------
    Restaurant photos cross-fade with a slow zoom (Ken Burns) under a dark fade; the welcome
@@ -43,15 +43,6 @@
 .splash-cta { min-width: 220px; gap: 10px; }
 .splash-cta i { transition: transform .2s ease; }
 .splash-cta:hover i { transform: translateX(4px); }
-.splash-look {
-  display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 12px 22px;
-  border-radius: 999px; border: 1px solid rgba(255, 255, 255, .45); background: rgba(255, 255, 255, .1);
-  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-  color: #fff; font-family: var(--font-heading); font-size: .8rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; cursor: pointer;
-  transition: background .2s ease, border-color .2s ease;
-}
-.splash-look:hover { background: rgba(255, 255, 255, .22); border-color: #fff; }
-.splash-look:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 .splash-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 6px 0 0; font-size: .82rem; color: rgba(255, 255, 255, .78); }
 .splash-meta a { color: #fff; font-weight: 700; text-decoration: none; }
 .splash-meta a:hover { text-decoration: underline; }
@@ -83,7 +74,7 @@
   .splash-title { font-size: clamp(2.6rem, 13vw, 3.6rem); }
   .splash-tags, .splash-actions, .splash-meta { justify-content: center; }
   .splash-actions { flex-direction: column; width: 100%; max-width: 320px; gap: 10px; }
-  .splash-cta, .splash-look { width: 100%; justify-content: center; }
+  .splash-cta { width: 100%; justify-content: center; }
 }
 @media (max-height: 600px) {
   .splash-inner { gap: 8px; }

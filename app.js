@@ -1494,7 +1494,7 @@ async function loadGalleryPhotos(grid) {
   const empty = photos.length === 0;
   // No photos: hide the gallery and every link that points at it.
   document.getElementById('gallerySection').hidden = empty;
-  document.querySelectorAll('a[href="#gallerySection"], #splashLook').forEach(link => { link.hidden = empty; });
+  document.querySelectorAll('a[href="#gallerySection"]').forEach(link => { link.hidden = empty; });
   if (empty) { grid.replaceChildren(); return; }
   grid.innerHTML = photos.map((photo, index) => {
     const label = escapeHTML(photo.caption || 'Newform restaurant photo');

@@ -1,6 +1,6 @@
 // Welcome splash: the inline <head> check adds `splash-open` on every page load (not deep links).
 // Restaurant photos cross-fade (slow zoom) behind the welcome while the site loads underneath.
-// "Explore menu" lifts the splash and glides to the menu; "Look inside" glides to the gallery;
+// "Order now" lifts the splash and glides to the menu;
 // Esc just lifts it, leaving the page at the top.
 // The Modern style (Admin → Settings → Welcome splash) has its own intro in splash-modern.js.
 import { playModernSplash } from './splash-modern.js';
@@ -70,7 +70,6 @@ if (!root.classList.contains('splash-open') || !splash) {
   };
 
   document.getElementById('splashEnter')?.addEventListener('click', () => close('#menuSection'));
-  document.getElementById('splashLook')?.addEventListener('click', () => close('#gallerySection'));
   document.addEventListener('keydown', onKey);
   document.getElementById('splashEnter')?.focus({ preventScroll: true });
 }
