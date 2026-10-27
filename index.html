@@ -16,6 +16,7 @@
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="dark-theme.css">
   <link rel="stylesheet" href="splash-classic.css">
+  <link rel="stylesheet" href="splash-modern.css">
   <!-- Welcome splash: shown on every page load (including refreshes). Decided before first paint so
        the site never flashes first. Skipped only for deep links (#…) so shared section links land directly. -->
   <script>
@@ -89,9 +90,29 @@
     <div class="splash-dots" aria-hidden="true"><span class="is-active"></span><span></span><span></span></div>
   </section>
   </template>
+  <!-- Modern: the logo assembles itself (ring spins in, monogram pops), the name writes in, then the
+       logo flies into the home page's hero logo (splash-modern.css, splash-modern.js). -->
+  <template id="splashModern">
+  <section id="splash" class="splash-modern" role="dialog" aria-modal="true" aria-label="Welcome to NEWFORM Restaurant">
+    <div class="sm-backdrop" aria-hidden="true"></div>
+    <div class="sm-stage">
+      <div class="sm-mark" aria-hidden="true">
+        <span class="sm-glow"></span>
+        <svg class="sm-trace" viewBox="0 0 100 100"><circle cx="50" cy="50" r="49" pathLength="1"/></svg>
+        <span class="sm-logo">
+          <img class="sm-ring" src="assets/newform-logo-intro.webp" alt="" width="720" height="720" fetchpriority="high" decoding="async">
+          <img class="sm-core" src="assets/newform-logo-intro.webp" alt="" width="720" height="720" decoding="async">
+        </span>
+      </div>
+      <p class="sm-word" aria-hidden="true"><span>N</span><span>E</span><span>W</span><span>F</span><span>O</span><span>R</span><span>M</span></p>
+      <p class="sm-tag">Made for every table</p>
+    </div>
+    <button type="button" class="sm-skip">Skip <i class="fa-solid fa-forward" aria-hidden="true"></i></button>
+  </section>
+  </template>
   <script>
     // Splash style the admin picked, cached from the last visit (app.js keeps the cache in step
-    // with the server). Modern falls back to Classic until its template exists.
+    // with the server).
     (function () {
       var root = document.documentElement;
       if (!root.classList.contains('splash-open')) return;

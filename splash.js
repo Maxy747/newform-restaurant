@@ -2,11 +2,16 @@
 // Restaurant photos cross-fade (slow zoom) behind the welcome while the site loads underneath.
 // "Explore menu" lifts the splash and glides to the menu; "Look inside" glides to the gallery;
 // Esc just lifts it, leaving the page at the top.
+// The Modern style (Admin → Settings → Welcome splash) has its own intro in splash-modern.js.
+import { playModernSplash } from './splash-modern.js';
+
 const root = document.documentElement;
 const splash = document.getElementById('splash');
 
 if (!root.classList.contains('splash-open') || !splash) {
   splash?.remove();
+} else if (splash.classList.contains('splash-modern')) {
+  playModernSplash(splash);
 } else {
   // Keep keyboard and screen-reader focus inside the splash while it is up.
   const behind = [...document.body.children].filter(element => element !== splash && element.tagName !== 'SCRIPT');
