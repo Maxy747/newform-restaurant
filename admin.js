@@ -195,6 +195,7 @@ async function evaluateSession(session) {
   showOrderingMode(config.orderingMode);
   showSiteTheme(config.siteTheme);
   showSiteUi(config.siteUi);
+  showSplashStyle(config.splashStyle);
   $('stockTagSwitch').setAttribute('aria-checked', String(config.stockTag !== false));
   if (!savedAdminTheme() && config.siteTheme) applyTheme(config.siteTheme);
   $('addDriverBtn').hidden = state.role !== 'admin';
@@ -1279,6 +1280,22 @@ document.querySelectorAll('#siteUiPicker [data-site-ui]').forEach(button => {
     const result = await api('set_site_ui', { ui: button.dataset.siteUi });
     showSiteUi(result.siteUi);
     toast(`Website UI set to ${result.siteUi === 'classic' ? 'Classic' : 'Modern'}`, 'success');
+  });
+});
+
+// Welcome splash every customer gets: Classic (the 28 Oct 2026 splash) or Modern (the remaster).
+function showSplashStyle(style) {
+  const current = style === 'modern' ? 'modern' : 'classic';
+  document.querySelectorAll('#splashStylePicker [data-splash-style]').forEach(button => {
+    button.setAttribute('aria-checked', String(button.dataset.splashStyle === current));
+  });
+}
+document.querySelectorAll('#splashStylePicker [data-splash-style]').forEach(button => {
+  button.onclick = run(async () => {
+    if (button.getAttribute('aria-checked') === 'true') return;
+    const result = await api('set_splash_style', { style: button.dataset.splashStyle });
+    showSplashStyle(result.splashStyle);
+    toast(`Welcome splash set to ${result.splashStyle === 'modern' ? 'Modern' : 'Classic'}`, 'success');
   });
 });
 

@@ -180,7 +180,7 @@ const ordering = createOrdering({
   toast: message => showToast(message),
   closeAll: () => closeAllModals(),
   onPlaced: () => { cart = []; lastClearedCart = null; saveCartData(); updateCartBadge(); renderMenu(); closeCart(); },
-  onStaffChange: (isStaff, siteTheme, stockTag, siteUi) => { syncSiteUi(siteUi); syncStaffTheme(isStaff, siteTheme); syncStockTag(stockTag); }
+  onStaffChange: (isStaff, siteTheme, stockTag, siteUi, splashStyle) => { syncSiteUi(siteUi); syncSplashStyle(splashStyle); syncStaffTheme(isStaff, siteTheme); syncStockTag(stockTag); }
 });
 
 // LocalStorage Keys
@@ -575,6 +575,14 @@ function syncSiteUi(ui) {
   if (ui !== 'classic' && ui !== 'modern') return;
   try { localStorage.setItem(SITE_UI_CACHE_KEY, ui); } catch { /* storage blocked */ }
   if (ui === 'classic' && import.meta.env.PROD) location.replace(`classic/${location.hash}`);
+}
+
+// Welcome splash style the admin picked (Settings → Welcome splash). Cached for the inline chooser in
+// index.html, which stamps that style on the next page load (this load's splash is already up).
+const SPLASH_STYLE_CACHE_KEY = 'newform_splash_style_v1';
+function syncSplashStyle(style) {
+  if (style !== 'classic' && style !== 'modern') return;
+  try { localStorage.setItem(SPLASH_STYLE_CACHE_KEY, style); } catch { /* storage blocked */ }
 }
 
 const STOCK_TAG_CACHE_KEY = 'newform_stock_tag_v1';

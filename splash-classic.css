@@ -1,0 +1,98 @@
+/* Classic welcome splash (Admin → Settings → Welcome splash → Classic). This is the splash as it
+   was on 28 Oct 2026, kept unchanged; the inline chooser in index.html stamps it from
+   <template id="splashClassic"> and splash.js drives it. */
+/* ---------- Welcome splash (every page load; shown/hidden by the inline <head> check) ----------
+   Restaurant photos cross-fade with a slow zoom (Ken Burns) under a dark fade; the welcome
+   sits bottom-left on desktop and bottom-centre on phones. */
+.splash { display: none; }
+.splash-open .splash {
+  position: fixed; inset: 0; z-index: 10000;
+  display: grid; align-items: end;
+  overflow: hidden;
+  background: #0b0a09;
+  color: #fff;
+}
+.splash-open, .splash-open body { overflow: hidden; }
+.splash-slides { position: absolute; inset: 0; }
+.splash-slide {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; object-position: 50% 50%;
+  opacity: 0; transform: scale(1.02);
+  transition: opacity 1.4s ease;
+}
+.splash-slide.is-active { opacity: 1; animation: splash-kenburns 6.9s cubic-bezier(.25, .6, .3, 1) both; }
+.splash-shade {
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(180deg, rgba(8, 6, 4, .45) 0%, rgba(8, 6, 4, 0) 26%, rgba(8, 6, 4, .1) 48%, rgba(8, 6, 4, .78) 78%, rgba(8, 6, 4, .92) 100%),
+    linear-gradient(90deg, rgba(8, 6, 4, .55) 0%, rgba(8, 6, 4, 0) 62%);
+}
+.splash-inner {
+  position: relative;
+  display: grid; justify-items: start; gap: 14px;
+  width: 100%; max-width: 760px;
+  padding: 0 clamp(28px, 6vw, 96px) clamp(40px, 9vh, 96px);
+}
+.splash-logo { width: 76px; height: 76px; border-radius: 50%; box-shadow: 0 0 0 3px rgba(255, 255, 255, .85), 0 12px 32px rgba(255, 107, 0, .45); animation: splash-logo-in .9s cubic-bezier(.2, .9, .25, 1.15) both; }
+.splash-place { margin-top: 6px; font-family: var(--font-heading); font-size: .74rem; font-weight: 700; letter-spacing: .28em; color: #ffd39a; }
+.splash-title { margin: 0; font-family: var(--font-heading); font-weight: 300; font-size: clamp(3rem, 8vw, 6rem); line-height: .95; letter-spacing: .1em; color: #fff; text-shadow: 0 4px 30px rgba(0, 0, 0, .35); }
+.splash-title strong { display: block; margin-top: 10px; font-weight: 800; font-size: clamp(1.1rem, 2.6vw, 1.9rem); letter-spacing: .06em; color: #ffcf8a; }
+.splash-tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 6px; }
+.splash-tags span { padding: 6px 13px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, .3); background: rgba(255, 255, 255, .12); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); font-size: .7rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #fff; }
+.splash-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 4px; }
+.splash-cta { min-width: 220px; gap: 10px; }
+.splash-cta i { transition: transform .2s ease; }
+.splash-cta:hover i { transform: translateX(4px); }
+.splash-look {
+  display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 12px 22px;
+  border-radius: 999px; border: 1px solid rgba(255, 255, 255, .45); background: rgba(255, 255, 255, .1);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  color: #fff; font-family: var(--font-heading); font-size: .8rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; cursor: pointer;
+  transition: background .2s ease, border-color .2s ease;
+}
+.splash-look:hover { background: rgba(255, 255, 255, .22); border-color: #fff; }
+.splash-look:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+.splash-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 6px 0 0; font-size: .82rem; color: rgba(255, 255, 255, .78); }
+.splash-meta a { color: #fff; font-weight: 700; text-decoration: none; }
+.splash-meta a:hover { text-decoration: underline; }
+.splash-meta i { margin-right: 4px; color: #ffcf8a; }
+/* Slide indicator: one bar per photo, the active one fills over the slide's lifetime. */
+.splash-dots { position: absolute; top: max(20px, env(safe-area-inset-top)); left: 50%; display: flex; gap: 6px; transform: translateX(-50%); }
+.splash-dots span { position: relative; width: 34px; height: 3px; overflow: hidden; border-radius: 3px; background: rgba(255, 255, 255, .3); }
+.splash-dots span::after { content: ""; position: absolute; inset: 0; background: #fff; transform: scaleX(0); transform-origin: left; }
+.splash-dots span.is-active::after { animation: splash-dot 5.5s linear both; }
+.splash-inner > :not(.splash-logo) { animation: splash-rise .8s cubic-bezier(.2, .8, .2, 1) both; }
+.splash-inner > :nth-child(2) { animation-delay: .25s; }
+.splash-inner > :nth-child(3) { animation-delay: .34s; }
+.splash-inner > :nth-child(4) { animation-delay: .43s; }
+.splash-inner > :nth-child(5) { animation-delay: .52s; }
+.splash-inner > :nth-child(6) { animation-delay: .61s; }
+/* Leaving: the splash lifts away and the site underneath is already there. */
+.splash.is-leaving { animation: splash-out .55s cubic-bezier(.6, 0, .4, 1) forwards; pointer-events: none; }
+@keyframes splash-kenburns { from { transform: scale(1.14); } to { transform: scale(1.02); } }
+@keyframes splash-dot { to { transform: scaleX(1); } }
+@keyframes splash-logo-in { from { opacity: 0; transform: scale(.7) rotate(-12deg); } }
+@keyframes splash-rise { from { opacity: 0; transform: translateY(18px); } }
+@keyframes splash-out { to { opacity: 0; transform: translateY(-4%) scale(1.03); visibility: hidden; } }
+@media (max-width: 768px) {
+  .splash-slide { object-position: var(--pos-phone, 50% 50%); }
+  .splash-shade { background: linear-gradient(180deg, rgba(8, 6, 4, .5) 0%, rgba(8, 6, 4, 0) 22%, rgba(8, 6, 4, .15) 40%, rgba(8, 6, 4, .82) 68%, rgba(8, 6, 4, .95) 100%); }
+  .splash-inner { justify-items: center; text-align: center; max-width: none; padding: 0 20px max(32px, calc(env(safe-area-inset-bottom) + 24px)); gap: 12px; }
+  .splash-logo { width: 64px; height: 64px; }
+  .splash-place { font-size: .64rem; letter-spacing: .22em; }
+  .splash-title { font-size: clamp(2.6rem, 13vw, 3.6rem); }
+  .splash-tags, .splash-actions, .splash-meta { justify-content: center; }
+  .splash-actions { flex-direction: column; width: 100%; max-width: 320px; gap: 10px; }
+  .splash-cta, .splash-look { width: 100%; justify-content: center; }
+}
+@media (max-height: 600px) {
+  .splash-inner { gap: 8px; }
+  .splash-logo { width: 52px; height: 52px; }
+  .splash-tags { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .splash-slide.is-active { animation: none; transform: none; }
+  .splash-dots { display: none; }
+  .splash-logo, .splash-inner > * { animation: none; }
+  .splash.is-leaving { animation: none; opacity: 0; visibility: hidden; transition: opacity .2s; }
+}

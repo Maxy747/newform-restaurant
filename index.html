@@ -15,6 +15,7 @@
   <!-- Custom Design System matching Minimalist Reference Template -->
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="dark-theme.css">
+  <link rel="stylesheet" href="splash-classic.css">
   <!-- Welcome splash: shown on every page load (including refreshes). Decided before first paint so
        the site never flashes first. Skipped only for deep links (#…) so shared section links land directly. -->
   <script>
@@ -58,7 +59,11 @@
 </head>
 <body>
 
-  <!-- Welcome splash (every page load): restaurant photos cross-fade behind the welcome. -->
+  <!-- Welcome splash (every page load). The admin picks the style (Settings → Welcome splash);
+       each style is a template and the chooser below stamps the chosen one before first paint,
+       so only its photos load and deep links (no splash) load none.
+       Classic: the splash as it was on 28 Oct 2026, kept unchanged (splash-classic.css). -->
+  <template id="splashClassic">
   <section id="splash" class="splash" role="dialog" aria-modal="true" aria-labelledby="splashTitle">
     <div class="splash-slides" aria-hidden="true">
       <img class="splash-slide is-active" style="--pos-phone: 42% 50%" src="/gallery/exterior-front-dusk-800.webp" srcset="/gallery/exterior-front-dusk-800.webp 800w, /gallery/exterior-front-dusk-full.webp 1536w" sizes="100vw" alt="" width="1536" height="1024" fetchpriority="high" decoding="async">
@@ -83,6 +88,19 @@
     </div>
     <div class="splash-dots" aria-hidden="true"><span class="is-active"></span><span></span><span></span></div>
   </section>
+  </template>
+  <script>
+    // Splash style the admin picked, cached from the last visit (app.js keeps the cache in step
+    // with the server). Modern falls back to Classic until its template exists.
+    (function () {
+      var root = document.documentElement;
+      if (!root.classList.contains('splash-open')) return;
+      var style = 'classic';
+      try { if (localStorage.getItem('newform_splash_style_v1') === 'modern' && document.getElementById('splashModern')) style = 'modern'; } catch (error) { /* storage blocked */ }
+      root.dataset.splashStyle = style;
+      document.currentScript.before(document.getElementById(style === 'modern' ? 'splashModern' : 'splashClassic').content.cloneNode(true));
+    })();
+  </script>
 
   <!-- Top Minimalist Navigation Header -->
   <header class="header">
