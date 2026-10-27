@@ -698,8 +698,10 @@ function openDishSheet(itemId, opener) {
   dishSheetId = itemId;
   dishSheetOpener = opener || null;
   if (!sheet.open) {
+    const root = document.documentElement;
+    root.style.setProperty('--scrollbar-gap', `${window.innerWidth - root.clientWidth}px`);
     sheet.showModal();
-    document.documentElement.classList.add('dish-sheet-open');
+    root.classList.add('dish-sheet-open');
   }
   renderDishSheet();
   sheet.querySelector('.dish-sheet-body').scrollTop = 0;

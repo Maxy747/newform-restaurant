@@ -129,6 +129,9 @@ body {
   font-family: var(--font-body);
   line-height: 1.6;
   overflow-x: hidden;
+  /* clip, not hidden: a hidden body turns into its own scroll box whenever a dialog locks the
+     page (html overflow: hidden), and the sticky header/search bar then slide out of view. */
+  overflow-x: clip;
   min-height: 100vh;
   padding-bottom: 80px;
   transition: background 0.3s ease, color 0.3s ease;
@@ -2763,7 +2766,8 @@ html.hide-stock-tag .card-stock-tag { display: none; }
 #foodGrid .card-customisable { grid-area: note; align-self: end; line-height: 1; }
 
 /* ---------- Dish details bottom sheet ---------- */
-html.dish-sheet-open { overflow: hidden; }
+/* Locking the page hides its scrollbar; pad by its width (set in openDishSheet) so nothing shifts. */
+html.dish-sheet-open { overflow: hidden; padding-right: var(--scrollbar-gap, 0px); }
 .dish-sheet {
   --dish-media-h: min(76vw, 42dvh);
   position: fixed; inset: auto 0 0; width: 100%; max-width: 520px; max-height: 92dvh;
@@ -2795,6 +2799,7 @@ html.dish-sheet-open { overflow: hidden; }
 .dish-sheet-price { margin: 0; font-family: var(--font-heading); font-size: 1.1rem; font-weight: 800; color: var(--text-main); }
 .dish-sheet-action { flex: none; display: grid; justify-items: center; gap: 5px; width: 112px; padding-top: 4px; }
 .dish-sheet-action .card-customisable { order: -1; }
+.dish-sheet-cart { justify-self: stretch; }
 .dish-sheet-action .add-cart-btn, .dish-sheet-action .card-qty-control { width: 100%; min-height: 44px; }
 .dish-sheet-action .card-qty-control button { width: 34px; height: 34px; }
 .dish-sheet-action .add-cart-btn:disabled { padding: 8px; font-size: .68rem; }
