@@ -2723,7 +2723,8 @@ html.hide-stock-tag .card-stock-tag { display: none; }
 /* ---------- Compact dish tiles (every screen size) ---------- */
 /* Photo-first tiles: photo, diet mark + tag, name, then price beside a light ADD tile.
    Descriptions and the portion picker live in the dish sheet (tap a tile). */
-#foodGrid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 30px 22px; }
+/* At most 6 tiles a row: each column is at least 200px and at least a sixth of the row. */
+#foodGrid { --tile-gap: 32px; grid-template-columns: repeat(auto-fill, minmax(max(200px, (100% - 5 * var(--tile-gap)) / 6), 1fr)); gap: 40px var(--tile-gap); }
 #foodGrid .food-card { min-width: 0; background: none; border: 0; border-radius: 0; box-shadow: none; overflow: visible; -webkit-backdrop-filter: none; backdrop-filter: none; cursor: pointer; }
 #foodGrid .food-card:hover { transform: none; border-color: transparent; box-shadow: none; }
 #foodGrid .card-img-container { height: auto; aspect-ratio: 1; border-radius: 24px; box-shadow: 0 6px 18px rgb(15 23 42 / .1); }
