@@ -58,9 +58,12 @@
 .sm-tag {
   margin: 0;
   font-family: var(--font-heading); font-size: clamp(.68rem, 1.6vw, .8rem); font-weight: 700;
-  letter-spacing: .34em; text-transform: uppercase; color: #ffb066;
+  --sm-tag-track: .34em; /* narrower on phones so the line fits */
+  letter-spacing: var(--sm-tag-track); text-transform: uppercase; color: #ffb066;
+  text-wrap: balance;
   opacity: 0;
 }
+@media (max-width: 480px) { .sm-tag { --sm-tag-track: .24em; } }
 
 /* Before the logo has decoded, keep the pieces hidden. */
 .splash-modern:not(.is-playing) :is(.sm-ring, .sm-core) { opacity: 0; }
@@ -90,7 +93,7 @@
 @keyframes sm-core { from { opacity: 0; transform: scale(0) rotate(-25deg); } 30% { opacity: 1; } to { opacity: 1; transform: none; } }
 @keyframes sm-shine { to { transform: translateX(110%); } }
 @keyframes sm-letter { from { opacity: 0; transform: translateY(.45em); filter: blur(8px); } to { opacity: 1; transform: none; filter: none; } }
-@keyframes sm-tag { from { opacity: 0; letter-spacing: .7em; } to { opacity: 1; letter-spacing: .34em; } }
+@keyframes sm-tag { from { opacity: 0; letter-spacing: calc(var(--sm-tag-track) * 2); } to { opacity: 1; letter-spacing: var(--sm-tag-track); } }
 
 /* ---------- Exit: the stage fades while the badge glides onto the hero logo ----------
    splash-modern.js sets the flight transform and the hero logo's frame (border) on the badge, so
