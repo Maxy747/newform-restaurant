@@ -653,7 +653,7 @@ function setupPages() {
 // index.html, which stamps that style on the next page load (this load's splash is already up).
 const SPLASH_STYLE_CACHE_KEY = 'newform_splash_style_v1';
 function syncSplashStyle(style) {
-  if (style !== 'classic' && style !== 'modern') return;
+  if (!['classic', 'modern', 'modern-alt'].includes(style)) return;
   try { localStorage.setItem(SPLASH_STYLE_CACHE_KEY, style); } catch { /* storage blocked */ }
 }
 

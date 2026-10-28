@@ -1284,9 +1284,11 @@ document.querySelectorAll('#siteUiPicker [data-site-ui]').forEach(button => {
   });
 });
 
-// Welcome splash every customer gets: Classic (the 28 Oct 2026 splash) or Modern (the remaster).
+// Welcome splash every customer gets: Classic (the 28 Oct 2026 splash), Modern (the remaster) or
+// Modern Alt (the dark serif version).
+const SPLASH_STYLE_NAMES = { classic: 'Classic', modern: 'Modern', 'modern-alt': 'Modern Alt' };
 function showSplashStyle(style) {
-  const current = style === 'modern' ? 'modern' : 'classic';
+  const current = SPLASH_STYLE_NAMES[style] ? style : 'classic';
   document.querySelectorAll('#splashStylePicker [data-splash-style]').forEach(button => {
     button.setAttribute('aria-checked', String(button.dataset.splashStyle === current));
   });
@@ -1296,7 +1298,7 @@ document.querySelectorAll('#splashStylePicker [data-splash-style]').forEach(butt
     if (button.getAttribute('aria-checked') === 'true') return;
     const result = await api('set_splash_style', { style: button.dataset.splashStyle });
     showSplashStyle(result.splashStyle);
-    toast(`Welcome splash set to ${result.splashStyle === 'modern' ? 'Modern' : 'Classic'}`, 'success');
+    toast(`Welcome splash set to ${SPLASH_STYLE_NAMES[result.splashStyle] || 'Classic'}`, 'success');
   });
 });
 

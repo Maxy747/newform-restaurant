@@ -22,9 +22,11 @@ export function playModernSplash(splash) {
     splash.classList.add('is-playing');
     setTimeout(leave, reduced ? 1200 : INTRO_MS);
   };
-  // Start when the logo is ready (or after a short wait on a slow connection) so the intro never
-  // animates an empty frame.
-  Promise.race([splash.querySelector('.sm-ring').decode(), new Promise(resolve => setTimeout(resolve, DECODE_WAIT_MS))]).catch(() => {}).then(play);
+  // Start when the logo (and Modern Alt's serif) is ready, or after a short wait on a slow
+  // connection, so the intro never animates an empty frame or a fallback font.
+  const ready = [splash.querySelector('.sm-ring').decode()];
+  if (splash.classList.contains('splash-modern-alt')) ready.push(document.fonts?.load('500 1em "Cormorant Garamond"'));
+  Promise.race([Promise.all(ready), new Promise(resolve => setTimeout(resolve, DECODE_WAIT_MS))]).catch(() => {}).then(play);
 
   function finish() {
     splash.remove();

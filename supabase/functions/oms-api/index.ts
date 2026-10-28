@@ -16,7 +16,7 @@ const SITE_UIS=['classic','modern'];
 // Website layouts: one scrolling page or separate pages (see checkout_settings.site_pages).
 const SITE_PAGES=['single','multi'];
 // Welcome splash styles (see checkout_settings.splash_style).
-const SPLASH_STYLES=['classic','modern'];
+const SPLASH_STYLES=['classic','modern','modern-alt'];
 const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers});
 Deno.serve(async req=>{
  const response=await handle(req);

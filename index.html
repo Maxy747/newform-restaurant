@@ -17,6 +17,9 @@
   <link rel="stylesheet" href="dark-theme.css">
   <link rel="stylesheet" href="splash-classic.css">
   <link rel="stylesheet" href="splash-modern.css">
+  <link rel="stylesheet" href="splash-modern-alt.css">
+  <!-- Serif for the Modern Alt splash wordmark (the file only downloads when that splash shows). -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500&display=swap">
   <!-- Welcome splash: shown on every page load (including refreshes). Decided before first paint so
        the site never flashes first. Skipped only for deep links (#…) so shared section links land directly. -->
   <script>
@@ -116,6 +119,23 @@
     </div>
   </section>
   </template>
+  <!-- Modern Alt: the same logo intro and flight as Modern on a plain dark stage, with a serif
+       NEWFORM and a lined orange tagline (splash-modern-alt.css over splash-modern.css). -->
+  <template id="splashModernAlt">
+  <section id="splash" class="splash-modern splash-modern-alt" role="dialog" aria-modal="true" aria-label="Welcome to NEWFORM Restaurant">
+    <div class="sm-backdrop" aria-hidden="true"></div>
+    <div class="sm-stage">
+      <div class="sm-mark" aria-hidden="true">
+        <span class="sm-logo">
+          <img class="sm-ring" src="assets/newform-logo-720.webp" alt="" width="720" height="720" fetchpriority="high" decoding="async">
+          <img class="sm-core" src="assets/newform-logo-720.webp" alt="" width="720" height="720" decoding="async">
+        </span>
+      </div>
+      <p class="sm-word" aria-hidden="true"><span>N</span><span>E</span><span>W</span><span>F</span><span>O</span><span>R</span><span>M</span></p>
+      <p class="sm-tag"><span class="sma-line" aria-hidden="true"></span><span class="sma-text">Arabian Multiple Cuisine</span><span class="sma-line" aria-hidden="true"></span></p>
+    </div>
+  </section>
+  </template>
   <script>
     // Splash style the admin picked, cached from the last visit (app.js keeps the cache in step
     // with the server). A first visit has no cache: rather than guess, hold a dark cover
@@ -123,12 +143,13 @@
     (function () {
       var root = document.documentElement;
       if (!root.classList.contains('splash-open')) return;
+      var templates = { classic: 'splashClassic', modern: 'splashModern', 'modern-alt': 'splashModernAlt' };
       var style = null;
       try { style = localStorage.getItem('newform_splash_style_v1'); } catch (error) { /* storage blocked: ask the server every visit */ }
-      if (style !== 'classic' && style !== 'modern') root.classList.add('splash-deciding');
+      if (!templates.hasOwnProperty(style)) root.classList.add('splash-deciding');
       else {
         root.dataset.splashStyle = style;
-        document.currentScript.before(document.getElementById(style === 'modern' ? 'splashModern' : 'splashClassic').content.cloneNode(true));
+        document.currentScript.before(document.getElementById(templates[style]).content.cloneNode(true));
       }
       // The splash hides the page's scrollbar; hold its width as padding so the page underneath is
       // laid out exactly as it will be once the scrollbar returns (no jump at the hand-off).

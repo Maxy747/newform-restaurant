@@ -581,6 +581,11 @@ test('PostgreSQL migration and order/payment/RLS lifecycle',async t=>{
   await assert.rejects(q("update public.checkout_settings set splash_style='classic'"),/permission denied/);
   await db.exec('reset role');
   await q("update public.checkout_settings set splash_style='classic'");
+  const altMigration=await readFile(new URL('../supabase/migrations/20261028160000_splash_style_modern_alt.sql',import.meta.url),'utf8');
+  await db.exec(altMigration);await db.exec(altMigration); // safe to re-run
+  await q("update public.checkout_settings set splash_style='modern-alt'");
+  await assert.rejects(q("update public.checkout_settings set splash_style='retro'"),/splash_style_check/);
+  await q("update public.checkout_settings set splash_style='classic'");
   const pagesMigration=await readFile(new URL('../supabase/migrations/20261028150000_site_pages.sql',import.meta.url),'utf8');
   await db.exec(pagesMigration);await db.exec(pagesMigration); // safe to re-run
   assert.equal((await q('select site_pages from public.checkout_settings'))[0].site_pages,'single');

@@ -10,6 +10,7 @@ import { createOmsApi } from './oms-client.js';
 const root = document.documentElement;
 const SPLASH_STYLE_CACHE_KEY = 'newform_splash_style_v1';
 const DECIDE_WAIT_MS = 2500;
+const TEMPLATES = { classic: 'splashClassic', modern: 'splashModern', 'modern-alt': 'splashModernAlt' };
 
 // First visit (nothing cached): the chooser in index.html left a dark cover (`splash-deciding`)
 // instead of guessing. Ask the server which style the admin picked, then stamp that one.
@@ -17,7 +18,7 @@ if (root.classList.contains('splash-deciding')) {
   decideStyle().then(style => {
     try { localStorage.setItem(SPLASH_STYLE_CACHE_KEY, style); } catch { /* storage blocked */ }
     root.dataset.splashStyle = style;
-    document.body.prepend(document.getElementById(style === 'modern' ? 'splashModern' : 'splashClassic').content.cloneNode(true));
+    document.body.prepend(document.getElementById(TEMPLATES[style]).content.cloneNode(true));
     root.classList.remove('splash-deciding');
     runSplash(document.getElementById('splash'));
   });
@@ -28,7 +29,7 @@ if (root.classList.contains('splash-deciding')) {
 async function decideStyle() {
   const timeout = new Promise(resolve => setTimeout(resolve, DECIDE_WAIT_MS, 'classic'));
   const fromServer = createOmsApi(supabase, isSupabaseConfigured)('config')
-    .then(config => (config.splashStyle === 'modern' ? 'modern' : 'classic'))
+    .then(config => (TEMPLATES[config.splashStyle] ? config.splashStyle : 'classic'))
     .catch(() => 'classic');
   return Promise.race([fromServer, timeout]);
 }
