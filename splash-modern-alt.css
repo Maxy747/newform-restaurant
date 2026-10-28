@@ -1,7 +1,7 @@
 /* Modern Alt welcome splash (Admin → Settings → Welcome splash → Modern Alt).
    Same engine as Modern (splash-modern.css + splash-modern.js: decode wait, flight onto the hero
    logo), restyled after the brand card: a plain near-black stage, the badge fading up out of a
-   soft blur, a cream serif NEWFORM, and "Arabian Multiple Cuisine" in orange between two hairlines
+   soft blur, a cream serif NEWFORM, and "Arabian Multi-cuisine" in orange between two hairlines
    that draw outwards. Selectors carry `.splash-modern-alt` so they win over the Modern ones. */
 .splash-modern-alt .sm-backdrop { background: radial-gradient(ellipse at 50% 42%, #1a1715 0%, #0f0d0c 55%, #080707 100%); }
 .splash-modern-alt .sm-stage { gap: 0; }
