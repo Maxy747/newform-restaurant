@@ -1939,8 +1939,9 @@ footer {
     display: flex;
     flex-direction: column;
     gap: 16px;
-    /* viewport - header - bottom nav (54px) - hero top padding - breathing room */
-    height: calc(100svh - var(--header-h) - 54px - 16px - 14px);
+    /* viewport - header - hero top padding - floating bottom bar (67px + home-indicator
+       area) - breathing room above the bar */
+    height: calc(100svh - var(--header-h) - 16px - 67px - env(safe-area-inset-bottom, 0px) - 22px);
     min-height: 420px;
   }
   .hero-first-screen .hero-left-col { flex: none; }
@@ -1949,10 +1950,11 @@ footer {
     min-height: 0;
     container-type: size;
     justify-content: center;
-    gap: 16px;
+    gap: 30px;
   }
   .hero-first-screen .center-dish-wrapper {
-    width: min(100cqw - 24px, 100cqh - 48px - 16px - 8px, 360px);
+    /* width - margins; height - Explore Menu (48px) - the gap above it (30px) - glow room */
+    width: min(100cqw - 24px, 100cqh - 48px - 30px - 12px, 360px);
     max-width: none;
   }
   /* Clears the translucent bottom nav so nothing peeks through it. */
