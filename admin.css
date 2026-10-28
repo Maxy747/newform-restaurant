@@ -701,3 +701,9 @@ button.adm-dish-tile:active { transform: scale(.98); }
 .adm-delivery-pricing { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; }
 .adm-delivery-pricing label { display: grid; gap: 4px; font-size: .78rem; font-weight: 700; color: var(--muted); }
 .adm-delivery-pricing input { width: 96px; }
+
+/* Payments settings */
+.adm-payment-rules { display: flex; flex-wrap: wrap; align-items: end; gap: 10px 14px; }
+.adm-payment-rules > label:not(.adm-check) { display: grid; gap: 4px; font-size: .78rem; font-weight: 700; color: var(--muted); }
+.adm-payment-rules #advancePercent { width: 80px; }
+.adm-payment-rules #upiId, .adm-payment-rules #upiName { width: 200px; }

@@ -65,7 +65,7 @@ async function handle(req:Request):Promise<Response>{
   const denied=()=>json({error:'The owner has not turned this on for restaurant admins'},403);
   if(body.action==='config') {
    const current=await settings();
-   return json({role,codEnabled:current.cod_enabled,deliveryEnabled:deliveryOn(current),orderingMode:orderingMode(current),shopOpen:shopStatus(orderingMode(current)).open,siteTheme:SITE_THEMES.includes(current.site_theme)?current.site_theme:'light',siteUi:SITE_UIS.includes(current.site_ui)?current.site_ui:'modern',splashStyle:SPLASH_STYLES.includes(current.splash_style)?current.splash_style:'classic',sitePages:SITE_PAGES.includes(current.site_pages)?current.site_pages:'single',stockTag:current.show_stock_tag!==false,deliveryMaxKm:deliveryPricing(current).maxKm,deliveryPerKm:deliveryPricing(current).perKm,owner,access:['admin','staff'].includes(role)?(owner?Object.fromEntries(ACCESS_KEYS.map(k=>[k,true])):current.admin_access||{}):undefined,adminAccess:owner?current.admin_access||{}:undefined,payments:paymentConfigured(),deliveryRouting:Boolean(Deno.env.get('ORS_API_KEY')),testMode:!(Deno.env.get('RAZORPAY_KEY_ID')||'').startsWith('rzp_live_')});
+   return json({role,codEnabled:current.cod_enabled,deliveryEnabled:deliveryOn(current),orderingMode:orderingMode(current),shopOpen:shopStatus(orderingMode(current)).open,siteTheme:SITE_THEMES.includes(current.site_theme)?current.site_theme:'light',siteUi:SITE_UIS.includes(current.site_ui)?current.site_ui:'modern',splashStyle:SPLASH_STYLES.includes(current.splash_style)?current.splash_style:'classic',sitePages:SITE_PAGES.includes(current.site_pages)?current.site_pages:'single',stockTag:current.show_stock_tag!==false,prepayRequired:current.prepay_required===true,partialPayment:current.partial_payment===true,advancePercent:Number(current.advance_percent??50),upiId:current.upi_id||null,upiName:current.upi_name||null,deliveryMaxKm:deliveryPricing(current).maxKm,deliveryPerKm:deliveryPricing(current).perKm,owner,access:['admin','staff'].includes(role)?(owner?Object.fromEntries(ACCESS_KEYS.map(k=>[k,true])):current.admin_access||{}):undefined,adminAccess:owner?current.admin_access||{}:undefined,payments:paymentConfigured(),deliveryRouting:Boolean(Deno.env.get('ORS_API_KEY')),testMode:!(Deno.env.get('RAZORPAY_KEY_ID')||'').startsWith('rzp_live_')});
   }
   if(body.action==='set_admin_access') {
    if(!owner) return json({error:'Owner access required'},403);
@@ -102,6 +102,19 @@ async function handle(req:Request):Promise<Response>{
    const now=new Date().toISOString();
    checked(await db.from('delivery_quotes').update({expires_at:now}).is('order_id',null).gt('expires_at',now));
    return json({deliveryMaxKm:Number(updated.delivery_max_km),deliveryPerKm:Number(updated.delivery_fee_per_km)});
+  }
+  // Pay before confirming, partial payment (advance %) and the restaurant's UPI details.
+  if(body.action==='set_payment_rules') {
+   if(!await can('money')) return denied();
+   const upiId=typeof body.upiId==='string'&&body.upiId.trim()?body.upiId.trim():null;
+   const upiName=typeof body.upiName==='string'&&body.upiName.trim()?body.upiName.trim().slice(0,60):null;
+   const percent=Math.round(Number(body.advancePercent));
+   if(typeof body.prepayRequired!=='boolean'||typeof body.partialPayment!=='boolean') throw new Error('Invalid payment settings');
+   if(!Number.isFinite(percent)||percent<10||percent>90) throw new Error('Advance must be between 10% and 90%');
+   if(upiId&&!/^[A-Za-z0-9._-]{2,64}@[A-Za-z0-9.-]{2,64}$/.test(upiId)) throw new Error('Enter a valid UPI ID, like newform@okaxis');
+   if(body.prepayRequired&&!upiId&&!paymentConfigured()) throw new Error('Add your UPI ID first: online payments are not set up yet, so customers would have no way to pay.');
+   const updated=checked(await db.from('checkout_settings').update({prepay_required:body.prepayRequired,partial_payment:body.partialPayment,advance_percent:percent,upi_id:upiId,upi_name:upiName}).eq('id',true).select('prepay_required,partial_payment,advance_percent,upi_id,upi_name').single());
+   return json({prepayRequired:updated.prepay_required,partialPayment:updated.partial_payment,advancePercent:updated.advance_percent,upiId:updated.upi_id,upiName:updated.upi_name});
   }
   if(body.action==='set_cod') {
    if(!await can('operations')) return denied();
@@ -392,9 +405,15 @@ async function handle(req:Request):Promise<Response>{
    } catch(error) { console.error('order.refund_sync_failed',{id:order.id,message:error instanceof Error?error.message:'Unknown error'}); }
    return json({refund:{id:refund.id,status:refundStatus(refund)}});
   }
+  // Staff confirm a UPI payment (full or advance) arrived; the order then goes to the kitchen.
+  if(body.action==='confirm_upi') {
+   if(!userId||!['admin','staff'].includes(role)) return json({error:'Staff access required'},403);
+   await rpc('oms_confirm_upi',{p_actor:userId,p_order:order.id});
+   return json({ok:true});
+  }
   if(body.action==='pay'||body.action==='verify') {
    await access(order.id,false); // Staff permissions cannot authorize paying someone else's order.
-   if(order.payment_method!=='razorpay'||['cancelled','completed'].includes(order.order_status)) throw new Error('This order is not payable');
+   if((order.payment_method!=='razorpay'&&order.advance_method!=='razorpay')||['cancelled','completed'].includes(order.order_status)) throw new Error('This order is not payable');
    let payment=checked(await db.from('payments').select('*').eq('order_id',order.id).single());
    if(['paid','refunded'].includes(payment.status)) return json({paid:payment.status==='paid'});
    if(body.action==='pay') {

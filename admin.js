@@ -206,6 +206,7 @@ async function evaluateSession(session) {
   $('deliverySwitch').setAttribute('aria-checked', String(config.deliveryEnabled !== false));
   showOrderingMode(config.orderingMode);
   showDeliveryPricing(config);
+  showPaymentRules(config);
   showSiteTheme(config.siteTheme);
   showSiteUi(config.siteUi);
   showSitePages(config.sitePages);
@@ -315,6 +316,12 @@ function itemList(order) {
   return `<ul class="adm-order-items">${order.items.map(item => `<li><b>${e(item.quantity)}×</b><span>${e(item.name)}${item.portion && item.portion !== 'single' ? ` <small>(${e(item.portion)})</small>` : ''}</span></li>`).join('')}</ul>`;
 }
 
+// Pay before confirming: what's still to collect, and the button staff press when a UPI payment arrives.
+const cashDue = order => Math.max(0, Number(order.total) - Number(order.advance_paid || 0));
+const advanceChip = order => Number(order.advance_paid) > 0 && order.payment_status !== 'paid' ? `<span class="adm-chip">${money(order.advance_paid)} paid · ${money(cashDue(order))} due</span>` : '';
+const upiButton = order => order.order_status === 'awaiting_payment' && order.advance_method === 'upi' && isManager()
+  ? `<button type="button" class="adm-btn adm-btn-primary" data-upi="${e(order.id)}"><i class="fa-solid fa-qrcode"></i> Payment received</button>` : '';
+
 function actionButtons(order, compact = false) {
   const claim = canClaim(order, state.role, state.userId) ? `<button type="button" class="adm-btn adm-step-btn" data-claim="${e(order.id)}"><i class="fa-solid fa-hand"></i> Take this delivery</button>` : '';
   return claim + nextStatuses(order, state.role, state.userId).map(status => {
@@ -338,7 +345,7 @@ function orderCard(order) {
     ${order.customer_name ? `<p class="adm-order-name">${e(order.customer_name)}</p>` : ''}
     ${driverLine(order)}
     ${itemList(order)}
-    <footer><strong>${money(order.total)}</strong>${order.order_status === 'awaiting_payment' ? '<span class="adm-chip">Awaiting payment</span>' : ''}<span class="adm-order-actions">${actionButtons(order, true)}</span></footer>
+    <footer><strong>${money(order.total)}</strong>${order.order_status === 'awaiting_payment' ? `<span class="adm-chip">Awaiting ${order.advance_due ? money(order.advance_due) + (order.advance_method === 'upi' ? ' by UPI' : ' online') : 'payment'}</span>` : advanceChip(order)}<span class="adm-order-actions">${upiButton(order)}${actionButtons(order, true)}</span></footer>
   </article>`;
 }
 
@@ -661,8 +668,8 @@ async function requestStatus(order, status) {
   }
   if (status === 'completed' && unpaidCash(order)) {
     // Double-check the money before closing an unpaid cash / COD / WhatsApp order.
-    const choice = await ask({ title: `Did you receive ${money(order.total)}?`, message: `${orderNumber(order)} · ${paymentName(order.payment_method)} · not marked paid yet.`,
-      choices: [{ label: `Yes, ${money(order.total)} received`, value: 'paid', tone: 'primary' }, { label: 'Not yet, complete anyway', value: 'unpaid' }, { label: 'Go back', value: null }] });
+    const choice = await ask({ title: `Did you receive ${money(cashDue(order))}?`, message: `${orderNumber(order)} · ${paymentName(order.payment_method)} · not marked paid yet.`,
+      choices: [{ label: `Yes, ${money(cashDue(order))} received`, value: 'paid', tone: 'primary' }, { label: 'Not yet, complete anyway', value: 'unpaid' }, { label: 'Go back', value: null }] });
     if (!choice) return;
     return queueChange(order, { status, cash: choice === 'paid' }, `${orderNumber(order)} completed · ${choice === 'paid' ? 'paid' : 'unpaid'}`);
   }
@@ -670,14 +677,30 @@ async function requestStatus(order, status) {
 }
 
 async function requestCash(order) {
-  const choice = await ask({ title: `Did you receive ${money(order.total)}?`, message: `${orderNumber(order)} will be marked as paid.`, choices: [{ label: 'Yes, received', value: 'paid', tone: 'primary' }, { label: 'Go back', value: null }] });
+  const choice = await ask({ title: `Did you receive ${money(cashDue(order))}?`, message: `${orderNumber(order)} will be marked as paid.`, choices: [{ label: 'Yes, received', value: 'paid', tone: 'primary' }, { label: 'Go back', value: null }] });
   if (choice) await queueChange(withPending(order), { cash: true }, `${orderNumber(order)} marked paid`);
 }
 
 $('orderDialog').addEventListener('close', () => { state.detailId = null; detailVersion++; });
 
+async function confirmUpi(order) {
+  const choice = await ask({ title: `Did ${money(order.advance_due)} arrive by UPI?`, message: `${orderNumber(order)} · check your UPI app for the payment before confirming. The order then goes to the kitchen.`,
+    choices: [{ label: 'Yes, payment received', value: 'yes', tone: 'primary' }, { label: 'Not yet', value: null }] });
+  if (!choice) return;
+  await api('confirm_upi', { id: order.id });
+  toast(`${orderNumber(order)} confirmed · UPI payment received`, 'success');
+  queueRefresh(0);
+}
+
 // One delegated handler for every order card/row in the page.
 document.addEventListener('click', event => {
+  const upi = event.target.closest('[data-upi]');
+  if (upi) {
+    event.stopPropagation();
+    const order = findOrder(upi.dataset.upi);
+    if (order) run(() => confirmUpi(order))({ currentTarget: upi });
+    return;
+  }
   const claim = event.target.closest('[data-claim]');
   if (claim) {
     event.stopPropagation();
@@ -1261,6 +1284,24 @@ $('deliverySwitch').onclick = run(async () => {
   $('deliverySwitch').setAttribute('aria-checked', String(result.deliveryEnabled));
   toast(result.deliveryEnabled ? 'Home delivery is on' : 'Home delivery paused', 'success');
 });
+
+// Pay before confirming, partial payment and the UPI details customers pay to.
+function showPaymentRules({ prepayRequired = false, partialPayment = false, advancePercent = 50, upiId = '', upiName = '' } = {}) {
+  $('prepayRequired').checked = prepayRequired === true;
+  $('partialPayment').checked = partialPayment === true;
+  $('partialPayment').disabled = !$('prepayRequired').checked;
+  $('advancePercent').value = String(advancePercent);
+  $('upiId').value = upiId || '';
+  $('upiName').value = upiName || '';
+}
+$('prepayRequired').addEventListener('change', () => { $('partialPayment').disabled = !$('prepayRequired').checked; if (!$('prepayRequired').checked) $('partialPayment').checked = false; });
+$('paymentRulesForm').addEventListener('submit', run(async event => {
+  event.preventDefault();
+  const result = await api('set_payment_rules', { prepayRequired: $('prepayRequired').checked, partialPayment: $('partialPayment').checked, advancePercent: Number($('advancePercent').value), upiId: $('upiId').value, upiName: $('upiName').value });
+  Object.assign(state.config, result);
+  showPaymentRules(result);
+  toast(result.prepayRequired ? `Payment required before confirming${result.partialPayment ? ` · ${result.advancePercent}% advance allowed` : ''}` : 'Orders confirm without payment, as before', 'success');
+}));
 
 // Delivery range (km by road) and price per km.
 function showDeliveryPricing({ deliveryMaxKm = 6, deliveryPerKm = 20 } = {}) {

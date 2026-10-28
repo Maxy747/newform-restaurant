@@ -71,6 +71,24 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   $('razorpayPayment').disabled=true;
   $('razorpayMethod').hidden=true;
   $('razorpayHint').textContent=config.payments?(config.testMode?'Test mode':'Pay securely'):'Setup pending';
+  // Pay before confirming (admin setting): only UPI and online payment; optionally an advance.
+  const prepay=config.prepayRequired===true;
+  whatsapp.closest('.checkout-method').hidden=prepay;
+  cash.closest('.checkout-method').hidden=prepay;
+  $('upiMethod').hidden=!prepay||!config.upiId;
+  $('razorpayMethod').hidden=!prepay||!config.payments;
+  $('razorpayPayment').disabled=!prepay||!config.payments;
+  $('razorpayMethod').classList.toggle('is-disabled',$('razorpayPayment').disabled);
+  $('prepayNote').hidden=!prepay;
+  if(prepay&&!['upi','razorpay'].includes(document.querySelector('[name="paymentMethod"]:checked')?.value))(config.upiId?$('upiPayment'):$('razorpayPayment')).checked=true;
+  const advanceOk=prepay&&config.partialPayment===true&&option.enabled;
+  $('payPlan').hidden=!(prepay&&config.partialPayment===true);
+  const advanceInput=document.querySelector('[name="payPlan"][value="advance"]');
+  advanceInput.disabled=!advanceOk;
+  $('advancePlan').classList.toggle('is-disabled',!advanceOk);
+  $('advanceAmount').textContent=advanceOk?`${money(Math.ceil(totals().total*(config.advancePercent||50)/100))} (${config.advancePercent||50}%)`:`${config.advancePercent||50}%`;
+  $('advanceRest').textContent=kind==='delivery'?(option.enabled?'in cash on delivery':`on delivery (${option.hint.toLowerCase()})`):'at the counter';
+  if(!advanceOk)document.querySelector('[name="payPlan"][value="full"]').checked=true;
  }
  function fillCheckout() {
   deliveryQuote=null;quoteVersion++;
@@ -300,13 +318,21 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   const when=o.created_at?new Date(o.created_at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}):'Tap to track';
   return `<button type="button" class="acct-order" data-track="${e(o.id)}"><span class="acct-order-main"><strong>${e(orderNumber(o))}</strong><small>${e(when)}${o.order_type?' · '+e(label(o.order_type)):''}</small></span>${o.order_status?`<span class="oms-badge ${e(o.order_status)}">${e(label(o.order_status))}</span>`:''}${o.total!=null?`<strong class="acct-order-total">${money(o.total)}</strong>`:''}<i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>`;
  }
- const paymentName=method=>({cash:'Pay at counter',cod:'Cash on delivery',whatsapp:'WhatsApp',razorpay:'Online'})[method]||method;
+ // UPI instructions while an order waits for a UPI payment: the amount, the restaurant's UPI ID and
+ // a link that opens the customer's UPI app with everything filled in.
+ const upiBox=o=>{
+  if(!config.upiId)return '';
+  const amount=Number(o.advance_due).toFixed(2),note=`NEWFORM ${orderNumber(o)}`;
+  const link=`upi://pay?pa=${encodeURIComponent(config.upiId)}&pn=${encodeURIComponent(config.upiName||'NEWFORM')}&am=${amount}&cu=INR&tn=${encodeURIComponent(note)}`;
+  return `<div class="track-upi"><p><strong>Pay ${e(money(o.advance_due))} by UPI</strong> to <b>${e(config.upiId)}</b>${config.upiName?` (${e(config.upiName)})`:''} with the note “${e(note)}”. The kitchen starts as soon as the restaurant sees it arrive.</p><a class="btn-minimal btn-primary-minimal" href="${e(link)}"><i class="fa-solid fa-qrcode"></i> Open UPI app</a></div>`;
+ };
+ const paymentName=method=>({cash:'Pay at counter',cod:'Cash on delivery',whatsapp:'WhatsApp',razorpay:'Online',upi:'UPI'})[method]||method;
  async function placeOrder() {
   if(placing)return;if(!getCart().length)return toast('Your cart is empty.');
   if(!shop().open)return toast(shop().message);
   placing=true;const button=$('placeOrderBtn');button.disabled=true;button.textContent='SAVING ORDER…';
   try {
-   const payload={customer:{name:$('custName').value.trim(),phone:$('custPhone').value.trim(),address:$('custAddress').value.trim(),table:$('tableNumber').value.trim(),order_type:$('orderType').value},items:getCart().map(i=>({id:i.id,portion:i.portion?.toLowerCase()||'single',quantity:i.quantity})),method:document.querySelector('[name="paymentMethod"]:checked')?.value};
+   const payload={customer:{name:$('custName').value.trim(),phone:$('custPhone').value.trim(),address:$('custAddress').value.trim(),table:$('tableNumber').value.trim(),order_type:$('orderType').value,pay_plan:config.prepayRequired&&config.partialPayment?(document.querySelector('[name="payPlan"]:checked')?.value||'full'):'full'},items:getCart().map(i=>({id:i.id,portion:i.portion?.toLowerCase()||'single',quantity:i.quantity})),method:document.querySelector('[name="paymentMethod"]:checked')?.value};
    if(!payload.customer.name||!payload.customer.phone)throw new Error('Enter your name and phone number.');
    if(payload.customer.order_type==='delivery'&&!payload.customer.address)throw new Error('Enter a delivery address.');
    if(payload.customer.order_type==='delivery'){
@@ -350,12 +376,14 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   const clock=value=>new Date(value).toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'});
   const icon={new:'fa-receipt',awaiting_payment:'fa-credit-card',confirmed:'fa-circle-check',preparing:'fa-fire-burner',ready:o.order_type==='delivery'?'fa-box':'fa-bell-concierge',out_for_delivery:'fa-motorcycle',completed:'fa-face-smile',cancelled:'fa-circle-xmark'}[o.order_status]||'fa-receipt';
   const unpaid=o.payment_status!=='paid'&&o.order_status!=='cancelled';
-  const payNote=o.payment_status==='paid'?'Paid':o.payment_method==='cash'?`Pay ${money(o.total)} at the counter`:o.payment_method==='cod'?`Pay ${money(o.total)} in cash on delivery`:o.payment_method==='whatsapp'?'Payment arranged with the restaurant':label(o.payment_status);
+  const balance=Number(o.total)-Number(o.advance_paid||0);
+  const payNote=o.payment_status==='paid'?'Paid':o.order_status==='awaiting_payment'&&o.advance_due?`Pay ${money(o.advance_due)} ${o.advance_method==='upi'?'by UPI':'online'} to confirm this order`:Number(o.advance_paid)>0?`${money(o.advance_paid)} paid · pay ${money(balance)} ${o.payment_method==='cod'?'in cash on delivery':'at the counter'}`:o.payment_method==='cash'?`Pay ${money(o.total)} at the counter`:o.payment_method==='cod'?`Pay ${money(o.total)} in cash on delivery`:o.payment_method==='whatsapp'?'Payment arranged with the restaurant':label(o.payment_status);
   const live=!['completed','cancelled'].includes(o.order_status);
   $('orderDetailState').innerHTML=`<section class="track-hero track-${e(o.order_status)}"><i class="fa-solid ${icon}" aria-hidden="true"></i><div><h3>${e(headline)}</h3><p>${e(subline)}</p></div></section>
    ${o.order_status==='cancelled'?'':`<ol class="track-steps">${steps.map((s,i)=>`<li class="${i<index?'done':i===index?'current':''}"><span>${e(label(s))}</span><small>${times.has(s)&&i<=index?e(clock(times.get(s))):''}</small></li>`).join('')}</ol>`}
    ${o.payment_method==='whatsapp'&&live?'<div class="track-whatsapp"><p>Want to confirm on WhatsApp too? Your order is already saved.</p><a id="sendWhatsAppOrder" class="btn-minimal" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-whatsapp"></i> SEND ON WHATSAPP</a></div>':''}
-   ${o.payment_method==='razorpay'&&!['paid','refunded'].includes(o.payment_status)&&live?'<button id="payOrderBtn" class="btn-minimal btn-primary-minimal">PAY / RETRY PAYMENT</button>':''}
+   ${o.order_status==='awaiting_payment'&&o.advance_method==='upi'&&live?upiBox(o):''}
+   ${((o.payment_method==='razorpay'&&!['paid','refunded'].includes(o.payment_status))||(o.advance_method==='razorpay'&&o.order_status==='awaiting_payment'))&&live?'<button id="payOrderBtn" class="btn-minimal btn-primary-minimal">PAY / RETRY PAYMENT</button>':''}
    <section class="track-card"><div class="oms-card-heading"><h4>ORDER ${e(orderNumber(o))} <span class="track-ref">Ref ${e(orderRef(o))}</span></h4><small>${e(new Date(o.created_at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}))}</small></div>
    ${itemsHTML(o)}
    <dl class="track-totals"><dt>Subtotal</dt><dd>${money(o.subtotal)}</dd><dt>GST</dt><dd>${money(o.tax)}</dd>${o.order_type==='delivery'?`<dt>Delivery${o.delivery_distance_m!=null?' · '+(o.delivery_distance_m/1000).toFixed(1)+' km':''}</dt><dd>${money(o.delivery_fee||0)}</dd>`:''}<dt class="track-total">Total</dt><dd class="track-total">${money(o.total)}</dd></dl>

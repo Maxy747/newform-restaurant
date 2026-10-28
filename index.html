@@ -519,8 +519,14 @@
         <div class="checkout-methods" aria-label="Payment method">
           <label class="checkout-method"><input type="radio" name="paymentMethod" value="whatsapp" checked><i class="fa-brands fa-whatsapp"></i><span>WhatsApp<small>Confirm on chat</small></span></label>
           <label class="checkout-method is-disabled"><input type="radio" name="paymentMethod" value="cod" id="codPayment" disabled><i class="fa-solid fa-money-bill-wave"></i><span id="cashMethodText">COD<small>Available from ₹799 onwards</small></span></label>
+          <label class="checkout-method" id="upiMethod" hidden><input type="radio" name="paymentMethod" value="upi" id="upiPayment"><i class="fa-solid fa-qrcode"></i><span>UPI<small>GPay, PhonePe, Paytm</small></span></label>
           <label class="checkout-method is-disabled" id="razorpayMethod" hidden><input type="radio" name="paymentMethod" value="razorpay" id="razorpayPayment" disabled><i class="fa-solid fa-credit-card"></i><span>Razorpay<small id="razorpayHint">Setup pending</small></span></label>
         </div>
+        <div class="checkout-plan" id="payPlan" role="radiogroup" aria-label="How much to pay now" hidden>
+          <label><input type="radio" name="payPlan" value="full" checked> Pay in full now</label>
+          <label id="advancePlan"><input type="radio" name="payPlan" value="advance"> Pay <span id="advanceAmount">50%</span> now · rest <span id="advanceRest">on delivery</span></label>
+        </div>
+        <p class="checkout-note" id="prepayNote" hidden>Your order is confirmed once the payment reaches us.</p>
         <p class="checkout-note">Login is optional. After placing the order you can track it live here.</p>
       </div>
     </div>

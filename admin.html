@@ -350,6 +350,20 @@
         </div>
         <button type="button" class="adm-btn" id="notifyBtn">Enable notifications</button>
       </div>
+      <div data-cap="money" class="adm-card" id="paymentRulesCard">
+        <div>
+          <h3>Payments</h3>
+          <p class="adm-muted"><strong>Pay before confirming:</strong> website orders must be paid by UPI or online before they reach the kitchen (no COD, pay at counter or WhatsApp). UPI orders wait under Awaiting payment until someone taps <strong>Payment received</strong>; online payments confirm themselves once Razorpay is set up. <strong>Partial payment:</strong> customers may pay an advance now and the rest on delivery (COD rules apply) or at the counter. Counter billing is unaffected.</p>
+        </div>
+        <form id="paymentRulesForm" class="adm-payment-rules">
+          <label class="adm-check"><input type="checkbox" id="prepayRequired"> Pay before confirming</label>
+          <label class="adm-check"><input type="checkbox" id="partialPayment"> Allow partial payment</label>
+          <label>Advance (%)<input id="advancePercent" type="number" inputmode="numeric" min="10" max="90" step="5" required></label>
+          <label>UPI ID<input id="upiId" placeholder="e.g. newform@okaxis" autocomplete="off"></label>
+          <label>Name shown in UPI<input id="upiName" maxlength="60" placeholder="NEWFORM Restaurant"></label>
+          <button type="submit" class="adm-btn adm-btn-primary">Save</button>
+        </form>
+      </div>
       <div data-cap="money" class="adm-card adm-billing-settings" id="billingSettingsCard">
         <div class="adm-setting">
           <div>

@@ -2829,3 +2829,12 @@ html.page-entering :is([data-page], footer) { opacity: 0; transition: none; }
 /* Multi page: Home has no footer (and so no Back to top); the other pages keep theirs.
    It still scrolls when the hero is taller than the screen. */
 html.pages-multi[data-current-page="home"] footer { display: none; }
+
+/* Pay before confirming: how much to pay now, and the UPI instructions while waiting. */
+.checkout-plan { display: grid; gap: 8px; margin: 10px 0 4px; }
+.checkout-plan label { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--glass-border); border-radius: 12px; font-size: .88rem; cursor: pointer; }
+.checkout-plan label.is-disabled { opacity: .55; cursor: not-allowed; }
+.checkout-method[hidden], .checkout-plan[hidden] { display: none; }
+.track-upi { display: grid; gap: 10px; margin: 12px 0; padding: 14px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--gold-primary) 35%, transparent); background: var(--btn-minimal-bg); }
+.track-upi p { margin: 0; font-size: .9rem; line-height: 1.5; overflow-wrap: anywhere; }
+.track-upi .btn-minimal { justify-self: start; }

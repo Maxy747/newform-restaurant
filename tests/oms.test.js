@@ -746,5 +746,80 @@ test('PostgreSQL migration and order/payment/RLS lifecycle',async t=>{
   await assert.rejects(q('update public.refunds set amount_paise=1'),/permission denied/);
   await db.exec('reset role');
  });
+ await t.test('pay before confirming: UPI or online up front, optional advance, cash count counts only the rest',async()=>{
+  const migration=await readFile(new URL('../supabase/migrations/20261028220000_prepay_and_advance.sql',import.meta.url),'utf8');
+  await db.exec(migration);await db.exec(migration); // safe to re-run
+  await q(`insert into public.menu_items(id,name,category,diet,"portionType",price) values('prepay-item','Prepay test','veg','veg','single',300)`);
+  const place=(method,plan='full',kind='takeaway')=>q('select public.oms_create_order($1,$2,$3,$4,$5,$6) id',[user,crypto.randomUUID(),'e'.repeat(64),JSON.stringify({name:'Test Customer',phone:'9999999999',order_type:kind,pay_plan:plan}),JSON.stringify([{id:'prepay-item',quantity:2}]),method]);
+  const row=async id=>(await q('select order_status,payment_method,payment_status,total,advance_due,advance_paid,advance_method from public.orders where id=$1',[id]))[0];
+  await db.exec('set role service_role');
+  // Off (the default): orders work as before and UPI up front isn't offered.
+  const before=(await place('cash'))[0].id;
+  assert.equal((await row(before)).order_status,'new');
+  await assert.rejects(place('upi'),/Invalid payment method/);
+  await db.exec('reset role');
+  await q("update public.checkout_settings set prepay_required=true");
+  await db.exec('set role service_role');
+  await assert.rejects(place('cash'),/Pay by UPI or online/);
+  await assert.rejects(place('whatsapp'),/Pay by UPI or online/);
+  await assert.rejects(place('upi'),/UPI payment is not set up/);
+  await db.exec('reset role');
+  await assert.rejects(q("update public.checkout_settings set upi_id='not a vpa'"),/upi_id_check/);
+  await q("update public.checkout_settings set upi_id='newform@okaxis'");
+  await db.exec('set role service_role');
+  // Full UPI: waits for the money, out of the kitchen's view; staff confirm it.
+  const full=(await place('upi'))[0].id;
+  let o=await row(full);
+  assert.deepEqual([o.order_status,o.payment_method,o.payment_status,o.advance_method,Number(o.advance_due)],['awaiting_payment','upi','pending','upi',Number(o.total)]);
+  await assert.rejects(place('upi','advance'),/Partial payment is not available/);
+  await assert.rejects(q('select public.oms_confirm_upi($1,$2)',[kitchen,full]),/Staff access required/);
+  await q('select public.oms_confirm_upi($1,$2)',[admin,full]);
+  o=await row(full);
+  assert.deepEqual([o.order_status,o.payment_status,Number(o.advance_paid)],['new','paid',Number(o.total)]);
+  await assert.rejects(q('select public.oms_confirm_upi($1,$2)',[admin,full]),/not waiting for a UPI payment/);
+  // Advance by UPI: 50% (rounded up) now, the rest at the counter.
+  await db.exec('reset role');
+  await q('update public.checkout_settings set partial_payment=true,advance_percent=30');
+  await db.exec('set role service_role');
+  const part=(await place('upi','advance'))[0].id;
+  o=await row(part);
+  assert.deepEqual([o.order_status,o.payment_method,o.advance_method],['awaiting_payment','cash','upi']);
+  assert.equal(Number(o.advance_due),Math.ceil(Number(o.total)*0.3));
+  await q('select public.oms_confirm_upi($1,$2)',[admin,part]);
+  o=await row(part);
+  assert.deepEqual([o.order_status,o.payment_status],['new','pending']); // the rest is still due
+  // Collecting the rest in cash counts only the balance in the drawer; the advance counts as UPI.
+  const day=(await q("select (now() at time zone 'Asia/Kolkata')::date d"))[0].d;
+  const sum0=(await q('select public.oms_cash_summary($1::date) s',[day]))[0].s;
+  await q('select public.oms_change_order($1,$2,$3,$4)',[part,admin,null,true]);
+  o=await row(part);
+  assert.equal(o.payment_status,'paid');
+  const sum1=(await q('select public.oms_cash_summary($1::date) s',[day]))[0].s;
+  assert.equal(Number(sum1.staff_cash)-Number(sum0.staff_cash),Number(o.total)-Number(o.advance_paid));
+  assert.equal(Number(sum1.upi),Number(sum0.upi));
+  assert.ok(Number(sum1.upi)>=Number(o.advance_paid)+Number((await row(full)).total));
+  // Online advance: its own payment row for the advance; capture confirms the order, the rest stays due.
+  const online=(await place('razorpay','advance'))[0].id;
+  o=await row(online);
+  const pay=(await q('select amount_paise from public.payments where order_id=$1',[online]))[0];
+  assert.equal(Number(pay.amount_paise),Number(o.advance_due)*100);
+  await q("update public.payments set razorpay_order_id='order_adv' where order_id=$1",[online]);
+  await q('select public.oms_apply_payment($1,$2,$3,$4,$5,$6,$7)',['adv1','order_adv','pay_adv',Number(pay.amount_paise),'INR','paid',0]);
+  o=await row(online);
+  assert.deepEqual([o.order_status,o.payment_status,Number(o.advance_paid)],['new','pending',Number(o.advance_due)]);
+  // Full online payment still marks the order paid.
+  const fullOnline=(await place('razorpay'))[0].id;
+  const fp=(await q('select amount_paise from public.payments where order_id=$1',[fullOnline]))[0];
+  await q("update public.payments set razorpay_order_id='order_full' where order_id=$1",[fullOnline]);
+  await q('select public.oms_apply_payment($1,$2,$3,$4,$5,$6,$7)',['full1','order_full','pay_full',Number(fp.amount_paise),'INR','paid',0]);
+  o=await row(fullOnline);
+  assert.deepEqual([o.order_status,o.payment_status,Number(o.advance_paid)],['new','paid',Number(o.total)]);
+  await db.exec('reset role');
+  await assert.rejects(q('update public.checkout_settings set advance_percent=95'),/advance_percent_check/);
+  await db.exec('set role authenticated');
+  await assert.rejects(q('update public.checkout_settings set prepay_required=false'),/permission denied/);
+  await db.exec('reset role');
+  await q('update public.checkout_settings set prepay_required=false,partial_payment=false,advance_percent=50,upi_id=null');
+ });
  } finally {await db.close();}
 });
