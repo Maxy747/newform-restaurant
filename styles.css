@@ -232,6 +232,11 @@ html { scroll-behavior: smooth; }
   .nav-links {
     display: flex;
   }
+  /* Logo | tabs | actions: equal side columns keep the tab pill dead centre in the bar,
+     however wide the logo and the action buttons are. */
+  .header-container { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); column-gap: 16px; }
+  .header-container > .brand-logo { justify-self: start; }
+  .header-container > .nav-actions { justify-self: end; }
 }
 
 .nav-link {
@@ -2818,4 +2823,18 @@ html.page-leaving :is([data-page], footer) { opacity: 0; }
 html.page-entering :is([data-page], footer) { opacity: 0; transition: none; }
 @media (prefers-reduced-motion: reduce) {
   html.pages-multi :is([data-page], footer) { transition: none; }
+}
+
+/* ---------- Home fits one screen ---------- */
+/* Phones: no featured-dish order block (portion picker, price, Order now) in the hero. */
+@media (max-width: 768px) {
+  .hero-right-col { display: none; }
+  .hero-minimal { padding-bottom: 14px; }
+}
+/* Multi page: Home is exactly one screen below the header: no scrolling, no footer
+   (and so no Back to top); the other pages keep theirs. */
+html.pages-multi[data-current-page="home"] { overflow: hidden; }
+html.pages-multi[data-current-page="home"] footer { display: none; }
+@media (min-width: 769px) {
+  html.pages-multi[data-current-page="home"] .hero-minimal { height: calc(100svh - var(--header-h)); min-height: 0; overflow: hidden; }
 }
