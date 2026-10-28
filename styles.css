@@ -2810,6 +2810,9 @@ html.pages-multi:not([data-current-page="about"]) [data-page="about"],
 html.pages-multi:not([data-current-page="contact"]) [data-page="contact"] { display: none !important; }
 /* Short pages still fill the screen so the footer sits low, not halfway up. */
 html.pages-multi #contactSection { min-height: calc(100svh - 200px); }
+/* As a page of its own, Contact starts just under the header (its single-page top padding
+   only separates it from the section above). */
+html.pages-multi #contactSection { padding-top: 24px; }
 html.pages-multi :is([data-page], footer) { transition: opacity .26s ease; }
 html.page-leaving :is([data-page], footer) { opacity: 0; }
 html.page-entering :is([data-page], footer) { opacity: 0; transition: none; }
