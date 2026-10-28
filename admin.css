@@ -696,3 +696,8 @@ button.adm-dish-tile:active { transform: scale(.98); }
 /* Stock-only access (owner's Stock switch without Menu editing): dishes are not editable. */
 .adm-dish-main:disabled { cursor: default; color: inherit; opacity: 1; }
 .adm-dish-main:disabled:hover strong { color: inherit; }
+
+/* Delivery range and price */
+.adm-delivery-pricing { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; }
+.adm-delivery-pricing label { display: grid; gap: 4px; font-size: .78rem; font-weight: 700; color: var(--muted); }
+.adm-delivery-pricing input { width: 96px; }

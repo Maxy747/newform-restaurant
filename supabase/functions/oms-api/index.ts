@@ -49,6 +49,7 @@ async function handle(req:Request):Promise<Response>{
   const settings=async()=>checked(await db.from('checkout_settings').select('*').eq('id',true).single());
   const deliveryOn=(row:any)=>row.delivery_enabled!==false;
   const orderingMode=(row:any)=>ORDERING_MODES.includes(row.ordering_mode)?row.ordering_mode:'auto';
+  const deliveryPricing=(row:any)=>({maxKm:Number(row.delivery_max_km??6),perKm:Number(row.delivery_fee_per_km??20)});
   // The owner (Max, site_owners) can do everything and counts as admin. Restaurant admins, and staff
   // for the tabs they have, get only what the owner switched on (checkout_settings.admin_access).
   const owner=userId?Boolean(await rpc('oms_is_owner',{p_actor:userId})):false;
@@ -64,7 +65,7 @@ async function handle(req:Request):Promise<Response>{
   const denied=()=>json({error:'The owner has not turned this on for restaurant admins'},403);
   if(body.action==='config') {
    const current=await settings();
-   return json({role,codEnabled:current.cod_enabled,deliveryEnabled:deliveryOn(current),orderingMode:orderingMode(current),shopOpen:shopStatus(orderingMode(current)).open,siteTheme:SITE_THEMES.includes(current.site_theme)?current.site_theme:'light',siteUi:SITE_UIS.includes(current.site_ui)?current.site_ui:'modern',splashStyle:SPLASH_STYLES.includes(current.splash_style)?current.splash_style:'classic',sitePages:SITE_PAGES.includes(current.site_pages)?current.site_pages:'single',stockTag:current.show_stock_tag!==false,owner,access:['admin','staff'].includes(role)?(owner?Object.fromEntries(ACCESS_KEYS.map(k=>[k,true])):current.admin_access||{}):undefined,adminAccess:owner?current.admin_access||{}:undefined,payments:paymentConfigured(),deliveryRouting:Boolean(Deno.env.get('ORS_API_KEY')),testMode:!(Deno.env.get('RAZORPAY_KEY_ID')||'').startsWith('rzp_live_')});
+   return json({role,codEnabled:current.cod_enabled,deliveryEnabled:deliveryOn(current),orderingMode:orderingMode(current),shopOpen:shopStatus(orderingMode(current)).open,siteTheme:SITE_THEMES.includes(current.site_theme)?current.site_theme:'light',siteUi:SITE_UIS.includes(current.site_ui)?current.site_ui:'modern',splashStyle:SPLASH_STYLES.includes(current.splash_style)?current.splash_style:'classic',sitePages:SITE_PAGES.includes(current.site_pages)?current.site_pages:'single',stockTag:current.show_stock_tag!==false,deliveryMaxKm:deliveryPricing(current).maxKm,deliveryPerKm:deliveryPricing(current).perKm,owner,access:['admin','staff'].includes(role)?(owner?Object.fromEntries(ACCESS_KEYS.map(k=>[k,true])):current.admin_access||{}):undefined,adminAccess:owner?current.admin_access||{}:undefined,payments:paymentConfigured(),deliveryRouting:Boolean(Deno.env.get('ORS_API_KEY')),testMode:!(Deno.env.get('RAZORPAY_KEY_ID')||'').startsWith('rzp_live_')});
   }
   if(body.action==='set_admin_access') {
    if(!owner) return json({error:'Owner access required'},403);
@@ -90,6 +91,17 @@ async function handle(req:Request):Promise<Response>{
    const item=checked(await db.from('menu_items').update({available:body.available,updated_at:new Date().toISOString()}).eq('id',body.id).select('*').maybeSingle());
    if(!item) return json({error:'Dish not found'},404);
    return json({item});
+  }
+  // Delivery range and price per km. Unused quotes are expired so nobody checks out at the old price.
+  if(body.action==='set_delivery_pricing') {
+   if(!await can('operations')) return denied();
+   const maxKm=Math.round(Number(body.maxKm)*10)/10,perKm=Math.round(Number(body.perKm)*100)/100;
+   if(!Number.isFinite(maxKm)||maxKm<0.5||maxKm>30) throw new Error('Delivery distance must be between 0.5 and 30 km');
+   if(!Number.isFinite(perKm)||perKm<0||perKm>500) throw new Error('Price per km must be between ₹0 and ₹500');
+   const updated=checked(await db.from('checkout_settings').update({delivery_max_km:maxKm,delivery_fee_per_km:perKm}).eq('id',true).select('delivery_max_km,delivery_fee_per_km').single());
+   const now=new Date().toISOString();
+   checked(await db.from('delivery_quotes').update({expires_at:now}).is('order_id',null).gt('expires_at',now));
+   return json({deliveryMaxKm:Number(updated.delivery_max_km),deliveryPerKm:Number(updated.delivery_fee_per_km)});
   }
   if(body.action==='set_cod') {
    if(!await can('operations')) return denied();
@@ -151,7 +163,7 @@ async function handle(req:Request):Promise<Response>{
   }
   if(body.action==='delivery_quote') {
    if(!await rpc('oms_rate_limit',{p_bucket:await sha256(identity+':routing'),p_limit:8})) throw new Error('Please wait a minute before calculating another route.');
-   const route=await roadQuote(body.location,Deno.env.get('ORS_API_KEY'));
+   const route=await roadQuote(body.location,Deno.env.get('ORS_API_KEY'),deliveryPricing(await settings()));
    const quote=checked(await db.from('delivery_quotes').insert({...route,user_id:userId}).select('id,fee,distance_m,expires_at').single());
    return json({quote});
   }

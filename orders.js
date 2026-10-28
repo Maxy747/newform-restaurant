@@ -20,6 +20,12 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
  const api=createOmsApi(supabase,isSupabaseConfigured);
  // Open/closed = opening hours (or the admin's override), re-checked every minute; the server enforces it too.
  const shop=()=>shopStatus(config.orderingMode||'auto');
+ // Delivery range and price per km set by the admin (Settings → Delivery range and price).
+ const deliveryKm=()=>Number(config.deliveryMaxKm)||6,deliveryRate=()=>Number(config.deliveryPerKm??20);
+ const syncDeliveryText=()=>{
+  document.querySelectorAll('[data-delivery-km]').forEach(el=>{el.textContent=String(deliveryKm());});
+  document.querySelectorAll('[data-delivery-rate]').forEach(el=>{el.textContent=String(deliveryRate());});
+ };
  let shopOpen=null;
  function syncShop() {
   const status=shop();
@@ -39,11 +45,11 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   $('deliveryUnavailable').hidden=!deliveryOff;
   const kind=$('orderType').value;
   $('deliveryLocation').hidden=kind!=='delivery';
-  if(deliveryQuote && (Date.parse(deliveryQuote.expires_at)<=Date.now() || deliveryQuote.distance_m>6000))deliveryQuote=null;
+  if(deliveryQuote && (Date.parse(deliveryQuote.expires_at)<=Date.now() || deliveryQuote.distance_m>deliveryKm()*1000))deliveryQuote=null;
   const deliveryFee=kind==='delivery'?(deliveryQuote?.fee??0):0;
   // The per-km fee is only known once the address is checked; until then say so instead of guessing.
   $('cartTotal').textContent=money(totals().total+Number(deliveryFee))+(kind==='delivery'&&!deliveryQuote?' + delivery':'');
-  $('deliveryQuoteStatus').textContent=deliveryQuote?`Delivery ₹${Number(deliveryQuote.fee)} · ${(deliveryQuote.distance_m/1000).toFixed(1)} km`:'Delivery ₹20 per km';
+  $('deliveryQuoteStatus').textContent=deliveryQuote?`Delivery ₹${Number(deliveryQuote.fee)} · ${(deliveryQuote.distance_m/1000).toFixed(1)} km`:`Delivery ₹${deliveryRate()} per km`;
   // Once a quote exists the locate button and privacy note step aside.
   $('deliveryLocation').classList.toggle('has-quote',Boolean(deliveryQuote));
   $('deliveryAddressField').hidden=kind!=='delivery';
@@ -100,6 +106,7 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   if(staffLoginRedirect&&user){staffLoginRedirect=false;if(staff()){location.assign('admin.html');return;}}
   fillCheckout();
   $('ordersBtn').hidden=!staff();
+  syncDeliveryText();
   onStaffChange(staff(),config.siteTheme,config.stockTag,config.siteUi,config.splashStyle,config.sitePages);
   if(user)channel=supabase.channel('newform-orders-'+user.id).on('postgres_changes',{event:'*',schema:'public',table:'order_signals'},()=>{
    clearTimeout(realtimeTimer);realtimeTimer=setTimeout(refreshVisible,200);

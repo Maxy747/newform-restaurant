@@ -205,6 +205,7 @@ async function evaluateSession(session) {
   $('codSwitch').setAttribute('aria-checked', String(Boolean(config.codEnabled)));
   $('deliverySwitch').setAttribute('aria-checked', String(config.deliveryEnabled !== false));
   showOrderingMode(config.orderingMode);
+  showDeliveryPricing(config);
   showSiteTheme(config.siteTheme);
   showSiteUi(config.siteUi);
   showSitePages(config.sitePages);
@@ -1260,6 +1261,19 @@ $('deliverySwitch').onclick = run(async () => {
   $('deliverySwitch').setAttribute('aria-checked', String(result.deliveryEnabled));
   toast(result.deliveryEnabled ? 'Home delivery is on' : 'Home delivery paused', 'success');
 });
+
+// Delivery range (km by road) and price per km.
+function showDeliveryPricing({ deliveryMaxKm = 6, deliveryPerKm = 20 } = {}) {
+  $('deliveryMaxKm').value = String(deliveryMaxKm);
+  $('deliveryPerKm').value = String(deliveryPerKm);
+}
+$('deliveryPricingForm').addEventListener('submit', run(async event => {
+  event.preventDefault();
+  const result = await api('set_delivery_pricing', { maxKm: Number($('deliveryMaxKm').value), perKm: Number($('deliveryPerKm').value) });
+  Object.assign(state.config, result);
+  showDeliveryPricing(result);
+  toast(`Delivery: within ${result.deliveryMaxKm} km · ₹${result.deliveryPerKm} per km`, 'success');
+}));
 
 // Website theme every customer sees (Light / Ivory / Dark).
 function showSiteTheme(theme) {

@@ -10,6 +10,13 @@ test('Delivery is Rs20 per road km (exact distance, rounded up to a rupee) withi
  assert.deepEqual(destination({lat:11,lng:76}),[76,11]);
  assert.throws(()=>destination({lat:'11',lng:76}));assert.throws(()=>destination({lat:100,lng:76}));
 });
+test('Delivery range and price per km come from the admin settings',()=>{
+ assert.equal(deliveryFee(3400,{maxKm:8,perKm:25}),85);
+ assert.equal(deliveryFee(7500,{maxKm:8,perKm:25}),188); // 187.5 rounds up
+ assert.equal(deliveryFee(2000,{maxKm:8,perKm:0}),0);
+ assert.throws(()=>deliveryFee(8001,{maxKm:8,perKm:25}),/within 8 km/);
+ assert.equal(deliveryFee(5500,{maxKm:5.5,perKm:12.5}),69); // 68.75
+});
 test('Routing cannot silently fall back to free delivery when missing configuration',async()=>{
  await assert.rejects(roadQuote({lat:11,lng:76},''),/not configured/);
 });

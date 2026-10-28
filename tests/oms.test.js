@@ -419,6 +419,32 @@ test('PostgreSQL migration and order/payment/RLS lifecycle',async t=>{
   await assert.rejects(q('update public.orders set delivery_fee=100 where id=$1',[order]),/Rs20 per km/);
   assert.equal(Number((await q('select public.delivery_fee_for(6000) f'))[0].f),120);
  });
+ await t.test('delivery range and price per km are settings',async()=>{
+  const migration=await readFile(new URL('../supabase/migrations/20261028210000_delivery_settings.sql',import.meta.url),'utf8');
+  await db.exec(migration);await db.exec(migration); // safe to re-run
+  const quote=(distance,fee)=>q('insert into public.delivery_quotes(user_id,latitude,longitude,distance_m,fee) values($1,11,76,$2,$3) returning id',[user,distance,fee]);
+  // Defaults keep the launch policy: Rs20 per km within 6 km.
+  assert.equal(Number((await q('select public.delivery_fee_for(3400) f'))[0].f),68);
+  await assert.rejects(quote(6500,130),/within 6 km/);
+  await assert.rejects(quote(1000,100),/current delivery price/);
+  // The admin widens the range and changes the price.
+  await q('update public.checkout_settings set delivery_max_km=8,delivery_fee_per_km=25');
+  assert.equal(Number((await q('select public.delivery_fee_for(7500) f'))[0].f),188);
+  const id=(await quote(7500,188))[0].id;
+  await assert.rejects(quote(3400,68),/current delivery price/); // the old price is refused
+  await assert.rejects(quote(8100,203),/within 8 km/);
+  await db.exec('set role service_role');
+  const order=(await q('select public.oms_create_order($1,$2,$3,$4,$5,$6) id',[user,crypto.randomUUID(),'b2'.repeat(32),JSON.stringify({name:'Test Customer',phone:'9999999999',address:'Test Road',order_type:'delivery',quote_id:id}),JSON.stringify([{id:'cod-boundary',quantity:1}]),'cod']))[0].id;
+  await db.exec('reset role');
+  assert.equal(Number((await q('select delivery_fee from public.orders where id=$1',[order]))[0].delivery_fee),188);
+  await assert.rejects(q('update public.orders set delivery_fee=100 where id=$1',[order]),/Rs25 per km within 8 km/);
+  await assert.rejects(q('update public.checkout_settings set delivery_max_km=40'),/delivery_max_km_check/);
+  await assert.rejects(q('update public.checkout_settings set delivery_fee_per_km=-1'),/delivery_fee_per_km_check/);
+  await db.exec('set role authenticated');
+  await assert.rejects(q('update public.checkout_settings set delivery_fee_per_km=1'),/permission denied/);
+  await db.exec('reset role');
+  await q('update public.checkout_settings set delivery_max_km=6,delivery_fee_per_km=20');
+ });
  await t.test('counter billing: paid walk-in sales are invoiced at once and cancellations are credited',async()=>{
   const migration=await readFile(new URL('../supabase/migrations/20261009150000_counter_billing.sql',import.meta.url),'utf8');
   await db.exec(migration);await db.exec(migration); // safe to re-run

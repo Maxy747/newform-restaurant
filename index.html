@@ -94,7 +94,7 @@
       <p class="splash-meta">
         <a href="tel:7593881112"><i class="fa-solid fa-phone" aria-hidden="true"></i> 7593 881 112</a>
         <span aria-hidden="true">·</span>
-        <span><i class="fa-solid fa-motorcycle" aria-hidden="true"></i> Delivery within 6 km</span>
+        <span><i class="fa-solid fa-motorcycle" aria-hidden="true"></i> Delivery within <span data-delivery-km>6</span> km</span>
       </p>
     </div>
     <div class="splash-dots" aria-hidden="true"><span class="is-active"></span><span></span><span></span></div>
@@ -341,7 +341,7 @@
       <div class="about-highlights">
         <div class="info-card" role="button" tabindex="0" aria-label="Delivery information">
           <div class="info-icon"><i class="fa-solid fa-truck-fast"></i></div>
-          <div class="info-text"><h3>HOME DELIVERY</h3><p>₹20 per km · within 6 km by road.</p></div>
+          <div class="info-text"><h3>HOME DELIVERY</h3><p>₹<span data-delivery-rate>20</span> per km · within <span data-delivery-km>6</span> km by road.</p></div>
         </div>
         <div class="info-card" role="button" tabindex="0" aria-label="Outdoor catering information">
           <div class="info-icon"><i class="fa-solid fa-utensils"></i></div>
@@ -415,7 +415,7 @@
             <a class="contact-btn contact-btn-primary" href="tel:7593881112"><i class="fa-solid fa-phone" aria-hidden="true"></i> 7593 881 112</a>
             <a class="contact-btn" href="tel:7593881113"><i class="fa-solid fa-phone" aria-hidden="true"></i> 7593 881 113</a>
           </div>
-          <p class="contact-note">Delivery within 6 km · ₹20 per km</p>
+          <p class="contact-note">Delivery within <span data-delivery-km>6</span> km · ₹<span data-delivery-rate>20</span> per km</p>
         </article>
         <article class="contact-card">
           <h3><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> WhatsApp &amp; events</h3>
@@ -492,7 +492,7 @@
           <section id="deliveryLocation" class="delivery-part">
             <div class="delivery-fee-row">
               <i class="fa-solid fa-motorcycle" aria-hidden="true"></i>
-              <div class="delivery-fee-text"><strong id="deliveryQuoteStatus" role="status">Delivery ₹20 per km</strong><small>Within 6 km by road · worked out at checkout</small></div>
+              <div class="delivery-fee-text"><strong id="deliveryQuoteStatus" role="status">Delivery ₹<span data-delivery-rate>20</span> per km</strong><small>Within <span data-delivery-km>6</span> km by road · worked out at checkout</small></div>
               <button type="button" id="useDeliveryLocation" class="delivery-locate-btn" title="Use my current location"><i class="fa-solid fa-location-crosshairs"></i> Locate</button>
             </div>
             <div id="deliveryAddressMatches" hidden></div>

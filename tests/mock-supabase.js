@@ -56,6 +56,7 @@ const ACCESS_KEYS = ['counter', 'tickets', 'drivers', 'reports', 'billing', 'men
 let adminAccess = (() => { try { return JSON.parse(localStorage.getItem('mock_admin_access')) || null; } catch { return null; } })()
   || { counter: true, tickets: true, drivers: true, reports: true, billing: true, menu: false, stock: true, operations: true, design: false, money: true };
 let team = [{ user_id: uuid(201), email: 'owner@example.com', role: 'owner' }, { user_id: uuid(202), email: 'manager@example.com', role: 'admin' }, { user_id: uuid(203), email: 'cook@example.com', role: 'kitchen' }];
+let [deliveryMaxKm, deliveryPerKm] = (() => { try { return JSON.parse(localStorage.getItem('mock_delivery_pricing')) || [6, 20]; } catch { return [6, 20]; } })();
 let codEnabled = true, deliveryEnabled = (() => { try { return localStorage.getItem('mock_delivery') !== 'off'; } catch { return true; } })(), counter = 50;
 const listeners = new Set();
 // Online payments and Admin refunds (paise), keyed by order id.
@@ -89,10 +90,11 @@ async function oms(body) {
   const r = role();
   const view = order => r === 'kitchen' ? kitchenRedact(withDriver(order)) : withDriver(order);
   switch (body.action) {
-    case 'config': return { role: signedIn() ? r : 'customer', codEnabled, deliveryEnabled, orderingMode: mockOrderingMode(), siteTheme, siteUi, splashStyle, sitePages, stockTag, owner: signedIn() && mockOwner(), access: ['admin', 'staff'].includes(r) ? (mockOwner() ? Object.fromEntries(ACCESS_KEYS.map(k => [k, true])) : adminAccess) : undefined, adminAccess: mockOwner() ? adminAccess : undefined, payments: false, testMode: true, deliveryRouting: true };
+    case 'config': return { role: signedIn() ? r : 'customer', codEnabled, deliveryEnabled, orderingMode: mockOrderingMode(), siteTheme, siteUi, splashStyle, sitePages, stockTag, deliveryMaxKm, deliveryPerKm, owner: signedIn() && mockOwner(), access: ['admin', 'staff'].includes(r) ? (mockOwner() ? Object.fromEntries(ACCESS_KEYS.map(k => [k, true])) : adminAccess) : undefined, adminAccess: mockOwner() ? adminAccess : undefined, payments: false, testMode: true, deliveryRouting: true };
     case 'set_cod': codEnabled = body.enabled; return { codEnabled };
     case 'set_admin_access': adminAccess = Object.fromEntries(ACCESS_KEYS.map(k => [k, body.access?.[k] === true])); try { localStorage.setItem('mock_admin_access', JSON.stringify(adminAccess)); } catch { /* ignore */ } return { adminAccess };
     case 'team': return { team };
+    case 'set_delivery_pricing': deliveryMaxKm = Number(body.maxKm); deliveryPerKm = Number(body.perKm); try { localStorage.setItem('mock_delivery_pricing', JSON.stringify([deliveryMaxKm, deliveryPerKm])); } catch { /* ignore */ } return { deliveryMaxKm, deliveryPerKm };
     case 'set_stock': {
       const item = menu.find(row => row.id === body.id);
       if (!item) throw new Error('Dish not found');
