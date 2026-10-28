@@ -641,6 +641,14 @@ test('PostgreSQL migration and order/payment/RLS lifecycle',async t=>{
   await q('delete from public.restaurant_roles where user_id=$1',[other]);
   await q('delete from public.site_owners');
   await q("delete from public.menu_categories where id like 'owner_t%'");
+  // Stock switch: added on (and defaulted on) without touching the other switches.
+  await q(`update public.checkout_settings set admin_access=admin_access-'stock'`);
+  const stockMigration=await readFile(new URL('../supabase/migrations/20261028200000_stock_access.sql',import.meta.url),'utf8');
+  await db.exec(stockMigration);await db.exec(stockMigration); // safe to re-run
+  const access=(await q('select admin_access a from public.checkout_settings'))[0].a;
+  assert.equal(access.stock,true);
+  assert.equal(access.menu,true); // left as the owner set it above
+  assert.match((await q("select column_default from information_schema.columns where table_name='checkout_settings' and column_name='admin_access'"))[0].column_default,/"stock": ?true/);
  });
  await t.test('admin Razorpay refunds: admin-only, capped at what was paid, idempotent per request',async()=>{
   const migration=await readFile(new URL('../supabase/migrations/20261020090000_razorpay_refunds.sql',import.meta.url),'utf8');

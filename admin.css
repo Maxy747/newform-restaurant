@@ -693,3 +693,6 @@ button.adm-dish-tile:active { transform: scale(.98); }
 .adm-team-row strong { overflow-wrap: anywhere; }
 .adm-team-actions { display: flex; align-items: center; gap: 8px; }
 @media (max-width: 640px) { .adm-team-form { grid-template-columns: 1fr; } }
+/* Stock-only access (owner's Stock switch without Menu editing): dishes are not editable. */
+.adm-dish-main:disabled { cursor: default; color: inherit; opacity: 1; }
+.adm-dish-main:disabled:hover strong { color: inherit; }

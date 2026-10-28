@@ -16,7 +16,7 @@ const SITE_UIS=['classic','modern'];
 // Website layouts: one scrolling page or separate pages (see checkout_settings.site_pages).
 const SITE_PAGES=['single','multi'];
 // What the owner can switch on or off for restaurant admins (see checkout_settings.admin_access).
-const ACCESS_KEYS=['counter','tickets','drivers','reports','billing','menu','operations','design','money'];
+const ACCESS_KEYS=['counter','tickets','drivers','reports','billing','menu','stock','operations','design','money'];
 const TEAM_ROLES=['admin','staff','kitchen','none'];
 // Welcome splash styles (see checkout_settings.splash_style).
 const SPLASH_STYLES=['classic','modern','modern-alt'];
@@ -82,6 +82,14 @@ async function handle(req:Request):Promise<Response>{
    if(!TEAM_ROLES.includes(body.role)) throw new Error('Pick Admin, Staff or Kitchen');
    await rpc('oms_set_team_role',{p_actor:userId,p_email:typeof body.email==='string'?body.email.slice(0,320):'',p_role:body.role});
    return json({team:await rpc('oms_team',{})});
+  }
+  // In / out of stock only; allowed with Menu editing or with the separate Stock switch.
+  if(body.action==='set_stock') {
+   if(!await can('menu')&&!await can('stock')) return denied();
+   if(typeof body.id!=='string'||!body.id||body.id.length>80||typeof body.available!=='boolean') throw new Error('Invalid stock change');
+   const item=checked(await db.from('menu_items').update({available:body.available,updated_at:new Date().toISOString()}).eq('id',body.id).select('*').maybeSingle());
+   if(!item) return json({error:'Dish not found'},404);
+   return json({item});
   }
   if(body.action==='set_cod') {
    if(!await can('operations')) return denied();

@@ -10,7 +10,9 @@ const PHOTO_WIDTH = 2560;
 const MAX_STORED_BYTES = 5 * 1024 * 1024;
 
 // Menu and category management. Writes go straight to Supabase and rely on the existing admin-only RLS policies.
-export function createMenuAdmin({ supabase, toast, run, isAdmin }) {
+// canEdit: full menu editing. Without it (the owner's Stock switch only) the tab just marks
+// dishes in or out of stock.
+export function createMenuAdmin({ supabase, api, toast, run, isAdmin, canEdit = isAdmin }) {
   const $ = id => document.getElementById(id);
   let items = [], categories = [], loaded = false, editing = null, photoFile = null, photoRemoved = false, previewUrl = null;
 
@@ -30,6 +32,8 @@ export function createMenuAdmin({ supabase, toast, run, isAdmin }) {
 
   async function open() {
     if (!isAdmin()) return;
+    $('addDishBtn').hidden = !canEdit();
+    $('manageCategoriesBtn').hidden = !canEdit();
     if (!loaded) $('menuList').innerHTML = '<p class="adm-empty">Loading menu…</p>';
     await load();
     renderFilters();
@@ -73,7 +77,7 @@ export function createMenuAdmin({ supabase, toast, run, isAdmin }) {
     const out = items.filter(item => item.available === false).length;
     $('menuSummary').textContent = `${items.length} dishes · ${out} out of stock${visible.length !== items.length ? ` · showing ${visible.length}` : ''}`;
     $('menuList').innerHTML = visible.map(item => `<article class="adm-dish${item.available === false ? ' is-out' : ''}">
-        <button type="button" class="adm-dish-main" data-edit="${e(item.id)}" aria-label="Edit ${e(item.name)}">
+        <button type="button" class="adm-dish-main" data-edit="${e(item.id)}" aria-label="${canEdit() ? 'Edit ' : ''}${e(item.name)}"${canEdit() ? '' : ' disabled'}>
           ${hasPhoto(item.image) ? `<img src="${e(item.image)}" alt="" loading="lazy">` : '<span class="adm-dish-noimg"><i class="fa-solid fa-image"></i></span>'}
           <span class="adm-dish-text">
             <strong><i class="adm-diet adm-diet-${e(item.diet)}" title="${item.diet === 'veg' ? 'Veg' : 'Non-veg'}"></i>${e(item.name)}${item.tag ? ` <span class="adm-chip">${e(item.tag)}</span>` : ''}</strong>
@@ -91,8 +95,7 @@ export function createMenuAdmin({ supabase, toast, run, isAdmin }) {
     const item = items.find(row => row.id === id);
     if (!item) return;
     const available = item.available === false;
-    const { data, error } = await supabase.from('menu_items').update({ available }).eq('id', id).select().single();
-    if (error) throw error;
+    const { item: data } = await api('set_stock', { id, available });
     Object.assign(item, data);
     render();
     toast(available ? `${item.name} is back in stock` : `${item.name} marked out of stock`, 'success');
@@ -239,7 +242,7 @@ export function createMenuAdmin({ supabase, toast, run, isAdmin }) {
   $('menuSearch').addEventListener('input', render);
   $('menuCategoryFilter').addEventListener('change', render);
   $('menuStockFilter').addEventListener('change', render);
-  $('addDishBtn').onclick = () => openEditor();
+  $('addDishBtn').onclick = () => { if (canEdit()) openEditor(); };
   $('menuTop').addEventListener('click', event => {
     const restock = event.target.closest('[data-restock]');
     if (restock) { run(() => toggleStock(restock.dataset.restock, restock))({ currentTarget: restock }); return; }
@@ -250,7 +253,7 @@ export function createMenuAdmin({ supabase, toast, run, isAdmin }) {
     const stock = event.target.closest('[data-stock]');
     if (stock) { run(() => toggleStock(stock.dataset.stock, stock))({ currentTarget: stock }); return; }
     const edit = event.target.closest('[data-edit]');
-    if (edit) openEditor(items.find(item => item.id === edit.dataset.edit));
+    if (edit && canEdit()) openEditor(items.find(item => item.id === edit.dataset.edit));
   });
   $('dishPortionType').addEventListener('change', syncPricing);
   $('dishPhoto').addEventListener('change', event => {

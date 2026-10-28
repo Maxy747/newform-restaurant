@@ -55,6 +55,7 @@ const can = section => {
   if (!SECTIONS[section]?.includes(state.role)) return false;
   if (section === 'owner') return state.config.owner === true;
   if (section === 'settings') return state.config.owner === true || ['operations', 'design', 'money'].some(allowed);
+  if (section === 'menu') return allowed('menu') || allowed('stock');
   return !SECTION_CAP[section] || allowed(SECTION_CAP[section]);
 };
 const adminCan = cap => state.role === 'admin' && allowed(cap);
@@ -1339,6 +1340,7 @@ const ACCESS_ITEMS = [
   ['reports', 'Reports', 'Sales and order reports.'],
   ['billing', 'Billing', 'The invoice list and exports.'],
   ['menu', 'Menu editing', 'Adding, editing, pricing and removing dishes and categories.'],
+  ['stock', 'Stock', 'Marking dishes in or out of stock (works even with Menu editing off).'],
   ['operations', 'Ordering settings', 'Online ordering (open/closed), cash on delivery and home delivery.'],
   ['design', 'Website design', 'Theme, Website UI, Pages, Welcome splash, the representative-image tag and the gallery.'],
   ['money', 'Money settings', 'Invoice/GST settings, refunds and Reduce bill.'],
@@ -1414,7 +1416,7 @@ document.querySelectorAll('dialog').forEach(dialog => {
   dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
 });
 
-const menuAdmin = createMenuAdmin({ supabase, toast, run, isAdmin: () => adminCan('menu') });
+const menuAdmin = createMenuAdmin({ supabase, toast, run, api, isAdmin: () => adminCan('menu') || adminCan('stock'), canEdit: () => adminCan('menu') });
 const cashCount = createCashCount({ api, toast, run, ask, todayIST });
 const galleryAdmin = createGalleryAdmin({ supabase, toast, run, ask });
 const counter = createCounter({ supabase, api, toast, run, ask, billingEnabled: () => state.billing?.enabled === true });

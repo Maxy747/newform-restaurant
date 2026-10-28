@@ -52,9 +52,9 @@ let splashStyle = (() => { try { return localStorage.getItem('mock_splash_style'
 let stockTag = (() => { try { return localStorage.getItem('mock_stock_tag') !== 'off'; } catch { return true; } })();
 // Owner (Max) vs restaurant admin: localStorage mock_owner = 'off' signs in as a restaurant admin.
 const mockOwner = () => { try { return localStorage.getItem('mock_owner') !== 'off'; } catch { return true; } };
-const ACCESS_KEYS = ['counter', 'tickets', 'drivers', 'reports', 'billing', 'menu', 'operations', 'design', 'money'];
+const ACCESS_KEYS = ['counter', 'tickets', 'drivers', 'reports', 'billing', 'menu', 'stock', 'operations', 'design', 'money'];
 let adminAccess = (() => { try { return JSON.parse(localStorage.getItem('mock_admin_access')) || null; } catch { return null; } })()
-  || { counter: true, tickets: true, drivers: true, reports: true, billing: true, menu: false, operations: true, design: false, money: true };
+  || { counter: true, tickets: true, drivers: true, reports: true, billing: true, menu: false, stock: true, operations: true, design: false, money: true };
 let team = [{ user_id: uuid(201), email: 'owner@example.com', role: 'owner' }, { user_id: uuid(202), email: 'manager@example.com', role: 'admin' }, { user_id: uuid(203), email: 'cook@example.com', role: 'kitchen' }];
 let codEnabled = true, deliveryEnabled = (() => { try { return localStorage.getItem('mock_delivery') !== 'off'; } catch { return true; } })(), counter = 50;
 const listeners = new Set();
@@ -93,6 +93,12 @@ async function oms(body) {
     case 'set_cod': codEnabled = body.enabled; return { codEnabled };
     case 'set_admin_access': adminAccess = Object.fromEntries(ACCESS_KEYS.map(k => [k, body.access?.[k] === true])); try { localStorage.setItem('mock_admin_access', JSON.stringify(adminAccess)); } catch { /* ignore */ } return { adminAccess };
     case 'team': return { team };
+    case 'set_stock': {
+      const item = menu.find(row => row.id === body.id);
+      if (!item) throw new Error('Dish not found');
+      item.available = body.available;
+      return { item: { ...item } };
+    }
     case 'set_team_role': {
       const email = String(body.email || '').trim().toLowerCase();
       if (!/^[^@\s]+@[^@\s]+$/.test(email)) throw new Error('Enter the email they signed up with');
