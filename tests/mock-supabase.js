@@ -50,6 +50,12 @@ let siteUi = (() => { try { return localStorage.getItem('mock_site_ui') || 'mode
 let sitePages = (() => { try { return localStorage.getItem('mock_site_pages') || 'single'; } catch { return 'single'; } })();
 let splashStyle = (() => { try { return localStorage.getItem('mock_splash_style') || 'classic'; } catch { return 'classic'; } })();
 let stockTag = (() => { try { return localStorage.getItem('mock_stock_tag') !== 'off'; } catch { return true; } })();
+// Owner (Max) vs restaurant admin: localStorage mock_owner = 'off' signs in as a restaurant admin.
+const mockOwner = () => { try { return localStorage.getItem('mock_owner') !== 'off'; } catch { return true; } };
+const ACCESS_KEYS = ['counter', 'tickets', 'drivers', 'reports', 'billing', 'menu', 'operations', 'design', 'money'];
+let adminAccess = (() => { try { return JSON.parse(localStorage.getItem('mock_admin_access')) || null; } catch { return null; } })()
+  || { counter: true, tickets: true, drivers: true, reports: true, billing: true, menu: false, operations: true, design: false, money: true };
+let team = [{ user_id: uuid(201), email: 'owner@example.com', role: 'owner' }, { user_id: uuid(202), email: 'manager@example.com', role: 'admin' }, { user_id: uuid(203), email: 'cook@example.com', role: 'kitchen' }];
 let codEnabled = true, deliveryEnabled = (() => { try { return localStorage.getItem('mock_delivery') !== 'off'; } catch { return true; } })(), counter = 50;
 const listeners = new Set();
 // Online payments and Admin refunds (paise), keyed by order id.
@@ -83,8 +89,18 @@ async function oms(body) {
   const r = role();
   const view = order => r === 'kitchen' ? kitchenRedact(withDriver(order)) : withDriver(order);
   switch (body.action) {
-    case 'config': return { role: signedIn() ? r : 'customer', codEnabled, deliveryEnabled, orderingMode: mockOrderingMode(), siteTheme, siteUi, splashStyle, sitePages, stockTag, payments: false, testMode: true, deliveryRouting: true };
+    case 'config': return { role: signedIn() ? r : 'customer', codEnabled, deliveryEnabled, orderingMode: mockOrderingMode(), siteTheme, siteUi, splashStyle, sitePages, stockTag, owner: signedIn() && mockOwner(), access: ['admin', 'staff'].includes(r) ? (mockOwner() ? Object.fromEntries(ACCESS_KEYS.map(k => [k, true])) : adminAccess) : undefined, adminAccess: mockOwner() ? adminAccess : undefined, payments: false, testMode: true, deliveryRouting: true };
     case 'set_cod': codEnabled = body.enabled; return { codEnabled };
+    case 'set_admin_access': adminAccess = Object.fromEntries(ACCESS_KEYS.map(k => [k, body.access?.[k] === true])); try { localStorage.setItem('mock_admin_access', JSON.stringify(adminAccess)); } catch { /* ignore */ } return { adminAccess };
+    case 'team': return { team };
+    case 'set_team_role': {
+      const email = String(body.email || '').trim().toLowerCase();
+      if (!/^[^@\s]+@[^@\s]+$/.test(email)) throw new Error('Enter the email they signed up with');
+      if (email === 'owner@example.com') throw new Error('That is the owner account');
+      team = team.filter(member => member.email !== email);
+      if (body.role !== 'none') team.push({ user_id: uuid(200 + team.length + 10), email, role: body.role });
+      return { team };
+    }
     case 'set_site_ui': siteUi = body.ui; try { localStorage.setItem('mock_site_ui', siteUi); } catch { /* ignore */ } return { siteUi };
     case 'set_site_pages': sitePages = body.pages; try { localStorage.setItem('mock_site_pages', sitePages); } catch { /* ignore */ } return { sitePages };
     case 'set_splash_style': splashStyle = body.style; try { localStorage.setItem('mock_splash_style', splashStyle); } catch { /* ignore */ } return { splashStyle };

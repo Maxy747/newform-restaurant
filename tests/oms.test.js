@@ -596,6 +596,52 @@ test('PostgreSQL migration and order/payment/RLS lifecycle',async t=>{
   await db.exec('reset role');
   await q("update public.checkout_settings set site_pages='single'");
  });
+ await t.test('owner decides what restaurant admins can do, and manages the team',async()=>{
+  const migration=await readFile(new URL('../supabase/migrations/20261028190000_owner_and_admin_access.sql',import.meta.url),'utf8');
+  await db.exec(migration);await db.exec(migration); // safe to re-run
+  const addCategory=async(actor,id)=>{
+   await db.exec(`set role authenticated; set request.jwt.claim.sub='${actor}'`);
+   try { return await q('insert into public.menu_categories(id,name,sort_order) values($1,$1,99) returning id',[id]); }
+   finally { await db.exec('reset role'); }
+  };
+  // No owner yet: profile admins keep full access, so nothing locks up.
+  assert.equal((await addCategory(admin,'owner_t1')).length,1);
+  // Max becomes the owner; the profile admin is now a restaurant admin with menu editing off by default.
+  await q('insert into public.site_owners(user_id) values($1)',[other]);
+  await q("insert into public.restaurant_roles(user_id,role) values($1,'admin') on conflict(user_id) do update set role='admin'",[other]);
+  assert.equal((await q("select (admin_access->>'menu')::boolean m,(admin_access->>'reports')::boolean r from public.checkout_settings"))[0].m,false);
+  await assert.rejects(addCategory(admin,'owner_t2'),/row-level security/);
+  assert.equal((await addCategory(other,'owner_t3')).length,1); // the owner always can
+  await q(`update public.checkout_settings set admin_access=admin_access||'{"menu":true}'::jsonb`);
+  assert.equal((await addCategory(admin,'owner_t4')).length,1); // owner switched it on
+  assert.equal((await q("select public.oms_actor_can($1,'design') d,public.oms_actor_can($1,'money') m,public.oms_actor_can($2,'design') o,public.oms_actor_can($3,'menu') k",[admin,other,kitchen]))[0].d,false);
+  assert.deepEqual((await q("select public.oms_actor_can($1,'money') m,public.oms_actor_can($2,'design') o,public.oms_actor_can($3,'menu') k",[admin,other,kitchen]))[0],{m:true,o:true,k:false});
+  // Team: only the owner changes roles; drivers and the owner's own account are protected.
+  await assert.rejects(q("select public.oms_set_team_role($1,'k@test.invalid','staff')",[admin]),/Owner access required/);
+  await q("select public.oms_set_team_role($1,'K@test.invalid','staff')",[other]);
+  assert.equal((await q('select role from public.restaurant_roles where user_id=$1',[kitchen]))[0].role,'staff');
+  await assert.rejects(q("select public.oms_set_team_role($1,'d@test.invalid','staff')",[other]),/delivery driver/);
+  await assert.rejects(q("select public.oms_set_team_role($1,'b@test.invalid','admin')",[other]),/owner account/);
+  await assert.rejects(q("select public.oms_set_team_role($1,'nobody@test.invalid','admin')",[other]),/sign up on the website first/);
+  await assert.rejects(q("select public.oms_set_team_role($1,'k@test.invalid','superuser')",[other]),/Pick Admin, Staff or Kitchen/);
+  const roles=Object.fromEntries((await q('select email,role from public.oms_team()')).map(row=>[row.email,row.role]));
+  assert.equal(roles['b@test.invalid'],'owner');
+  assert.equal(roles['admin@test.invalid'],'admin');
+  assert.equal(roles['k@test.invalid'],'staff');
+  // Removing a legacy profile admin clears the profile flag too.
+  await q("select public.oms_set_team_role($1,'admin@test.invalid','none')",[other]);
+  assert.equal((await q('select role from public.profiles where id=$1',[admin]))[0].role,'staff');
+  await db.exec('set role authenticated');
+  await assert.rejects(q('select * from public.oms_team()'),/permission denied/);
+  await assert.rejects(q("select public.oms_set_team_role($1,'k@test.invalid','admin')",[other]),/permission denied/);
+  await db.exec('reset role');
+  // Put things back for the tests that follow.
+  await q("update public.profiles set role='admin' where id=$1",[admin]);
+  await q("update public.restaurant_roles set role='kitchen' where user_id=$1",[kitchen]);
+  await q('delete from public.restaurant_roles where user_id=$1',[other]);
+  await q('delete from public.site_owners');
+  await q("delete from public.menu_categories where id like 'owner_t%'");
+ });
  await t.test('admin Razorpay refunds: admin-only, capped at what was paid, idempotent per request',async()=>{
   const migration=await readFile(new URL('../supabase/migrations/20261020090000_razorpay_refunds.sql',import.meta.url),'utf8');
   await db.exec(migration);await db.exec(migration); // safe to re-run

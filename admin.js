@@ -12,7 +12,9 @@ const THEME_KEY = 'newform_theme_v1';
 const SOUND_KEY = 'newform_admin_sound_v1';
 const FLASH_MS = 3000;
 const ACTIVE_STATUSES = ['new', 'awaiting_payment', 'confirmed', 'preparing', 'ready', 'out_for_delivery'];
-const SECTIONS = { orders: ['admin', 'staff', 'kitchen', 'delivery'], counter: ['admin', 'staff'], menu: ['admin'], tickets: ['admin', 'staff'], drivers: ['admin', 'staff'], reports: ['admin', 'staff'], billing: ['admin', 'staff'], settings: ['admin'] };
+const SECTIONS = { orders: ['admin', 'staff', 'kitchen', 'delivery'], counter: ['admin', 'staff'], menu: ['admin'], tickets: ['admin', 'staff'], drivers: ['admin', 'staff'], reports: ['admin', 'staff'], billing: ['admin', 'staff'], settings: ['admin'], owner: ['admin'] };
+// Tabs the owner can switch off for restaurant admins and staff (Owner → What restaurant admins can use).
+const SECTION_CAP = { counter: 'counter', menu: 'menu', tickets: 'tickets', drivers: 'drivers', reports: 'reports', billing: 'billing' };
 const TYPE_ICON = { delivery: 'fa-motorcycle', takeaway: 'fa-bag-shopping', dine_in: 'fa-chair' };
 const TYPE_LABEL = { delivery: 'Delivery', takeaway: 'Takeaway', dine_in: 'Dine in' };
 const PAYMENT_LABEL = { cod: 'COD', cash: 'Pay at counter', upi: 'UPI', whatsapp: 'WhatsApp', razorpay: 'Online' };
@@ -47,7 +49,15 @@ const run = fn => async event => {
 
 const time = value => new Date(value).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 const todayIST = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-const can = section => SECTIONS[section]?.includes(state.role);
+// The owner (Max) has everything; everyone else gets what the owner switched on.
+const allowed = cap => state.config.owner === true || state.config.access?.[cap] === true;
+const can = section => {
+  if (!SECTIONS[section]?.includes(state.role)) return false;
+  if (section === 'owner') return state.config.owner === true;
+  if (section === 'settings') return state.config.owner === true || ['operations', 'design', 'money'].some(allowed);
+  return !SECTION_CAP[section] || allowed(SECTION_CAP[section]);
+};
+const adminCan = cap => state.role === 'admin' && allowed(cap);
 const isManager = () => ['admin', 'staff'].includes(state.role);
 
 // ---------- theme ----------
@@ -188,6 +198,7 @@ async function evaluateSession(session) {
   $('adminNav').hidden = false;
   document.body.dataset.role = state.role;
   document.querySelectorAll('#adminNav [data-section]').forEach(link => { link.hidden = !can(link.dataset.section); });
+  document.querySelectorAll('#section-settings [data-cap]').forEach(card => { card.hidden = !adminCan(card.dataset.cap); });
   // Kitchen and delivery only work the live board.
   document.querySelector('[data-orders-view="history"]').hidden = !isManager();
   $('codSwitch').setAttribute('aria-checked', String(Boolean(config.codEnabled)));
@@ -199,7 +210,7 @@ async function evaluateSession(session) {
   showSplashStyle(config.splashStyle);
   $('stockTagSwitch').setAttribute('aria-checked', String(config.stockTag !== false));
   if (!savedAdminTheme() && config.siteTheme) applyTheme(config.siteTheme);
-  $('addDriverBtn').hidden = state.role !== 'admin';
+  $('addDriverBtn').hidden = !adminCan('drivers');
   $('shiftBox').hidden = true;
   if (state.role === 'delivery') loadMyShift(version).catch(error => toast(error.message, 'error'));
   state.billing = null;
@@ -243,6 +254,7 @@ function route() {
   if (section === 'drivers') refreshDrivers().catch(error => toast(error.message, 'error'));
   if (section === 'reports') refreshReports().catch(error => toast(error.message, 'error'));
   if (section === 'billing') refreshBilling().catch(error => toast(error.message, 'error'));
+  if (section === 'owner') refreshOwner().catch(error => toast(error.message, 'error'));
   if (section === 'settings') galleryAdmin.open().catch(error => toast(error.message, 'error'));
 }
 window.addEventListener('hashchange', route);
@@ -704,7 +716,7 @@ async function loadDrivers() {
 async function refreshDrivers() {
   if (!isManager()) return;
   const drivers = await loadDrivers();
-  const admin = state.role === 'admin';
+  const admin = adminCan('drivers');
   $('driverList').innerHTML = drivers.map(d => `<article class="adm-card adm-driver${d.active ? '' : ' is-disabled'}">
       <header><div><h3>${e(d.name)}</h3><p>${e(d.email || '')}${d.phone ? ` · <a class="adm-link" href="tel:${e(d.phone.replace(/[^0-9+]/g, ''))}">${e(d.phone)}</a>` : ''}</p></div>
         ${d.active ? (d.on_shift ? '<span class="adm-chip adm-chip-ok">On shift</span>' : '<span class="adm-chip">Off shift</span>') : '<span class="adm-chip">Disabled</span>'}</header>
@@ -1053,7 +1065,7 @@ async function refreshBilling() {
   const { invoices, count, summary } = await api('invoices', { start: query.start, end: query.end, search: query.search, page: state.billPage });
   const off = !state.billing?.enabled;
   $('billingNotice').hidden = !off;
-  $('billingNotice').innerHTML = off ? (state.role === 'admin'
+  $('billingNotice').innerHTML = off ? (adminCan('money')
     ? 'Invoicing is off. Fill in your business details and turn it on in <a class="adm-link" href="#settings">Settings</a>.'
     : 'Invoicing is off. An admin can turn it on in Settings.') : '';
   const gst = Number(summary.cgst) + Number(summary.sgst), creditGst = Number(summary.credit_cgst) + Number(summary.credit_sgst);
@@ -1087,7 +1099,7 @@ function invoiceBlock(order, invoice) {
   if (!isManager()) return '';
   if (invoice) return `<section class="adm-detail-block"><h3>Invoice</h3>
     <p><strong>${e(invoice.invoice_no)}</strong></p>
-    <div class="adm-head-actions"><a class="adm-btn" href="${e(invoiceLink(order.id))}" target="_blank" rel="noopener"><i class="fa-solid fa-print"></i> Print invoice</a>${state.role === 'admin' ? '<button type="button" class="adm-btn" id="creditBtn"><i class="fa-solid fa-file-circle-minus"></i> Reduce bill</button>' : ''}</div></section>`;
+    <div class="adm-head-actions"><a class="adm-btn" href="${e(invoiceLink(order.id))}" target="_blank" rel="noopener"><i class="fa-solid fa-print"></i> Print invoice</a>${adminCan('money') ? '<button type="button" class="adm-btn" id="creditBtn"><i class="fa-solid fa-file-circle-minus"></i> Reduce bill</button>' : ''}</div></section>`;
   if (!state.billing?.enabled || order.order_status === 'cancelled') return '';
   if (order.order_status === 'completed' && order.payment_status === 'paid') return `<section class="adm-detail-block"><h3>Invoice</h3>
     <p class="adm-muted">This order finished before invoicing was turned on.</p>
@@ -1104,7 +1116,7 @@ function refundBlock(order, payment, refunds) {
   const summary = refundSummary(payment, refunds);
   if (!isManager() || !summary) return '';
   const rows = refunds.map(refund => `<li><span><span class="adm-badge adm-badge-${e(REFUND_BADGE[refund.status])}">${e(REFUND_LABEL[refund.status])}</span> ${e(refund.reason)}${refund.failure_reason ? `<br><small class="adm-muted">${e(refund.failure_reason)}</small>` : ''}</span><strong>${e(paise(refund.amount_paise))}</strong></li>`).join('');
-  const button = state.role === 'admin' && (summary.remaining > 0 || summary.confirming) ? '<div><button type="button" class="adm-btn" id="refundBtn"><i class="fa-solid fa-rotate-left"></i> Refund</button></div>' : '';
+  const button = adminCan('money') && (summary.remaining > 0 || summary.confirming) ? '<div><button type="button" class="adm-btn" id="refundBtn"><i class="fa-solid fa-rotate-left"></i> Refund</button></div>' : '';
   return `<section class="adm-detail-block"><h3>Online payment</h3>
     <p class="adm-muted">Paid ${e(paise(summary.paid))} · refunded ${e(paise(summary.refunded))}${summary.remaining ? ` · ${e(paise(summary.remaining))} refundable` : ''}</p>
     ${rows ? `<ul class="adm-items">${rows}</ul>` : ''}${button}</section>`;
@@ -1318,6 +1330,83 @@ document.querySelectorAll('#sitePagesPicker [data-site-pages]').forEach(button =
   });
 });
 
+// ---------- owner ----------
+// Max's panel: what restaurant admins can use, and who is on the team.
+const ACCESS_ITEMS = [
+  ['counter', 'Counter', 'Counter billing and the end-of-day cash count.'],
+  ['tickets', 'Tickets', 'Customer support tickets.'],
+  ['drivers', 'Drivers', 'Delivery drivers: adding, disabling and the driver report.'],
+  ['reports', 'Reports', 'Sales and order reports.'],
+  ['billing', 'Billing', 'The invoice list and exports.'],
+  ['menu', 'Menu editing', 'Adding, editing, pricing and removing dishes and categories.'],
+  ['operations', 'Ordering settings', 'Online ordering (open/closed), cash on delivery and home delivery.'],
+  ['design', 'Website design', 'Theme, Website UI, Pages, Welcome splash, the representative-image tag and the gallery.'],
+  ['money', 'Money settings', 'Invoice/GST settings, refunds and Reduce bill.'],
+];
+const ROLE_NAME = { owner: 'Owner', admin: 'Admin', staff: 'Staff', kitchen: 'Kitchen', delivery: 'Delivery' };
+
+function renderAccess() {
+  const access = state.config.adminAccess || {};
+  $('accessList').innerHTML = ACCESS_ITEMS.map(([key, name, help]) => `<div class="adm-access-row">
+      <div><strong>${e(name)}</strong><small>${e(help)}</small></div>
+      <button type="button" class="adm-switch" role="switch" aria-checked="${access[key] === true}" aria-label="${e(name)} for restaurant admins" data-access="${key}"><span></span></button>
+    </div>`).join('');
+}
+$('accessList').addEventListener('click', run(async event => {
+  const button = event.target.closest('[data-access]');
+  if (!button) return;
+  const key = button.dataset.access;
+  const next = { ...(state.config.adminAccess || {}), [key]: button.getAttribute('aria-checked') !== 'true' };
+  const result = await api('set_admin_access', { access: next });
+  state.config.adminAccess = result.adminAccess;
+  renderAccess();
+  const name = ACCESS_ITEMS.find(item => item[0] === key)?.[1] || key;
+  toast(`${name} ${result.adminAccess[key] ? 'on' : 'off'} for restaurant admins`, 'success');
+}));
+
+function renderTeam(team) {
+  $('teamList').innerHTML = team.length ? team.map(member => {
+    const locked = member.role === 'owner' || member.role === 'delivery';
+    return `<div class="adm-team-row">
+      <div><strong>${e(member.email || 'Unknown account')}</strong> <span class="adm-chip">${e(ROLE_NAME[member.role] || member.role)}</span></div>
+      ${locked ? `<small class="adm-muted">${member.role === 'owner' ? 'You' : 'Managed in Drivers'}</small>` : `<div class="adm-team-actions">
+        <select aria-label="Role for ${e(member.email)}" data-team-email="${e(member.email)}">${['admin', 'staff', 'kitchen'].map(role => `<option value="${role}"${role === member.role ? ' selected' : ''}>${ROLE_NAME[role]}</option>`).join('')}</select>
+        <button type="button" class="adm-btn adm-btn-ghost" data-team-remove="${e(member.email)}">Remove</button>
+      </div>`}
+    </div>`;
+  }).join('') : '<p class="adm-muted">No one yet.</p>';
+}
+async function refreshOwner() {
+  renderAccess();
+  renderTeam((await api('team')).team || []);
+}
+$('teamForm').addEventListener('submit', run(async event => {
+  event.preventDefault();
+  const email = $('teamEmail').value.trim();
+  const role = $('teamRole').value;
+  const result = await api('set_team_role', { email, role });
+  renderTeam(result.team || []);
+  $('teamEmail').value = '';
+  toast(`${email} is now ${ROLE_NAME[role]}`, 'success');
+}));
+$('teamList').addEventListener('change', run(async event => {
+  const select = event.target.closest('[data-team-email]');
+  if (!select) return;
+  const result = await api('set_team_role', { email: select.dataset.teamEmail, role: select.value });
+  renderTeam(result.team || []);
+  toast(`${select.dataset.teamEmail} is now ${ROLE_NAME[select.value]}`, 'success');
+}));
+$('teamList').addEventListener('click', run(async event => {
+  const button = event.target.closest('[data-team-remove]');
+  if (!button) return;
+  const email = button.dataset.teamRemove;
+  const choice = await ask({ title: `Remove ${email}?`, message: 'They keep their customer account but lose access to this console.', choices: [{ label: 'Remove', value: 'yes', tone: 'danger' }, { label: 'Keep', value: null }] });
+  if (!choice) return;
+  const result = await api('set_team_role', { email, role: 'none' });
+  renderTeam(result.team || []);
+  toast(`${email} removed from the team`, 'success');
+}));
+
 // ---------- dialogs ----------
 document.querySelectorAll('dialog').forEach(dialog => {
   dialog.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', () => dialog.close()));
@@ -1325,7 +1414,7 @@ document.querySelectorAll('dialog').forEach(dialog => {
   dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
 });
 
-const menuAdmin = createMenuAdmin({ supabase, toast, run, isAdmin: () => state.role === 'admin' });
+const menuAdmin = createMenuAdmin({ supabase, toast, run, isAdmin: () => adminCan('menu') });
 const cashCount = createCashCount({ api, toast, run, ask, todayIST });
 const galleryAdmin = createGalleryAdmin({ supabase, toast, run, ask });
 const counter = createCounter({ supabase, api, toast, run, ask, billingEnabled: () => state.billing?.enabled === true });

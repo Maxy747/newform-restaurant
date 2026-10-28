@@ -531,7 +531,7 @@ body:has(#gate:not([hidden])) { padding-bottom: 0; }
 @media (min-width: 1100px) {
   #invoiceList { flex: 1; min-height: 0; overflow-y: auto; align-content: start; padding-right: 2px; }
   #section-billing .adm-kpis, #billingNotice { flex: none; }
-  #section-settings:not([hidden]) { overflow-y: auto; padding-right: 2px; }
+  #section-settings:not([hidden]), #section-owner:not([hidden]) { overflow-y: auto; padding-right: 2px; }
 }
 @media (max-width: 520px) {
   #invoiceList .adm-row { grid-template-columns: minmax(0, 1fr) auto; }
@@ -680,3 +680,16 @@ button.adm-dish-tile:active { transform: scale(.98); }
 .adm-ordering #orderingMode { display: inline-flex; flex-direction: row; flex-wrap: nowrap; white-space: nowrap; align-self: center; }
 .adm-ordering-status { width: fit-content; }
 @media (max-width: 520px) { .adm-ordering #orderingMode { width: 100%; } .adm-ordering #orderingMode button { flex: 1; padding: 8px 6px; } }
+
+/* ---------- Owner panel ---------- */
+.adm-access { display: grid; gap: 2px; }
+.adm-access-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 16px; padding: 10px 0; border-top: 1px solid var(--border); }
+.adm-access-row:first-child { border-top: 0; }
+.adm-access-row > div { display: grid; gap: 2px; }
+.adm-access-row small { color: var(--muted); font-size: .8rem; }
+.adm-team-form { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: end; gap: 10px; }
+.adm-team-form label { display: grid; gap: 4px; font-size: .78rem; font-weight: 700; color: var(--muted); }
+.adm-team-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); }
+.adm-team-row strong { overflow-wrap: anywhere; }
+.adm-team-actions { display: flex; align-items: center; gap: 8px; }
+@media (max-width: 640px) { .adm-team-form { grid-template-columns: 1fr; } }

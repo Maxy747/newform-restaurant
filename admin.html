@@ -35,6 +35,7 @@
     <a href="#reports" data-section="reports" data-roles="admin staff"><i class="fa-solid fa-chart-column"></i><span>Reports</span></a>
     <a href="#billing" data-section="billing" data-roles="admin staff"><i class="fa-solid fa-file-invoice"></i><span>Billing</span></a>
     <a href="#settings" data-section="settings" data-roles="admin"><i class="fa-solid fa-gear"></i><span>Settings</span></a>
+    <a href="#owner" data-section="owner" hidden><i class="fa-solid fa-crown"></i><span>Owner</span></a>
   </nav>
 
   <main class="adm-main">
@@ -220,9 +221,32 @@
       <div class="adm-pager"><button type="button" class="adm-btn" id="billPrev">Previous</button><span id="billPage"></span><button type="button" class="adm-btn" id="billNext">Next</button></div>
     </section>
 
+    <section id="section-owner" class="adm-section" hidden>
+      <div class="adm-section-head"><h2>Owner</h2></div>
+      <div class="adm-card">
+        <div>
+          <h3>What restaurant admins can use</h3>
+          <p class="adm-muted">You always have everything. Turn a switch off to take it away from restaurant admins (the tab switches apply to staff too). The server enforces these, not just the screen.</p>
+        </div>
+        <div id="accessList" class="adm-access"></div>
+      </div>
+      <div class="adm-card">
+        <div>
+          <h3>Team</h3>
+          <p class="adm-muted">Everyone who can open this console. To add someone, they first create an account on the website (Account → Sign up) with their email, then you add that email here. Delivery drivers are added in the Drivers tab.</p>
+        </div>
+        <form id="teamForm" class="adm-team-form">
+          <label>Email<input id="teamEmail" type="email" autocomplete="off" required placeholder="name@example.com"></label>
+          <label>Role<select id="teamRole"><option value="admin">Admin</option><option value="staff">Staff</option><option value="kitchen">Kitchen</option></select></label>
+          <button type="submit" class="adm-btn adm-btn-primary">Add or update</button>
+        </form>
+        <div id="teamList" class="adm-list"></div>
+      </div>
+    </section>
+
     <section id="section-settings" class="adm-section" hidden>
       <div class="adm-section-head"><h2>Settings</h2></div>
-      <div class="adm-card adm-setting adm-ordering">
+      <div data-cap="operations" class="adm-card adm-setting adm-ordering">
         <div>
           <h3>Online ordering</h3>
           <p class="adm-muted"><strong>Auto</strong> takes orders 11 am – 11 pm (India time). Use <strong>Open now</strong> to stay open late, or <strong>Closed now</strong> for holidays. When closed, the menu stays visible but greyed out and the server refuses online orders. Counter billing is unaffected.</p>
@@ -234,21 +258,21 @@
           <button type="button" role="radio" data-mode="closed" aria-checked="false">Closed now</button>
         </div>
       </div>
-      <div class="adm-card adm-setting">
+      <div data-cap="operations" class="adm-card adm-setting">
         <div>
           <h3>Cash on delivery</h3>
           <p class="adm-muted">Delivery orders of ₹799 or more (before delivery charge) can pay cash on delivery. Takeaway and dine-in can always pay at the counter.</p>
         </div>
         <button type="button" class="adm-switch" id="codSwitch" role="switch" aria-checked="false" aria-label="Cash on delivery"><span></span></button>
       </div>
-      <div class="adm-card adm-setting">
+      <div data-cap="operations" class="adm-card adm-setting">
         <div>
           <h3>Home delivery</h3>
           <p class="adm-muted" id="deliveryHelp">Turn off when no delivery staff are available. Customers can still order takeaway and dine in; the server refuses new delivery orders while this is off.</p>
         </div>
         <button type="button" class="adm-switch" id="deliverySwitch" role="switch" aria-checked="true" aria-label="Home delivery"><span></span></button>
       </div>
-      <div class="adm-card adm-setting">
+      <div data-cap="design" class="adm-card adm-setting">
         <div>
           <h3>Website theme</h3>
           <p class="adm-muted">The colour scheme every customer sees on the website. Staff can still switch their own view with the theme button in the website header.</p>
@@ -259,7 +283,7 @@
           <button type="button" role="radio" aria-checked="false" data-site-theme="dark"><i class="fa-solid fa-moon" aria-hidden="true"></i> Dark</button>
         </div>
       </div>
-      <div class="adm-card adm-setting">
+      <div data-cap="design" class="adm-card adm-setting">
         <div>
           <h3>Website UI</h3>
           <p class="adm-muted">Modern is the current website. Classic is the saved copy of the website from before the 28 Oct 2026 redesign. Every customer is switched on their next page load.</p>
@@ -269,7 +293,7 @@
           <button type="button" role="radio" aria-checked="true" data-site-ui="modern"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> Modern</button>
         </div>
       </div>
-      <div class="adm-card adm-setting">
+      <div data-cap="design" class="adm-card adm-setting">
         <div>
           <h3>Pages</h3>
           <p class="adm-muted">Single page: Home, Menu, Gallery, About and Contact on one long scrolling page. Multi page: each tab is its own page, with a fade between them; the top bar and cart stay in place. Applies to the Modern website.</p>
@@ -279,7 +303,7 @@
           <button type="button" role="radio" aria-checked="false" data-site-pages="multi"><i class="fa-regular fa-clone" aria-hidden="true"></i> Multi page</button>
         </div>
       </div>
-      <div class="adm-card adm-setting">
+      <div data-cap="design" class="adm-card adm-setting">
         <div>
           <h3>Welcome splash</h3>
           <p class="adm-muted">The welcome screen shown when the website opens. Classic is the splash from 28 Oct 2026; Modern is the remastered logo intro; Modern Alt is the dark version with the serif name. Customers see the change from their next visit.</p>
@@ -290,14 +314,14 @@
           <button type="button" role="radio" aria-checked="false" data-splash-style="modern-alt"><i class="fa-solid fa-moon" aria-hidden="true"></i> Modern Alt</button>
         </div>
       </div>
-      <div class="adm-card adm-setting">
+      <div data-cap="design" class="adm-card adm-setting">
         <div>
           <h3>"Representative image" tag</h3>
           <p class="adm-muted">Shown on menu photos that are stock pictures rather than your own. Turn off to hide the tag on the website. Uploading your own photo for a dish removes it for that dish either way.</p>
         </div>
         <button type="button" class="adm-switch" id="stockTagSwitch" role="switch" aria-checked="true" aria-label="Show the representative image tag"><span></span></button>
       </div>
-      <div class="adm-card" id="galleryCard">
+      <div data-cap="design" class="adm-card" id="galleryCard">
         <div class="adm-setting">
           <div>
             <h3>Website gallery</h3>
@@ -315,7 +339,7 @@
         </div>
         <button type="button" class="adm-btn" id="notifyBtn">Enable notifications</button>
       </div>
-      <div class="adm-card adm-billing-settings" id="billingSettingsCard">
+      <div data-cap="money" class="adm-card adm-billing-settings" id="billingSettingsCard">
         <div class="adm-setting">
           <div>
             <h3>Invoices</h3>

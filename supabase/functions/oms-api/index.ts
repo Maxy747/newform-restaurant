@@ -15,6 +15,9 @@ const SITE_THEMES=['light','ivory','dark'];
 const SITE_UIS=['classic','modern'];
 // Website layouts: one scrolling page or separate pages (see checkout_settings.site_pages).
 const SITE_PAGES=['single','multi'];
+// What the owner can switch on or off for restaurant admins (see checkout_settings.admin_access).
+const ACCESS_KEYS=['counter','tickets','drivers','reports','billing','menu','operations','design','money'];
+const TEAM_ROLES=['admin','staff','kitchen','none'];
 // Welcome splash styles (see checkout_settings.splash_style).
 const SPLASH_STYLES=['classic','modern','modern-alt'];
 const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers});
@@ -46,54 +49,84 @@ async function handle(req:Request):Promise<Response>{
   const settings=async()=>checked(await db.from('checkout_settings').select('*').eq('id',true).single());
   const deliveryOn=(row:any)=>row.delivery_enabled!==false;
   const orderingMode=(row:any)=>ORDERING_MODES.includes(row.ordering_mode)?row.ordering_mode:'auto';
+  // The owner (Max, site_owners) can do everything and counts as admin. Restaurant admins, and staff
+  // for the tabs they have, get only what the owner switched on (checkout_settings.admin_access).
+  const owner=userId?Boolean(await rpc('oms_is_owner',{p_actor:userId})):false;
+  if(owner) role='admin';
+  let accessMap:any=null;
+  const teamAccess=async()=>accessMap??=((await settings()).admin_access||{});
+  const can=async(cap:string,roles=['admin'])=>{
+   if(owner) return true;
+   if(!userId||!roles.includes(role)) return false;
+   if(role==='admin') return Boolean(await rpc('oms_actor_can',{p_actor:userId,p_cap:cap}));
+   return (await teamAccess())[cap]===true;
+  };
+  const denied=()=>json({error:'The owner has not turned this on for restaurant admins'},403);
   if(body.action==='config') {
    const current=await settings();
-   return json({role,codEnabled:current.cod_enabled,deliveryEnabled:deliveryOn(current),orderingMode:orderingMode(current),shopOpen:shopStatus(orderingMode(current)).open,siteTheme:SITE_THEMES.includes(current.site_theme)?current.site_theme:'light',siteUi:SITE_UIS.includes(current.site_ui)?current.site_ui:'modern',splashStyle:SPLASH_STYLES.includes(current.splash_style)?current.splash_style:'classic',sitePages:SITE_PAGES.includes(current.site_pages)?current.site_pages:'single',stockTag:current.show_stock_tag!==false,payments:paymentConfigured(),deliveryRouting:Boolean(Deno.env.get('ORS_API_KEY')),testMode:!(Deno.env.get('RAZORPAY_KEY_ID')||'').startsWith('rzp_live_')});
+   return json({role,codEnabled:current.cod_enabled,deliveryEnabled:deliveryOn(current),orderingMode:orderingMode(current),shopOpen:shopStatus(orderingMode(current)).open,siteTheme:SITE_THEMES.includes(current.site_theme)?current.site_theme:'light',siteUi:SITE_UIS.includes(current.site_ui)?current.site_ui:'modern',splashStyle:SPLASH_STYLES.includes(current.splash_style)?current.splash_style:'classic',sitePages:SITE_PAGES.includes(current.site_pages)?current.site_pages:'single',stockTag:current.show_stock_tag!==false,owner,access:['admin','staff'].includes(role)?(owner?Object.fromEntries(ACCESS_KEYS.map(k=>[k,true])):current.admin_access||{}):undefined,adminAccess:owner?current.admin_access||{}:undefined,payments:paymentConfigured(),deliveryRouting:Boolean(Deno.env.get('ORS_API_KEY')),testMode:!(Deno.env.get('RAZORPAY_KEY_ID')||'').startsWith('rzp_live_')});
+  }
+  if(body.action==='set_admin_access') {
+   if(!owner) return json({error:'Owner access required'},403);
+   const next=body.access&&typeof body.access==='object'?body.access:{};
+   const access=Object.fromEntries(ACCESS_KEYS.map(k=>[k,next[k]===true]));
+   const updated=checked(await db.from('checkout_settings').update({admin_access:access}).eq('id',true).select('admin_access').single());
+   return json({adminAccess:updated.admin_access});
+  }
+  if(body.action==='team') {
+   if(!owner) return json({error:'Owner access required'},403);
+   return json({team:await rpc('oms_team',{})});
+  }
+  if(body.action==='set_team_role') {
+   if(!owner) return json({error:'Owner access required'},403);
+   if(!TEAM_ROLES.includes(body.role)) throw new Error('Pick Admin, Staff or Kitchen');
+   await rpc('oms_set_team_role',{p_actor:userId,p_email:typeof body.email==='string'?body.email.slice(0,320):'',p_role:body.role});
+   return json({team:await rpc('oms_team',{})});
   }
   if(body.action==='set_cod') {
-   if(role!=='admin') return json({error:'Admin access required'},403);
+   if(!await can('operations')) return denied();
    if(typeof body.enabled!=='boolean') throw new Error('Invalid COD setting');
    const settings=checked(await db.from('checkout_settings').update({cod_enabled:body.enabled}).eq('id',true).select('cod_enabled').single());
    return json({codEnabled:settings.cod_enabled});
   }
   if(body.action==='set_site_theme') {
-   if(role!=='admin') return json({error:'Admin access required'},403);
+   if(!await can('design')) return denied();
    if(!SITE_THEMES.includes(body.theme)) throw new Error('Invalid website theme');
    const updated=checked(await db.from('checkout_settings').update({site_theme:body.theme}).eq('id',true).select('site_theme').single());
    return json({siteTheme:updated.site_theme});
   }
   if(body.action==='set_site_ui') {
-   if(role!=='admin') return json({error:'Admin access required'},403);
+   if(!await can('design')) return denied();
    if(!SITE_UIS.includes(body.ui)) throw new Error('Invalid website UI');
    const updated=checked(await db.from('checkout_settings').update({site_ui:body.ui}).eq('id',true).select('site_ui').single());
    return json({siteUi:updated.site_ui});
   }
   if(body.action==='set_site_pages') {
-   if(role!=='admin') return json({error:'Admin access required'},403);
+   if(!await can('design')) return denied();
    if(!SITE_PAGES.includes(body.pages)) throw new Error('Invalid website layout');
    const updated=checked(await db.from('checkout_settings').update({site_pages:body.pages}).eq('id',true).select('site_pages').single());
    return json({sitePages:updated.site_pages});
   }
   if(body.action==='set_splash_style') {
-   if(role!=='admin') return json({error:'Admin access required'},403);
+   if(!await can('design')) return denied();
    if(!SPLASH_STYLES.includes(body.style)) throw new Error('Invalid splash style');
    const updated=checked(await db.from('checkout_settings').update({splash_style:body.style}).eq('id',true).select('splash_style').single());
    return json({splashStyle:updated.splash_style});
   }
   if(body.action==='set_stock_tag') {
-   if(role!=='admin') return json({error:'Admin access required'},403);
+   if(!await can('design')) return denied();
    if(typeof body.enabled!=='boolean') throw new Error('Invalid tag setting');
    const updated=checked(await db.from('checkout_settings').update({show_stock_tag:body.enabled}).eq('id',true).select('show_stock_tag').single());
    return json({stockTag:updated.show_stock_tag});
   }
   if(body.action==='set_delivery') {
-   if(role!=='admin') return json({error:'Admin access required'},403);
+   if(!await can('operations')) return denied();
    if(typeof body.enabled!=='boolean') throw new Error('Invalid delivery setting');
    const updated=checked(await db.from('checkout_settings').update({delivery_enabled:body.enabled}).eq('id',true).select('delivery_enabled').single());
    return json({deliveryEnabled:updated.delivery_enabled});
   }
   if(body.action==='set_ordering_mode') {
-   if(role!=='admin') return json({error:'Admin access required'},403);
+   if(!await can('operations')) return denied();
    if(!ORDERING_MODES.includes(body.mode)) throw new Error('Invalid ordering setting');
    const updated=checked(await db.from('checkout_settings').update({ordering_mode:body.mode}).eq('id',true).select('ordering_mode').single());
    return json({orderingMode:updated.ordering_mode,shopOpen:shopStatus(updated.ordering_mode).open});
@@ -167,7 +200,7 @@ async function handle(req:Request):Promise<Response>{
    return json({drivers:await rpc('oms_driver_report',{p_start:start.toISOString(),p_end:end.toISOString()})});
   }
   if(body.action==='driver_save') {
-   if(role!=='admin') return json({error:'Admin access required'},403);
+   if(!await can('drivers')) return denied();
    const text=(value:unknown,max:number)=>typeof value==='string'?value.slice(0,max):null;
    const id=await rpc('oms_save_driver',{p_actor:userId,p_driver:body.driverId?requireUUID(body.driverId):null,p_email:text(body.email,320),p_name:text(body.name,120),p_phone:text(body.phone,40)});
    return json({id});
@@ -179,7 +212,7 @@ async function handle(req:Request):Promise<Response>{
    return json({ok:true});
   }
   if(body.action==='analytics') {
-   if(!['admin','staff'].includes(role)) return json({error:'Manager access required'},403);
+   if(!await can('reports',['admin','staff'])) return denied();
    const start=new Date(body.start),end=new Date(body.end);
    if(!Number.isFinite(+start)||!Number.isFinite(+end)||+end<=+start||+end-+start>366*86400000) throw new Error('Choose a date range up to one year');
    return json(await rpc('oms_analytics',{p_start:start.toISOString(),p_end:end.toISOString()}));
@@ -196,12 +229,12 @@ async function handle(req:Request):Promise<Response>{
    return json({settings:checked(await db.from('billing_settings').select('*').eq('id',true).single())});
   }
   if(body.action==='set_billing_settings') {
-   if(role!=='admin') return json({error:'Admin access required'},403);
+   if(!await can('money')) return denied();
    const row={...normalizeBillingSettings(body.settings),updated_at:new Date().toISOString()};
    return json({settings:checked(await db.from('billing_settings').update(row).eq('id',true).select('*').single())});
   }
   if(body.action==='invoices') {
-   if(!manager) return json({error:'Manager access required'},403);
+   if(!await can('billing',['admin','staff'])) return denied();
    const {p_start,p_end}=range();
    const size=body.export?5000:30,page=body.export?0:Math.min(10000,Math.max(0,Number(body.page)||0));
    let query=db.from('invoices').select('id,order_id,invoice_no,issued_at,buyer,payment_method,taxable,cgst,sgst,delivery_fee,round_off,total,credit_notes(total),order:orders(payment_status)',{count:'exact'})
@@ -211,7 +244,7 @@ async function handle(req:Request):Promise<Response>{
    return json({invoices:result.data,count:result.count,summary:await rpc('oms_billing_summary',{p_start,p_end})});
   }
   if(body.action==='credit_note') {
-   if(role!=='admin') return json({error:'Admin access required'},403);
+   if(!await can('money')) return denied();
    const amount=Number(body.amount);
    if(!Number.isFinite(amount)||amount<=0) throw new Error('Enter the amount to credit');
    const id=await rpc('oms_credit_note',{p_invoice:requireUUID(body.invoiceId),p_actor:userId,p_amount:amount,p_reason:typeof body.reason==='string'?body.reason.slice(0,200):''});
@@ -242,7 +275,7 @@ async function handle(req:Request):Promise<Response>{
   }
   // Counter sale paid on the spot (requires the 20261009150000_counter_billing migration).
   if(body.action==='counter_order') {
-   if(!userId||!manager) return json({error:'Manager access required'},403);
+   if(!await can('counter',['admin','staff'])) return denied();
    const customer=body.customer&&typeof body.customer==='object'?body.customer:{};
    const id=await rpc('oms_counter_order',{p_actor:userId,p_request:requireUUID(body.requestId),p_customer:customer,p_items:Array.isArray(body.items)?body.items:[],p_method:body.method});
    const sale=checked(await db.from('orders').select(ORDER_FIELDS).eq('id',id).single());
@@ -251,7 +284,7 @@ async function handle(req:Request):Promise<Response>{
    return json({order:publicOrder(sale,role),invoice:issued});
   }
   if(body.action==='ticket_list') {
-   if(!['admin','staff'].includes(role)) return json({error:'Staff access required'},403);
+   if(!await can('tickets',['admin','staff'])) return denied();
    const tickets=checked(await db.from('support_tickets').select('*,order:orders(daily_number)').neq('status','resolved').order('updated_at',{ascending:false}).limit(100));
    return json({tickets});
   }
@@ -302,7 +335,7 @@ async function handle(req:Request):Promise<Response>{
   }
   // Admin refund of an online payment, full or partial (requires the 20261020090000_razorpay_refunds migration).
   if(body.action==='refund') {
-   if(!userId||role!=='admin') return json({error:'Admin access required'},403);
+   if(!await can('money')) return denied();
    const listed=async(paymentId:string)=>razorpay(`payments/${paymentId}/refunds?count=100`);
    const record=(row:any,refund:any)=>rpc('oms_record_refund',{p_refund:row.id,p_rz_refund:refund.id,p_status:refundStatus(refund),p_failure:refund.status==='failed'?'Razorpay reported the refund as failed':null});
    // The row id is the Razorpay receipt: look for an earlier attempt's refund first, and a retry can't create a second one.
