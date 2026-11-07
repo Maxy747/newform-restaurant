@@ -42,3 +42,34 @@ export function changeDue(total, received) {
   if (!Number.isFinite(cash) || cash <= 0) return null;
   return Math.round((cash - total) * 100) / 100;
 }
+
+// Bills rung up with no internet get a device number until the server gives them a real one.
+export const provisionalNumber = n => `OFF-${n}`;
+
+const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+const rs = value => `₹${Number(value).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const TYPE = { takeaway: 'Takeaway', dine_in: 'Dine in' };
+
+// Provisional receipt + kitchen copy, printed from the device while offline. Not a tax invoice:
+// the GST invoice is numbered by the server once the sale syncs.
+export function offlineReceiptHTML(receipt) {
+  const when = new Date(receipt.soldAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+  const where = `${TYPE[receipt.type] || esc(receipt.type)}${receipt.table ? ' · Table ' + esc(receipt.table) : ''}`;
+  const item = line => `${esc(line.name)}${line.portion && line.portion !== 'single' ? ` (${esc(line.portion)})` : ''}`;
+  const change = receipt.method === 'cash' && receipt.cashReceived ? Math.round((receipt.cashReceived - receipt.totals.total) * 100) / 100 : null;
+  return `<div class="rcpt">
+    <h1>NEWFORM</h1>
+    <p class="rcpt-c">Provisional bill · not a tax invoice</p>
+    <p class="rcpt-row"><b>Bill ${esc(receipt.provisional)}</b><span>${esc(when)}</span></p>
+    <p>${where}${receipt.name ? ' · ' + esc(receipt.name) : ''}</p>
+    <table>${receipt.lines.map(line => `<tr><td>${line.quantity} × ${item(line)}</td><td>${rs(line.price * line.quantity)}</td></tr>`).join('')}</table>
+    <table class="rcpt-tot"><tr><td>Subtotal</td><td>${rs(receipt.totals.subtotal)}</td></tr><tr><td>GST 5%</td><td>${rs(receipt.totals.tax)}</td></tr><tr><th>Total</th><th>${rs(receipt.totals.total)}</th></tr>
+    <tr><td>Paid by ${receipt.method === 'upi' ? 'UPI' : 'cash'}</td><td>${receipt.cashReceived && receipt.method === 'cash' ? rs(receipt.cashReceived) : ''}</td></tr>${change > 0 ? `<tr><td>Change</td><td>${rs(change)}</td></tr>` : ''}</table>
+    <p class="rcpt-c">GST invoice will be issued when this bill syncs.</p>
+  </div>
+  <div class="rcpt rcpt-kitchen">
+    <h2>KITCHEN · ${esc(receipt.provisional)}</h2>
+    <p>${where} · ${esc(when)}</p>
+    <ul>${receipt.lines.map(line => `<li><b>${line.quantity}×</b> ${item(line)}</li>`).join('')}</ul>
+  </div>`;
+}

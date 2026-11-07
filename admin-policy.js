@@ -95,3 +95,16 @@ export function refundSummary(payment, refunds = []) {
   const remaining = payment.status === 'paid' ? Math.max(0, paid - refunded) : 0;
   return { paid, refunded, remaining, confirming: refunds.some(refund => refund.status === 'requested') };
 }
+
+// A queued step that the server refuses may simply have been done already (from another device,
+// or by an earlier send whose reply was lost). Then the step needs no retry.
+const STEP_ORDER = ['awaiting_payment', 'new', 'confirmed', 'preparing', 'ready', 'out_for_delivery', 'completed'];
+export function alreadyReached(order, change) {
+  if (!order) return false;
+  if (change.cash && order.payment_status !== 'paid') return false;
+  if (!change.status) return true;
+  if (order.order_status === change.status) return true;
+  if (change.status === 'cancelled' || order.order_status === 'cancelled') return false;
+  const at = STEP_ORDER.indexOf(order.order_status), target = STEP_ORDER.indexOf(change.status);
+  return at >= 0 && target >= 0 && at > target;
+}

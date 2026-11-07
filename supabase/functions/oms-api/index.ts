@@ -310,7 +310,10 @@ async function handle(req:Request):Promise<Response>{
   if(body.action==='counter_order') {
    if(!await can('counter',['admin','staff'])) return denied();
    const customer=body.customer&&typeof body.customer==='object'?body.customer:{};
-   const id=await rpc('oms_counter_order',{p_actor:userId,p_request:requireUUID(body.requestId),p_customer:customer,p_items:Array.isArray(body.items)?body.items:[],p_method:body.method});
+   const args={p_actor:userId,p_request:requireUUID(body.requestId),p_customer:customer,p_items:Array.isArray(body.items)?body.items:[],p_method:body.method};
+   // Sales rung up offline carry the time they were paid (requires 20261107120000_offline_counter_sales).
+   const soldAt=typeof body.soldAt==='string'&&Number.isFinite(Date.parse(body.soldAt))?new Date(body.soldAt).toISOString():null;
+   const id=soldAt?await rpc('oms_counter_order_at',{...args,p_sold_at:soldAt}):await rpc('oms_counter_order',args);
    const sale=checked(await db.from('orders').select(ORDER_FIELDS).eq('id',id).single());
    const issued=checked(await db.from('invoices').select('id,invoice_no').eq('order_id',id).maybeSingle());
    console.info('order.counter',{id});

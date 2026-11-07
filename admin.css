@@ -707,3 +707,47 @@ button.adm-dish-tile:active { transform: scale(.98); }
 .adm-payment-rules > label:not(.adm-check) { display: grid; gap: 4px; font-size: .78rem; font-weight: 700; color: var(--muted); }
 .adm-payment-rules #advancePercent { width: 80px; }
 .adm-payment-rules #upiId, .adm-payment-rules #upiName { width: 200px; }
+
+/* ---------- offline ---------- */
+.adm-ready { display: inline-flex; align-items: center; gap: 5px; font-size: .74rem; font-weight: 700; color: var(--muted); margin-right: 4px; }
+.adm-sync { position: relative; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 16px; background: var(--warn-soft); color: var(--text); font-size: .88rem; font-weight: 600; border-bottom: 1px solid var(--border); }
+.adm-sync[hidden] { display: none; }
+.adm-sync > span { flex: 1 1 220px; }
+.adm-sync:not(.is-offline) > i { display: none; }
+.adm-sync .adm-btn { min-height: 34px; color: var(--danger, #b42318); }
+.adm-offline-note { margin-bottom: 14px; }
+.adm-nav a.is-online-only { transition: opacity .2s; }
+.is-offline .adm-nav a.is-online-only { opacity: .45; }
+.adm-section[inert] { opacity: .5; pointer-events: none; }
+.adm-offline-copy { margin: 0 0 10px; padding: 8px 12px; border-radius: 10px; background: var(--warn-soft); font-size: .85rem; font-weight: 600; }
+.adm-order.is-pending { outline: 2px dashed var(--warn); outline-offset: -2px; }
+.adm-sync-dialog { width: min(520px, calc(100% - 32px)); }
+.adm-sync-list { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; max-height: 50vh; overflow: auto; }
+.adm-sync-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; }
+.adm-sync-row div:first-child { display: grid; gap: 2px; min-width: 0; }
+.adm-sync-row small { color: var(--muted); overflow-wrap: anywhere; }
+.adm-sync-row.is-failed { border-color: var(--warn); }
+.adm-sync-actions { display: flex; gap: 6px; flex-shrink: 0; }
+@media (max-width: 520px) { .adm-sync-row { flex-direction: column; align-items: stretch; } .adm-ready span { display: none; } }
+
+/* Provisional bill printed offline: 80 mm receipt, kitchen copy on its own slip. */
+.adm-receipt { display: none; }
+@media print {
+  body.is-printing-receipt > *:not(#offlineReceipt) { display: none !important; }
+  body.is-printing-receipt #offlineReceipt { display: block; color: #000; background: #fff; }
+  @page { margin: 4mm; }
+  .rcpt { width: 72mm; font: 12px/1.35 ui-monospace, Menlo, Consolas, monospace; }
+  .rcpt h1 { font-size: 18px; text-align: center; margin: 0 0 2px; letter-spacing: .1em; }
+  .rcpt h2 { font-size: 15px; margin: 0 0 4px; }
+  .rcpt p { margin: 2px 0; }
+  .rcpt-c { text-align: center; }
+  .rcpt-row { display: flex; justify-content: space-between; gap: 8px; }
+  .rcpt table { width: 100%; border-collapse: collapse; margin: 6px 0; }
+  .rcpt td, .rcpt th { padding: 1px 0; text-align: left; vertical-align: top; }
+  .rcpt td:last-child, .rcpt th:last-child { text-align: right; white-space: nowrap; }
+  .rcpt-tot { border-top: 1px dashed #000; }
+  .rcpt ul { list-style: none; padding: 0; margin: 4px 0; font-size: 14px; }
+  .rcpt-kitchen { break-before: page; page-break-before: always; }
+}
+.is-offline .adm-live.is-down span { font-size: 0; }
+.is-offline .adm-live.is-down span::after { content: 'Offline'; font-size: .78rem; }

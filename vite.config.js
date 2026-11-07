@@ -1,8 +1,10 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'node:path';
+import { offlineManifest } from './offline-manifest.js';
 
 export default defineConfig(({ mode }) => ({
   base: './',
+  plugins: [offlineManifest()],
   // `vite --mode mock` swaps in a local fake backend for visual checks; production builds never use it.
   resolve: mode === 'mock' ? {
     alias: [{ find: /^\.\/supabaseClient\.js$/, replacement: resolve(import.meta.dirname, 'tests/mock-supabase.js') }],

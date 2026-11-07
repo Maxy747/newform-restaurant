@@ -19,6 +19,7 @@
     <div class="adm-top-actions" id="topActions" hidden>
       <button type="button" class="adm-btn adm-sound-unlock" id="soundUnlock" title="Browsers need one click before they can play sound" hidden><i class="fa-solid fa-bell"></i><span>Click to enable order sound</span><span class="adm-short">Enable sound</span></button>
       <span class="adm-live" id="liveStatus" title="Live updates"><i></i><span>Live</span></span>
+      <span class="adm-ready" id="offlineReady" title="Ready offline: this device keeps working if the internet drops" hidden><i class="fa-solid fa-cloud-arrow-down"></i><span>Ready offline</span></span>
       <button type="button" class="adm-icon-btn" id="soundBtn" aria-pressed="false" title="New-order sound" aria-label="Turn on new-order sound"><i class="fa-solid fa-volume-xmark"></i></button>
       <button type="button" class="adm-icon-btn" id="themeBtn" title="Switch theme" aria-label="Switch theme"><i class="fa-solid fa-circle-half-stroke"></i></button>
       <a class="adm-icon-btn" href="./" title="Customer site" aria-label="Open customer site"><i class="fa-solid fa-store"></i></a>
@@ -38,7 +39,13 @@
     <a href="#owner" data-section="owner" hidden><i class="fa-solid fa-crown"></i><span>Owner</span></a>
   </nav>
 
+  <div class="adm-sync" id="syncBar" role="status" hidden>
+    <i class="fa-solid fa-wifi" aria-hidden="true"></i><span id="syncText"></span>
+    <button type="button" class="adm-btn adm-btn-ghost" id="syncFailedBtn" hidden></button>
+  </div>
+
   <main class="adm-main">
+    <p class="adm-notice adm-offline-note" id="offlineSectionNote" hidden><i class="fa-solid fa-wifi"></i> This page needs the internet. Orders and Counter keep working offline.</p>
     <section id="gate" class="adm-gate" aria-live="polite">
       <div class="adm-card adm-gate-card">
         <img src="assets/newform-logo-160.webp" alt="NEWFORM logo">
@@ -518,9 +525,19 @@
     <p id="counterDoneMessage" class="adm-muted"></p>
     <div class="adm-ask-choices">
       <a class="adm-btn adm-btn-primary" id="counterPrint" target="_blank" rel="noopener"><i class="fa-solid fa-print"></i> Print bill</a>
+      <button type="button" class="adm-btn adm-btn-primary" id="counterPrintOffline" hidden><i class="fa-solid fa-print"></i> Print bill + kitchen copy</button>
       <button type="button" class="adm-btn" id="counterNew">New bill</button>
     </div>
   </dialog>
+
+  <dialog id="syncDialog" class="adm-ask adm-sync-dialog" aria-labelledby="syncTitle">
+    <h2 id="syncTitle">Waiting to sync</h2>
+    <p class="adm-muted">Changes made on this device that the server hasn't confirmed yet. Refused ones need you to retry or discard them.</p>
+    <ul class="adm-sync-list" id="syncList"></ul>
+    <div class="adm-ask-choices"><button type="button" class="adm-btn" data-close>Close</button></div>
+  </dialog>
+
+  <div class="adm-receipt" id="offlineReceipt" aria-hidden="true"></div>
 
   <dialog id="askDialog" class="adm-ask" aria-labelledby="askTitle">
     <h2 id="askTitle"></h2>

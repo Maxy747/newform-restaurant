@@ -821,5 +821,34 @@ test('PostgreSQL migration and order/payment/RLS lifecycle',async t=>{
   await db.exec('reset role');
   await q('update public.checkout_settings set prepay_required=false,partial_payment=false,advance_percent=50,upi_id=null');
  });
+ await t.test('offline counter sales keep the time they were paid',async()=>{
+  const migration=await readFile(new URL('../supabase/migrations/20261107120000_offline_counter_sales.sql',import.meta.url),'utf8');
+  await db.exec(migration);await db.exec(migration); // safe to re-run
+  const sellAt=(soldAt,request=crypto.randomUUID())=>q('select public.oms_counter_order_at($1,$2,$3,$4,$5,$6::timestamptz) id',[admin,request,JSON.stringify({order_type:'takeaway'}),JSON.stringify([{id:'multi',portion:'quarter',quantity:1}]),'cash',soldAt]).then(r=>r[0].id);
+  const order=async id=>(await q("select created_at,order_day::text sale_day,daily_number,(created_at at time zone 'Asia/Kolkata')::date::text local_day from public.orders where id=$1",[id]))[0];
+  const now=Date.parse((await q('select now() t'))[0].t);
+  const soldAt=new Date(now-3*3600000).toISOString();
+  const request=crypto.randomUUID();
+  const id=await sellAt(soldAt,request);
+  let o=await order(id);
+  assert.equal(new Date(o.created_at).toISOString(),soldAt);
+  assert.equal(o.sale_day,o.local_day); // daily number belongs to the day it was sold
+  const events=await q('select created_at from public.order_events where order_id=$1',[id]);
+  assert.ok(events.length>=2&&events.every(event=>new Date(event.created_at).toISOString()===soldAt));
+  // Sending it again (reply lost offline) returns the same sale and changes nothing.
+  assert.equal(await sellAt(new Date(now).toISOString(),request),id);
+  assert.equal(new Date((await order(id)).created_at).toISOString(),soldAt);
+  // Device times too old or in the future are recorded at the server's time instead.
+  for (const bad of [new Date(now-3*86400000).toISOString(),new Date(now+3600000).toISOString(),null]) {
+   o=await order(await sellAt(bad));
+   assert.ok(Math.abs(Date.parse(o.created_at)-now)<60000);
+  }
+  // The handed-over time is only for that one sale.
+  o=await order((await q('select public.oms_counter_order($1,$2,$3,$4,$5) id',[admin,crypto.randomUUID(),JSON.stringify({order_type:'takeaway'}),JSON.stringify([{id:'multi',portion:'quarter',quantity:1}]),'cash']))[0].id);
+  assert.ok(Math.abs(Date.parse(o.created_at)-now)<60000);
+  await db.exec('set role authenticated');
+  await assert.rejects(sellAt(soldAt),/permission denied/);
+  await db.exec('reset role');
+ });
  } finally {await db.close();}
 });

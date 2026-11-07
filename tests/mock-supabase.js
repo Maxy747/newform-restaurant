@@ -223,6 +223,9 @@ async function oms(body) {
       return { id: cashCounts[0].id };
     }
     case 'counter_order': {
+      // Same requestId → same sale, as oms_counter_order does (offline bills may be sent twice).
+      const repeat = orders.find(o => o.request_id && o.request_id === body.requestId);
+      if (repeat) return { order: view(repeat), invoice: null };
       const c = body.customer || {};
       if (!['cash', 'upi'].includes(body.method)) throw new Error('Choose cash or UPI');
       if (c.order_type === 'dine_in' && !c.table) throw new Error('Enter a table number');
@@ -233,6 +236,7 @@ async function oms(body) {
         return { id: item.id, name: item.name, quantity: line.quantity, portion: line.portion, price: line.portion === 'single' ? item.price : prices[line.portion] };
       });
       const order = mk(++counter, 'confirmed', 0, c.order_type, priced, { payment_method: body.method, payment_status: 'paid', source: 'counter', customer_name: c.name || 'Walk-in customer', phone: c.phone || '', table_number: c.table || null });
+      order.request_id = body.requestId; if (body.soldAt) order.created_at = body.soldAt;
       order.daily_number = counter - 40; order.tax = Math.round(order.subtotal * 0.05); order.total = order.subtotal + order.tax;
       orders.push(order);
       events[order.id] = [{ id: 1, event_type: 'order.created', detail: 'Order placed', created_at: order.created_at }, { id: 2, event_type: 'payment.updated', detail: `Paid at counter (${body.method === 'upi' ? 'UPI' : 'cash'})`, created_at: order.created_at }];
@@ -327,6 +331,7 @@ function query(table) {
     delete() { op = 'delete'; return builder; },
     single() { single = true; return builder; }, maybeSingle() { maybe = true; return builder; },
     then(resolve, reject) {
+      if (mockOffline()) { resolve({ data: null, error: { message: 'TypeError: Failed to fetch', details: '', hint: '', code: '' } }); return; }
       try {
         const match = row => filters.every(([c, v]) => row[c] === v);
         let rows = tables[table]();
@@ -344,6 +349,8 @@ function query(table) {
 }
 
 const session = () => signedIn() ? { user: { id: 'u1', email: role() + '@newform.test' } } : null;
+// localStorage.mock_offline = '1' makes every request fail the way it does with no internet.
+const mockOffline = () => { try { return localStorage.getItem('mock_offline') === '1'; } catch { return false; } };
 const authListeners = new Set();
 export const isSupabaseConfigured = true;
 export const supabase = {
@@ -354,7 +361,7 @@ export const supabase = {
     signOut: async () => { localStorage.setItem('mock_signed_out', '1'); authListeners.forEach(fn => fn('SIGNED_OUT', null)); return { error: null }; },
     signUp: async () => ({ data: {}, error: null }), resend: async () => ({ error: null }),
   },
-  functions: { invoke: async (name, { body }) => { try { return { data: await oms(body), error: null }; } catch (error) { return { data: { error: error.message }, error: null }; } } },
+  functions: { invoke: async (name, { body }) => { if (mockOffline()) return { data: null, error: { name: 'FunctionsFetchError', message: 'Failed to send a request to the Edge Function' } }; try { return { data: await oms(body), error: null }; } catch (error) { return { data: { error: error.message }, error: null }; } } },
   from: table => query(table),
   storage: { from: () => ({ upload: async () => ({ error: null }), remove: async () => ({ error: null }), getPublicUrl: path => ({ data: { publicUrl: 'assets/mandhi.png?mock=' + path } }) }) },
   channel: () => { const ch = { on: (type, filter, fn) => { listeners.add(fn); return ch; }, subscribe: cb => { cb?.('SUBSCRIBED'); return ch; } }; return ch; },

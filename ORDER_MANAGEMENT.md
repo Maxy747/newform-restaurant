@@ -86,6 +86,16 @@ Apply `supabase/migrations/20261009180000_cash_counts.sql` after the counter mig
 - Expected cash is the opening float plus cash recorded as **received** that India day: counter cash sales, pay-at-counter orders staff marked paid, and cash drivers collected. Cash for paid orders cancelled that day is taken off, because it was handed back. UPI and Razorpay never count towards the drawer. UPI counter takings are shown separately so you can check them against the UPI app.
 - Saving stores a permanent snapshot: the server recomputes the expected cash and the counted total from the note and coin counts, and records who counted. A count can't be edited or deleted. To recount, save another one; every count for the day is listed with its over/short amount.
 
+## Working offline
+
+The admin console keeps working when the restaurant's internet drops. Nothing needs switching on: after one sign-in while online, the device saves the console (service worker), the order board, opened orders and the counter menu. The header shows **Ready offline** once that is done.
+
+- **Offline:** a bar says so and when the board was last updated. New website orders only appear after reconnecting. Order steps and cash received still work: they wait in an outbox on the device (dashed card outline) and send automatically when the server answers again. Reloading the page or closing the browser does not lose them.
+- **Counter offline:** the sale is saved on the device as bill `OFF-n`. *Print bill + kitchen copy* prints a provisional bill (not a tax invoice) and a kitchen slip. Once back online the sale syncs with the time it was actually paid (migration `20261107120000_offline_counter_sales`, `oms_counter_order_at`). That keeps its order number, reports and the cash count on the right day, and the GST invoice is issued then. The `requestId` makes it impossible to save the sale twice.
+- **Couldn't sync:** if the server refuses a queued step (for example the order was cancelled meanwhile), it goes into the *couldn't sync* tray to retry or discard. A step that turns out to be done already is cleared automatically.
+- Menu, tickets, drivers, reports, billing, settings and owner pages need the internet and are greyed out while offline.
+- Signing out clears the saved board and menu from the device. Unsent changes stay and send the next time the same person signs in there.
+
 ## Razorpay activation (credentials still required)
 
 Set these **Supabase Edge secrets**, never Vite variables or committed files:

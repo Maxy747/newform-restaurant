@@ -1,7 +1,9 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient.js';
-import { createOmsApi } from './oms-client.js';
+import { createOmsApi, isOfflineError } from './oms-client.js';
+import { indexedStore } from './offline-store.js';
+import { createOutbox, applyChanges } from './outbox.js';
 import { escapeHTML as e, money, statusLabel as label, nextStatuses, canClaim, indiaDayRange, stepTimes, orderNumber, orderRef, shopStatus, OPENS_AT, CLOSES_AT } from './oms-policy.js';
-import { BOARD_COLUMNS, groupOrders, findNewOrders, ageLabel, minutesSince, refundSummary } from './admin-policy.js';
+import { BOARD_COLUMNS, groupOrders, findNewOrders, ageLabel, minutesSince, refundSummary, alreadyReached } from './admin-policy.js';
 import { createMenuAdmin } from './admin-menu.js';
 import { createCounter } from './admin-counter.js';
 import { createCashCount } from './admin-cash.js';
@@ -44,8 +46,58 @@ const run = fn => async event => {
   const button = event?.currentTarget;
   if (button?.disabled) return;
   if (button) button.disabled = true;
-  try { await fn(event); } catch (error) { toast(error.message, 'error'); } finally { if (button) button.disabled = false; }
+  try { await fn(event); } catch (error) { report(error); } finally { if (button) button.disabled = false; }
 };
+
+// ---------- offline ----------
+// The console keeps working through internet drops: it shows the last board this device saw,
+// queues order steps and counter sales in the outbox, and sends them once the server answers.
+const store = indexedStore();
+const IDENTITY_KEY = 'identity';
+// Sections that only make sense with the server (they read or change live data directly).
+const ONLINE_ONLY = new Set(['menu', 'tickets', 'drivers', 'reports', 'billing', 'settings', 'owner']);
+const net = { offline: false, lastSync: null, sessionless: false, offlineToastAt: 0 };
+const clock = value => new Date(value).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
+
+function report(error) {
+  if (!isOfflineError(error)) { toast(error.message, 'error'); return; }
+  setOffline(true);
+  // One reminder at a time; the offline bar already says it.
+  if (Date.now() - net.offlineToastAt > 15000) { net.offlineToastAt = Date.now(); toast("You're offline. That needs the internet.", 'error'); }
+}
+
+function setOffline(offline) {
+  if (net.offline === offline) return;
+  net.offline = offline;
+  document.body.classList.toggle('is-offline', offline);
+  setLive(!offline);
+  renderSyncBar();
+  if (!state.role) return;
+  if (offline) { if (ONLINE_ONLY.has(state.section)) route(); return; }
+  // Back online: send what waited, then reload what was skipped while offline.
+  flushOutbox();
+  if (isManager() && !state.billing) loadBillingSettings(authVersion);
+  if (state.role === 'delivery' && !state.me) loadMyShift(authVersion).catch(report);
+  route();
+}
+
+const myEntries = () => outbox.entries().filter(entry => entry.userId === state.userId);
+const hasUnsent = id => myEntries().some(entry => entry.kind === 'change' && entry.orderId === id && entry.state === 'queued');
+
+function renderSyncBar() {
+  const mine = state.role ? myEntries() : [];
+  const waiting = mine.filter(entry => entry.state === 'queued').length;
+  const failed = mine.filter(entry => entry.state === 'failed').length;
+  const parts = [];
+  if (net.offline) parts.push(net.lastSync ? `Offline · showing what this device saw at ${clock(net.lastSync)}. New website orders appear when you reconnect.` : 'Offline. New website orders appear when you reconnect.');
+  if (waiting) parts.push(`${waiting} change${waiting === 1 ? '' : 's'} waiting to send`);
+  $('syncText').textContent = parts.join(' · ');
+  $('syncFailedBtn').hidden = !failed;
+  $('syncFailedBtn').textContent = `${failed} couldn't sync`;
+  $('syncBar').hidden = !state.role || (!net.offline && !waiting && !failed);
+  $('syncBar').classList.toggle('is-offline', net.offline);
+  if ($('syncDialog').open) renderSyncDialog();
+}
 
 const time = value => new Date(value).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 const todayIST = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -179,26 +231,63 @@ function showGate(message, { form = false, signOut = false } = {}) {
   setNewCount(0);
 }
 
+// Supabase keeps the login in localStorage; when a token refresh fails for lack of internet the
+// session reads as empty but the stored login is still there (it is removed on a real sign-out).
+function storedLoginUserId() {
+  try {
+    const key = Object.keys(localStorage).find(name => /^sb-.+-auth-token$/.test(name));
+    return key ? JSON.parse(localStorage.getItem(key))?.user?.id || null : null;
+  } catch { return null; }
+}
+
+async function offlineIdentity(userId) {
+  const identity = await store.get(IDENTITY_KEY);
+  return identity && identity.userId === userId && SECTIONS.orders.includes(identity.config?.role) ? identity : null;
+}
+
 async function evaluateSession(session) {
   const version = ++authVersion;
   state.role = null;
   if (!isSupabaseConfigured) return showGate('The ordering backend is not configured for this build.');
-  if (!session) return showGate('Sign in with your restaurant account.', { form: true });
+  if (!session) {
+    // Offline with an expired token: carry on as the last signed-in user until the internet returns.
+    const userId = storedLoginUserId();
+    const identity = userId && await offlineIdentity(userId);
+    if (version !== authVersion) return;
+    if (identity) { net.sessionless = true; return enterConsole(identity, version, { offline: true }); }
+    return showGate('Sign in with your restaurant account.', { form: true });
+  }
+  net.sessionless = false;
   showGate('Checking your access…');
   let config;
   try { config = await api('config'); }
-  catch (error) { if (version === authVersion) showGate(`Could not reach the restaurant server: ${error.message}`, { signOut: true }); return; }
+  catch (error) {
+    if (version !== authVersion) return;
+    const identity = isOfflineError(error) && await offlineIdentity(session.user.id);
+    if (identity) return enterConsole(identity, version, { offline: true });
+    showGate(isOfflineError(error) ? 'No internet connection. Sign in once while online to use this console offline.' : `Could not reach the restaurant server: ${error.message}`, { signOut: true });
+    return;
+  }
   if (version !== authVersion) return;
   if (!SECTIONS.orders.includes(config.role)) return showGate(`${session.user.email} does not have restaurant staff access.`, { signOut: true });
+  const identity = { userId: session.user.id, email: session.user.email, config, savedAt: new Date().toISOString() };
+  store.set(IDENTITY_KEY, identity).catch(() => {});
+  enterConsole(identity, version, { offline: false });
+}
+
+async function enterConsole({ userId, config }, version, { offline }) {
   state.role = config.role;
-  state.userId = session.user.id;
+  state.userId = userId;
   state.config = config;
   state.drivers = []; state.me = null;
   $('gate').hidden = true;
   $('topActions').hidden = false;
   $('adminNav').hidden = false;
   document.body.dataset.role = state.role;
-  document.querySelectorAll('#adminNav [data-section]').forEach(link => { link.hidden = !can(link.dataset.section); });
+  document.querySelectorAll('#adminNav [data-section]').forEach(link => {
+    link.hidden = !can(link.dataset.section);
+    link.classList.toggle('is-online-only', ONLINE_ONLY.has(link.dataset.section));
+  });
   document.querySelectorAll('#section-settings [data-cap]').forEach(card => { card.hidden = !adminCan(card.dataset.cap); });
   // Kitchen and delivery only work the live board.
   document.querySelector('[data-orders-view="history"]').hidden = !isManager();
@@ -215,13 +304,40 @@ async function evaluateSession(session) {
   if (!savedAdminTheme() && config.siteTheme) applyTheme(config.siteTheme);
   $('addDriverBtn').hidden = !adminCan('drivers');
   $('shiftBox').hidden = true;
-  if (state.role === 'delivery') loadMyShift(version).catch(error => toast(error.message, 'error'));
+  primed = false; seenOrders.clear(); boardOrders = []; lastBoardHTML = '';
+  // Show the last board this device saw straight away; the live fetch replaces it.
+  const cached = await store.get(boardKey()).catch(() => null);
+  if (version !== authVersion) return;
+  if (cached?.orders) {
+    boardOrders = cached.orders;
+    net.lastSync = cached.at;
+    findNewOrders(seenOrders, boardOrders, false); // these were already announced when they arrived
+    primed = true;
+  }
+  net.offline = offline;
+  document.body.classList.toggle('is-offline', offline);
+  setLive(!offline);
+  if (state.role === 'delivery' && !offline) loadMyShift(version).catch(report);
   state.billing = null;
-  if (isManager()) loadBillingSettings(version);
-  primed = false; seenOrders.clear();
+  if (isManager() && !offline) loadBillingSettings(version);
   syncSoundPrompt();
-  startLive(session.user.id);
+  await outbox.load().catch(() => {});
+  renderSyncBar();
+  startLive(userId);
   route();
+  flushOutbox();
+  // No "download for offline" button needed: the app, board and counter menu save themselves.
+  if (!offline && can('counter')) counter.prefetch().then(checkOfflineReady);
+  checkOfflineReady();
+}
+
+// "Ready offline" once the app is cached and this device holds the board (and, for the counter, the menu).
+async function checkOfflineReady() {
+  if (!state.role) return;
+  let app = !import.meta.env.PROD;
+  try { app ||= Boolean(navigator.serviceWorker?.controller || (await navigator.serviceWorker?.getRegistration?.())?.active); } catch { /* unsupported */ }
+  const [board, menu] = await Promise.all([store.get(boardKey()), can('counter') ? store.get('menu:counter') : true].map(read => Promise.resolve(read).catch(() => null)));
+  $('offlineReady').hidden = !(app && board && menu);
 }
 
 $('signInForm').onsubmit = async event => {
@@ -235,7 +351,24 @@ $('signInForm').onsubmit = async event => {
   } catch (error) { $('gateMessage').textContent = error.message; }
   finally { button.disabled = false; }
 };
-const signOut = run(async () => { await supabase.auth.signOut(); });
+const signOut = run(async () => {
+  const unsent = state.role ? myEntries().length : 0;
+  if (unsent) {
+    const choice = await ask({ title: `${unsent} change${unsent === 1 ? '' : 's'} not sent yet`, message: 'They stay on this device and send the next time you sign in here.', choices: [{ label: 'Sign out anyway', value: 'yes', tone: 'danger' }, { label: 'Stay signed in', value: null }] });
+    if (!choice) return;
+  }
+  await forgetOfflineCopy();
+  await supabase.auth.signOut();
+  // Offline without a live session, Supabase has nothing to sign out: return to the sign-in form ourselves.
+  if (net.sessionless) { net.sessionless = false; evaluateSession(null); }
+});
+
+async function forgetOfflineCopy() {
+  try {
+    const keys = await store.keys();
+    await Promise.all(keys.filter(key => key === IDENTITY_KEY || /^(board|detail|menu):/.test(key)).map(key => store.del(key)));
+  } catch { /* storage blocked */ }
+}
 $('signOutBtn').onclick = signOut;
 $('gateSignOut').onclick = signOut;
 
@@ -247,32 +380,44 @@ function route() {
   state.section = section;
   document.querySelectorAll('.adm-section').forEach(element => { element.hidden = element.id !== `section-${section}`; });
   document.querySelectorAll('#adminNav [data-section]').forEach(link => link.toggleAttribute('aria-current', link.dataset.section === section));
-  if (section === 'orders') refreshOrders().catch(error => toast(error.message, 'error'));
-  if (section === 'menu') menuAdmin.open().catch(error => toast(error.message, 'error'));
+  // Offline, server-only sections stay visible but can't be used until the internet returns.
+  const blocked = net.offline && ONLINE_ONLY.has(section);
+  $(`section-${section}`).inert = blocked;
+  $('offlineSectionNote').hidden = !blocked;
+  if (blocked) return;
+  if (section === 'orders') { renderBoard(); refreshOrders().catch(quiet); }
+  if (section === 'menu') menuAdmin.open().catch(quiet);
   if (section === 'counter') {
-    counter.open().catch(error => toast(error.message, 'error'));
-    cashCount.open().catch(error => toast(error.message, 'error'));
+    counter.open().catch(quiet);
+    cashCount.open().catch(quiet);
   }
-  if (section === 'tickets') refreshTickets().catch(error => toast(error.message, 'error'));
-  if (section === 'drivers') refreshDrivers().catch(error => toast(error.message, 'error'));
-  if (section === 'reports') refreshReports().catch(error => toast(error.message, 'error'));
-  if (section === 'billing') refreshBilling().catch(error => toast(error.message, 'error'));
-  if (section === 'owner') refreshOwner().catch(error => toast(error.message, 'error'));
-  if (section === 'settings') galleryAdmin.open().catch(error => toast(error.message, 'error'));
+  if (section === 'tickets') refreshTickets().catch(quiet);
+  if (section === 'drivers') refreshDrivers().catch(quiet);
+  if (section === 'reports') refreshReports().catch(quiet);
+  if (section === 'billing') refreshBilling().catch(quiet);
+  if (section === 'owner') refreshOwner().catch(quiet);
+  if (section === 'settings') galleryAdmin.open().catch(quiet);
+}
+// Background loads: going offline is shown by the offline bar, not a toast per screen.
+function quiet(error) {
+  if (isOfflineError(error)) setOffline(true);
+  else toast(error.message, 'error');
 }
 window.addEventListener('hashchange', route);
 
 // ---------- live updates ----------
 function setLive(ok) {
   $('liveStatus').classList.toggle('is-down', !ok);
-  $('liveStatus').title = ok ? 'Live updates on' : 'Reconnecting…';
+  $('liveStatus').title = ok ? 'Live updates on' : net.offline ? 'Offline' : 'Reconnecting…';
 }
 function queueRefresh(delay = 400) {
   clearTimeout(refreshTimer);
-  refreshTimer = setTimeout(() => refreshLive().catch(() => setLive(false)), delay);
+  refreshTimer = setTimeout(() => refreshLive().catch(error => { if (isOfflineError(error)) setOffline(true); else setLive(false); }), delay);
 }
 async function refreshLive() {
   if (!state.role) return;
+  // Signed in offline on an expired token: wait for Supabase to renew it, then start properly.
+  if (net.sessionless) return reconnectSession();
   // The board drives new-order alerts, so keep it fresh even while another section is open.
   await refreshBoard();
   if (state.section === 'orders' && state.ordersView === 'history') await refreshHistory();
@@ -280,6 +425,12 @@ async function refreshLive() {
   if (state.section === 'drivers') await refreshDrivers();
   if (state.detailId && $('orderDialog').open) await refreshDetail();
   setLive(true);
+  if (myEntries().some(entry => entry.state === 'queued')) flushOutbox();
+}
+
+async function reconnectSession() {
+  const { data } = await supabase.auth.getSession();
+  if (data.session) evaluateSession(data.session);
 }
 function startLive(userId) {
   stopLive();
@@ -296,6 +447,7 @@ function stopLive() {
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden && state.role) queueRefresh(0); });
 window.addEventListener('online', () => { if (state.role) queueRefresh(0); });
+window.addEventListener('offline', () => { if (state.role) setOffline(true); });
 
 // ---------- orders: live board ----------
 async function fetchBoardOrders() {
@@ -339,7 +491,7 @@ function orderCard(order) {
   // New arrivals flash for FLASH_MS; a negative delay keeps the flash continuous across re-renders.
   const flashAge = arrivedAt.has(order.id) ? Date.now() - arrivedAt.get(order.id) : Infinity;
   const flash = flashAge < FLASH_MS ? ` style="animation-delay:-${flashAge}ms"` : '';
-  return `<article class="adm-order${late ? ' is-late' : ''}${order.order_status === 'new' ? ' is-new' : ''}${flash ? ' just-arrived' : ''}${pending.has(order.id) ? ' is-pending' : ''}"${flash} data-open="${e(order.id)}" tabindex="0" aria-label="Order ${e(orderNumber(order))}">
+  return `<article class="adm-order${late ? ' is-late' : ''}${order.order_status === 'new' ? ' is-new' : ''}${flash ? ' just-arrived' : ''}${hasUnsent(order.id) ? ' is-pending' : ''}"${flash} data-open="${e(order.id)}" tabindex="0" aria-label="Order ${e(orderNumber(order))}">
     <header><strong class="adm-order-no">${e(orderNumber(order))}</strong><span class="adm-age" title="${e(time(order.created_at))}"><i class="fa-regular fa-clock"></i> ${e(ageLabel(order.created_at))}</span></header>
     <div class="adm-order-meta"><span><i class="fa-solid ${TYPE_ICON[order.order_type] || 'fa-receipt'}"></i> ${e(typeName(order.order_type))}${order.table_number ? ' · Table ' + e(order.table_number) : ''}</span>${payment}</div>
     ${order.customer_name ? `<p class="adm-order-name">${e(order.customer_name)}</p>` : ''}
@@ -363,11 +515,17 @@ function finishedRow(order) {
   return `<button type="button" class="adm-row" data-open="${e(order.id)}"><strong>${e(orderNumber(order))}</strong><span>${e(order.customer_name || typeName(order.order_type))}</span><span class="adm-badge adm-badge-${e(order.order_status)}">${e(label(order.order_status))}</span><strong>${money(order.total)}</strong></button>`;
 }
 
+const boardKey = () => 'board:' + state.userId;
+const detailKey = id => 'detail:' + id;
+
 async function refreshBoard() {
   const version = ++boardVersion;
   const orders = await fetchBoardOrders();
   if (version !== boardVersion) return;
   boardOrders = [...new Map(orders.map(order => [order.id, order])).values()];
+  net.lastSync = new Date().toISOString();
+  setOffline(false);
+  saveBoard(boardOrders);
   const fresh = findNewOrders(seenOrders, boardOrders, primed);
   announce(fresh);
   // Only genuinely new arrivals get the slide-in animation, once.
@@ -379,7 +537,18 @@ async function refreshBoard() {
   // Columns list oldest first, so bring a just-arrived card into view for its flash.
   const newest = fresh.at(-1) && document.querySelector(`#orderBoard [data-open="${CSS.escape(fresh.at(-1).id)}"]`);
   newest?.scrollIntoView({ block: 'nearest' });
-  if (isManager() && state.section === 'orders' && state.ordersView === 'board') await refreshTodayStats(version);
+  if (isManager() && state.section === 'orders' && state.ordersView === 'board') await refreshTodayStats(version).catch(error => { if (!isOfflineError(error)) throw error; });
+}
+
+// The device's copy of the board, plus details only for orders still on it.
+async function saveBoard(orders) {
+  try {
+    await store.set(boardKey(), { orders, at: net.lastSync });
+    const keep = new Set(orders.map(order => detailKey(order.id)));
+    const stale = (await store.keys()).filter(key => key.startsWith('detail:') && !keep.has(key));
+    await Promise.all(stale.map(key => store.del(key)));
+    if ($('offlineReady').hidden) checkOfflineReady();
+  } catch { /* storage blocked: the console still works online */ }
 }
 
 function renderBoard() {
@@ -423,7 +592,7 @@ document.querySelectorAll('[data-orders-view]').forEach(button => button.onclick
   document.querySelectorAll('[data-orders-view]').forEach(other => other.setAttribute('aria-selected', String(other === button)));
   $('ordersBoardView').hidden = state.ordersView !== 'board';
   $('ordersHistoryView').hidden = state.ordersView !== 'history';
-  refreshOrders().catch(error => toast(error.message, 'error'));
+  refreshOrders().catch(report);
 });
 
 // ---------- orders: history ----------
@@ -459,8 +628,9 @@ async function openOrder(id) {
 async function refreshDetail() {
   const id = state.detailId, version = ++detailVersion;
   // Managers need the roster for the driver picker; it is fetched once and dropped after any assignment.
-  const [{ order: fetched, events, tickets, invoice, payment, refunds = [] }] = await Promise.all([api('detail', { id }), isManager() && !state.drivers.length ? loadDrivers().catch(() => {}) : null]);
+  const [{ order: fetched, events, tickets, invoice, payment, refunds = [], offlineCopy = false }] = await Promise.all([loadDetail(id), isManager() && !state.drivers.length ? loadDrivers().catch(() => {}) : null]);
   if (version !== detailVersion || id !== state.detailId) return;
+  if (!fetched) { $('orderDialogBody').innerHTML = '<p class="adm-empty">This order is not saved on this device. Open it again when you are back online.</p>'; return; }
   const o = withPending(fetched);
   $('orderDialogTitle').textContent = `Order ${orderNumber(o)}`;
   const body = $('orderDialogBody');
@@ -472,7 +642,7 @@ async function refreshDetail() {
   const reached = stepTimes(events);
   const canCash = state.role !== 'kitchen' && (state.role !== 'delivery' || o.assigned_driver === state.userId) && o.payment_method !== 'razorpay' && o.payment_status !== 'paid' && o.order_status !== 'cancelled';
   const deliveryPin = o.delivery_latitude != null && o.delivery_longitude != null ? `https://www.google.com/maps?q=${Number(o.delivery_latitude)},${Number(o.delivery_longitude)}` : null;
-  body.innerHTML = `
+  body.innerHTML = `${offlineCopy ? '<p class="adm-offline-copy"><i class="fa-solid fa-cloud-arrow-down"></i> Offline copy. Payments, invoices, drivers and replies need the internet.</p>' : ''}
     <div class="adm-detail-status"><span class="adm-badge adm-badge-${e(o.order_status)}">${e(label(o.order_status))}</span><span class="adm-muted">Placed ${e(time(o.created_at))} · ${e(ageLabel(o.created_at))} ago · Ref ${e(orderRef(o))}</span></div>
     ${o.order_status === 'cancelled' ? '' : `<ol class="adm-steps">${steps.map((step, index) => `<li class="${index < current ? 'done' : index === current ? 'current' : ''}"><span>${e(label(step))}</span>${reached.has(step) ? `<small>${e(new Date(reached.get(step)).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }))}</small>` : ''}</li>`).join('')}</ol>`}
     <div class="adm-detail-actions">${actionButtons(o)}${canCash ? '<button type="button" class="adm-btn" id="cashBtn"><i class="fa-solid fa-money-bill-wave"></i> Cash received</button>' : ''}</div>
@@ -504,6 +674,22 @@ async function refreshDetail() {
   if ($('creditBtn')) $('creditBtn').onclick = run(() => openCreditNote(o.id));
   if ($('refundBtn')) $('refundBtn').onclick = () => openRefund(o, payment, refunds);
   if (isManager()) renderTickets(o, tickets);
+}
+
+// Live detail when online; offline, the copy saved when it was last opened, or the board's copy.
+async function loadDetail(id) {
+  try {
+    const detail = await api('detail', { id });
+    store.set(detailKey(id), detail).catch(() => {});
+    return detail;
+  } catch (error) {
+    if (!isOfflineError(error)) throw error;
+    setOffline(true);
+    const saved = await store.get(detailKey(id)).catch(() => null);
+    const board = findOrder(id);
+    if (saved) return { ...saved, order: board ? { ...saved.order, ...board } : saved.order, offlineCopy: true };
+    return { order: board || null, events: [], tickets: [], invoice: null, payment: null, refunds: [], offlineCopy: true };
+  }
 }
 
 function driverBlock(o) {
@@ -570,14 +756,20 @@ function renderTickets(order, tickets) {
 }
 
 // ---------- undoable actions ----------
-// Changes wait a few seconds before reaching the server so any of them can be undone.
+// Changes wait a few seconds in the outbox before going out so any of them can be undone, and
+// stay there (on this device) until the server confirms them, even across reloads and outages.
 const UNDO_MS = 6000;
-const pending = new Map(); // order id -> { status, cash, timer, note }
+const undoNotes = new Map(); // outbox entry id -> undo toast
+
+const outbox = createOutbox({
+  store,
+  send: sendEntry,
+  isOffline: isOfflineError,
+  onChange: () => { renderSyncBar(); if (state.role) renderBoard(); },
+});
 
 function withPending(order) {
-  const change = pending.get(order.id);
-  if (!change) return order;
-  return { ...order, ...(change.status ? { order_status: change.status } : {}), ...(change.cash ? { payment_status: 'paid' } : {}) };
+  return applyChanges(order, myEntries());
 }
 
 function findOrder(id) {
@@ -586,7 +778,7 @@ function findOrder(id) {
 
 function rerender() {
   renderBoard();
-  if (state.detailId && $('orderDialog').open) refreshDetail().catch(error => toast(error.message, 'error'));
+  if (state.detailId && $('orderDialog').open) refreshDetail().catch(quiet);
 }
 
 function undoToast(message, onUndo) {
@@ -600,46 +792,93 @@ function undoToast(message, onUndo) {
   return item;
 }
 
-async function commit(id) {
-  const change = pending.get(id);
-  if (!change || change.sending) return;
-  change.sending = true;
-  clearTimeout(change.timer);
-  change.note?.remove();
+async function sendEntry(entry) {
+  if (entry.kind === 'counter') return api('counter_order', { ...entry.payload, soldAt: entry.soldAt });
   try {
-    if (change.cash) await api('cash', { id });
-    if (change.status) await api('transition', { id, status: change.status });
+    if (entry.cash) await api('cash', { id: entry.orderId });
+    if (entry.status) await api('transition', { id: entry.orderId, status: entry.status });
   } catch (error) {
-    toast(`${orderNumber(findOrder(id) || { id })}: ${error.message}`, 'error');
-  } finally {
-    pending.delete(id);
-    queueRefresh(0);
+    if (isOfflineError(error)) throw error;
+    // Refused: maybe it was done already (another device, or a reply lost on the way back).
+    const current = await api('detail', { id: entry.orderId }).then(detail => detail.order, lookup => { if (isOfflineError(lookup)) throw lookup; return null; });
+    if (alreadyReached(current, entry)) return { already: true };
+    throw error;
   }
+  return { ok: true };
+}
+
+function syncedMessage(entry, response) {
+  if (entry.kind !== 'counter') return null;
+  const invoice = response?.invoice?.invoice_no ? ` · invoice ${response.invoice.invoice_no}` : '';
+  return `Offline bill ${entry.provisional} saved as ${orderNumber(response.order)}${invoice}`;
+}
+
+async function flushOutbox() {
+  if (!state.userId || !state.role || net.sessionless) return;
+  const userId = state.userId;
+  const result = await outbox.flush(userId, {
+    onSent: (entry, response) => { const message = syncedMessage(entry, response); if (message) toast(message, 'success'); },
+    onFailed: (entry, error) => toast(`Couldn't sync ${entry.label}: ${error.message}`, 'error'),
+  }).catch(() => ({ sent: 0, offline: false }));
+  if (userId !== state.userId) return;
+  if (result.offline) setOffline(true);
+  if (result.sent) { setOffline(false); queueRefresh(0); }
 }
 
 async function queueChange(order, change, message) {
-  // A second change to the same order sends the first one now, so steps stay in order.
-  if (pending.has(order.id)) await commit(order.id);
-  const entry = { ...change };
-  entry.note = undoToast(message, () => {
-    if (entry.sending) return;
-    clearTimeout(entry.timer);
-    pending.delete(order.id);
-    toast(`Undone: ${message}`);
-    rerender();
+  // A second change to the same order sends the waiting one now, so steps stay in order.
+  for (const prior of myEntries().filter(entry => entry.kind === 'change' && entry.orderId === order.id && entry.holdUntil > Date.now())) {
+    undoNotes.get(prior.id)?.remove(); undoNotes.delete(prior.id);
+    await outbox.release(prior.id);
+  }
+  const entry = await outbox.add({ kind: 'change', userId: state.userId, orderId: order.id, status: change.status || null, cash: Boolean(change.cash), label: message, holdUntil: Date.now() + UNDO_MS });
+  const note = undoToast(message, async () => {
+    undoNotes.delete(entry.id);
+    if (await outbox.cancel(entry.id)) { toast(`Undone: ${message}`); rerender(); }
+    else toast('Already sent, too late to undo', 'error');
   });
-  entry.timer = setTimeout(() => commit(order.id), UNDO_MS);
-  pending.set(order.id, entry);
+  undoNotes.set(entry.id, note);
+  setTimeout(() => {
+    if (undoNotes.get(entry.id) === note) { note.remove(); undoNotes.delete(entry.id); }
+    flushOutbox();
+  }, UNDO_MS + 50);
   rerender();
 }
 
-const flushPending = () => Promise.all([...pending.keys()].map(commit));
-document.addEventListener('visibilitychange', () => { if (document.hidden && pending.size) flushPending(); });
+// Leaving the page ends the undo window: send now. Anything that can't go stays in the outbox.
+const releaseHeld = () => Promise.all(myEntries().filter(entry => entry.holdUntil > Date.now()).map(entry => {
+  undoNotes.get(entry.id)?.remove(); undoNotes.delete(entry.id);
+  return outbox.release(entry.id);
+})).then(flushOutbox);
+document.addEventListener('visibilitychange', () => { if (document.hidden && state.role && myEntries().some(entry => entry.holdUntil > Date.now())) releaseHeld(); });
 window.addEventListener('beforeunload', event => {
-  if (!pending.size) return;
-  flushPending();
+  if (!state.role || !myEntries().some(entry => entry.state === 'queued')) return;
+  releaseHeld();
   event.preventDefault();
 });
+
+// "Couldn't sync": steps and sales the server refused. Staff retry them or let them go.
+function renderSyncDialog() {
+  const mine = myEntries().sort((a, b) => a.seq - b.seq);
+  const row = entry => `<li class="adm-sync-row${entry.state === 'failed' ? ' is-failed' : ''}">
+      <div><strong>${e(entry.label)}</strong><small>${e(time(entry.createdAt))}${entry.state === 'failed' ? ' · ' + e(entry.error || 'Refused') : entry.holdUntil > Date.now() ? ' · can still be undone' : ' · waiting to send'}</small></div>
+      ${entry.state === 'failed' ? `<div class="adm-sync-actions"><button type="button" class="adm-btn" data-sync-retry="${e(entry.id)}">Retry</button><button type="button" class="adm-btn adm-btn-ghost" data-sync-drop="${e(entry.id)}">Discard</button></div>` : ''}
+    </li>`;
+  $('syncList').innerHTML = mine.map(row).join('') || '<li class="adm-empty">Everything is sent.</li>';
+}
+$('syncFailedBtn').onclick = () => { renderSyncDialog(); $('syncDialog').showModal(); };
+$('syncList').addEventListener('click', run(async event => {
+  const retry = event.target.closest('[data-sync-retry]'), drop = event.target.closest('[data-sync-drop]');
+  if (retry) { await outbox.retry(retry.dataset.syncRetry); await flushOutbox(); }
+  if (drop) {
+    const entry = myEntries().find(item => item.id === drop.dataset.syncDrop);
+    if (!entry) return;
+    const sale = entry.kind === 'counter';
+    const choice = await ask({ title: sale ? `Discard bill ${entry.provisional}?` : 'Discard this change?', message: sale ? 'This paid sale will not be recorded in the system. Only do this if you have recorded it another way.' : `"${entry.label}" will not be sent. Check the order on the board.`, choices: [{ label: 'Discard', value: 'yes', tone: 'danger' }, { label: 'Keep it', value: null }] });
+    if (choice) await outbox.remove(entry.id);
+  }
+  renderSyncDialog();
+}));
 
 // Small in-page confirm with explicit choices (replaces the browser's confirm()).
 function ask({ title, message, choices }) {
@@ -716,7 +955,7 @@ document.addEventListener('click', event => {
     return;
   }
   const opener = event.target.closest('[data-open]');
-  if (opener) openOrder(opener.dataset.open).catch(error => toast(error.message, 'error'));
+  if (opener) openOrder(opener.dataset.open).catch(report);
 });
 document.addEventListener('keydown', event => {
   if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('article[data-open]')) { event.preventDefault(); event.target.click(); }
@@ -1474,16 +1713,32 @@ document.querySelectorAll('dialog').forEach(dialog => {
 const menuAdmin = createMenuAdmin({ supabase, toast, run, api, isAdmin: () => adminCan('menu') || adminCan('stock'), canEdit: () => adminCan('menu') });
 const cashCount = createCashCount({ api, toast, run, ask, todayIST });
 const galleryAdmin = createGalleryAdmin({ supabase, toast, run, ask });
-const counter = createCounter({ supabase, api, toast, run, ask, billingEnabled: () => state.billing?.enabled === true });
+const counter = createCounter({ supabase, api, toast, run, ask, billingEnabled: () => state.billing?.enabled === true,
+  offline: { store, outbox, userId: () => state.userId, isOffline: () => net.offline, setOffline, flush: flushOutbox } });
 
 // ---------- boot ----------
 if (isSupabaseConfigured) {
   supabase.auth.getSession().then(({ data }) => evaluateSession(data.session));
   supabase.auth.onAuthStateChange((event, session) => {
-    // Supabase advises against awaiting inside this callback; token refreshes need no re-check.
-    if (event === 'TOKEN_REFRESHED') return;
+    // Supabase advises against awaiting inside this callback. Token refreshes need no re-check,
+    // except when the console started offline on an expired token: that refresh means we're back.
+    if (event === 'TOKEN_REFRESHED' && !net.sessionless) return;
+    if (event === 'SIGNED_OUT') forgetOfflineCopy();
     setTimeout(() => evaluateSession(session), 0);
   });
+  // Cache the console itself so it opens without internet (production builds only).
+  if ('serviceWorker' in navigator && import.meta.env.PROD) {
+    navigator.serviceWorker.register('./sw.js')
+      .then(() => navigator.serviceWorker.ready)
+      .then(registration => new Promise(resolve => {
+        // The worker only keeps the customer site by default; ask it for the console's files too.
+        const channel = new MessageChannel();
+        channel.port1.onmessage = resolve;
+        registration.active?.postMessage({ type: 'cache-groups', groups: ['admin', 'invoice'] }, [channel.port2]);
+      }))
+      .then(checkOfflineReady)
+      .catch(() => {});
+  }
 } else {
   evaluateSession(null);
 }

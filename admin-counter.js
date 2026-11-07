@@ -1,29 +1,51 @@
 // Admin → Counter: ring up walk-in takeaway / dine-in sales paid by cash or UPI, then print the bill.
 import { escapeHTML as e, money, orderNumber } from './oms-policy.js';
+import { isOfflineError, OfflineError } from './oms-client.js';
 import { PORTIONS, unitPrice, addToTicket, setQuantity, ticketTotals, ticketItems, changeDue } from './counter-policy.js';
 import { menuPrices } from './admin-policy.js';
+import { provisionalNumber, offlineReceiptHTML } from './counter-policy.js';
 
 const PORTION_SHORT = { quarter: 'Qtr', half: 'Half', full: 'Full' };
 // Tile buttons are narrow, so drop the ".00" on whole-rupee prices.
 const tilePrice = value => `₹${Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+const MENU_KEY = 'menu:counter';
+const OFF_KEY = 'newform_offline_bills_v1';
+const istDay = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
 
-export function createCounter({ supabase, api, toast, run, ask, billingEnabled }) {
+// offline: { store, outbox, userId(), isOffline(), setOffline(bool), flush() } lets a sale go
+// through with no internet: it is saved in the outbox and sent (and invoiced) once back online.
+export function createCounter({ supabase, api, toast, run, ask, billingEnabled, offline }) {
   const $ = id => document.getElementById(id);
-  let menu = [], categories = [], category = '', lines = [], type = 'takeaway', method = 'cash', requestId = crypto.randomUUID(), charging = false, ticketInView = false;
+  let lastOffline = null, menu = [], categories = [], category = '', lines = [], type = 'takeaway', method = 'cash', requestId = crypto.randomUUID(), charging = false, ticketInView = false;
 
-  async function open() {
+  // The live menu, saved on the device for offline sales; offline, the last saved copy.
+  async function loadMenu() {
     const [items, cats] = await Promise.all([
       supabase.from('menu_items').select('*').order('name'),
       supabase.from('menu_categories').select('*').order('sort_order').order('id'),
     ]);
-    if (items.error) throw new Error(items.error.message);
-    menu = items.data.filter(item => item.available !== false);
-    categories = (cats.data || []).filter(cat => !cat.archived && menu.some(item => item.category === cat.id));
+    const error = items.error || cats.error;
+    if (!error) {
+      const saved = { items: items.data, categories: cats.data || [], at: new Date().toISOString() };
+      offline?.store.set(MENU_KEY, saved).catch(() => {});
+      return saved;
+    }
+    if (!isOfflineError(error)) throw new Error(error.message);
+    offline?.setOffline(true);
+    const saved = await offline?.store.get(MENU_KEY).catch(() => null);
+    if (!saved) throw new OfflineError('The menu is not saved on this device yet. Open Counter once while online.');
+    return saved;
+  }
+
+  async function open() {
+    const saved = await loadMenu();
+    menu = saved.items.filter(item => item.available !== false);
+    categories = saved.categories.filter(cat => !cat.archived && menu.some(item => item.category === cat.id));
     // Drop lines whose dish went out of stock since they were added; the server would refuse them anyway.
     const removed = lines.filter(line => !menu.some(item => item.id === line.id));
     if (removed.length) { lines = lines.filter(line => !removed.includes(line)); toast(`${removed.map(line => line.name).join(', ')} removed: out of stock`, 'error'); }
     renderMenu(); renderTicket();
-    $('counterNotice').hidden = billingEnabled();
+    $('counterNotice').hidden = billingEnabled() || offline?.isOffline() === true;
   }
 
   function renderMenu() {
@@ -78,11 +100,51 @@ export function createCounter({ supabase, api, toast, run, ask, billingEnabled }
     const paid = await ask({ title: `${money(totals.total)} received by ${method === 'upi' ? 'UPI' : 'cash'}?`, message: method === 'upi' ? 'Check the payment shows as successful on the UPI app before confirming.' : 'The sale is saved as paid and goes to the kitchen.', choices: [{ label: 'Yes, payment received', value: 'yes', tone: 'primary' }, { label: 'Not yet', value: null }] });
     if (!paid) return;
     charging = true; renderTicket();
+    const payload = { requestId, method, items: ticketItems(lines), customer: { order_type: type, table, name: $('ticketName').value.trim(), phone: $('ticketPhone').value.trim() } };
+    const soldAt = new Date().toISOString();
     try {
-      const { order, invoice } = await api('counter_order', { requestId, method, items: ticketItems(lines), customer: { order_type: type, table, name: $('ticketName').value.trim(), phone: $('ticketPhone').value.trim() } });
+      const { order, invoice } = await api('counter_order', payload);
       showDone(order, invoice);
       reset();
+    } catch (error) {
+      // No internet: keep the sale on this device. The same requestId means it can never be saved twice.
+      if (!offline || !isOfflineError(error)) throw error;
+      offline.setOffline(true);
+      await saveOffline(payload, soldAt, totals, table);
+      reset();
     } finally { charging = false; renderTicket(); }
+  }
+
+  function nextProvisional() {
+    let counts = {};
+    try { counts = JSON.parse(localStorage.getItem(OFF_KEY)) || {}; } catch { counts = {}; }
+    const day = istDay(), n = (Number(counts[day]) || 0) + 1;
+    try { localStorage.setItem(OFF_KEY, JSON.stringify({ [day]: n })); } catch { /* storage blocked */ }
+    return provisionalNumber(n);
+  }
+
+  async function saveOffline(payload, soldAt, totals, table) {
+    const provisional = nextProvisional();
+    const receipt = { provisional, soldAt, method: payload.method, type: payload.customer.order_type, table, name: payload.customer.name,
+      cashReceived: Number($('cashReceived').value) || null, lines: lines.map(line => ({ name: line.name, portion: line.portion, quantity: line.quantity, price: line.price })), totals };
+    const entry = await offline.outbox.add({ kind: 'counter', userId: offline.userId(), label: `Counter bill ${provisional} · ${money(totals.total)}`, provisional, soldAt, payload, receipt });
+    lastOffline = entry;
+    $('counterDoneTitle').textContent = `Bill ${provisional} paid · ${money(totals.total)} · saved offline`;
+    $('counterDoneMessage').textContent = 'No internet, so this sale is saved on this device. Print the bill and give the kitchen its copy: the kitchen screen gets it when the internet is back, and the GST invoice is issued then.';
+    $('counterPrint').hidden = true;
+    $('counterPrintOffline').hidden = false;
+    $('counterDoneDialog').showModal();
+    offline.flush();
+  }
+
+  // Provisional bill printed from the device itself (the invoice page needs the server).
+  function printOffline(entry) {
+    $('offlineReceipt').innerHTML = offlineReceiptHTML(entry.receipt);
+    document.body.classList.add('is-printing-receipt');
+    const done = () => { document.body.classList.remove('is-printing-receipt'); window.removeEventListener('afterprint', done); };
+    window.addEventListener('afterprint', done);
+    window.print();
+    setTimeout(done, 1000);
   }
 
   function showDone(order, invoice) {
@@ -90,6 +152,7 @@ export function createCounter({ supabase, api, toast, run, ask, billingEnabled }
     $('counterDoneMessage').textContent = invoice
       ? `Invoice ${invoice.invoice_no}. The order is with the kitchen.`
       : 'The order is with the kitchen. No bill was issued because invoicing is off. An admin can turn it on in Settings → Invoices.';
+    $('counterPrintOffline').hidden = true;
     $('counterPrint').hidden = !invoice;
     if (invoice) $('counterPrint').href = `invoice.html?order=${encodeURIComponent(order.id)}&paper=receipt&print=1`;
     $('counterDoneDialog').showModal();
@@ -126,7 +189,12 @@ export function createCounter({ supabase, api, toast, run, ask, billingEnabled }
   // On phones the jump bar disappears once the bill itself is on screen, so it never covers Charge.
   new IntersectionObserver(([entry]) => { ticketInView = entry.isIntersecting; renderTicket(); }, { threshold: 0.1 }).observe($('counterTicket'));
   $('ticketJump').onclick = () => $('counterTicket').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  $('counterPrintOffline').onclick = () => { if (lastOffline) printOffline(lastOffline); };
   $('counterNew').onclick = () => { $('counterDoneDialog').close(); $('counterSearch').focus(); };
 
-  return { open };
+  // Save the menu in the background at sign-in, so the first offline sale doesn't depend on
+  // someone having opened Counter while online.
+  const prefetch = () => loadMenu().then(() => true, () => false);
+
+  return { open, prefetch };
 }
