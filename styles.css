@@ -2838,3 +2838,7 @@ html.pages-multi[data-current-page="home"] footer { display: none; }
 .track-upi { display: grid; gap: 10px; margin: 12px 0; padding: 14px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--gold-primary) 35%, transparent); background: var(--btn-minimal-bg); }
 .track-upi p { margin: 0; font-size: .9rem; line-height: 1.5; overflow-wrap: anywhere; }
 .track-upi .btn-minimal { justify-self: start; }
+
+/* Error toasts: warning icon instead of a green tick. */
+.toast-status-icon.is-error { color: #dc2626; }
+.toast.toast-error { border-color: color-mix(in srgb, #dc2626 35%, var(--glass-border)); }

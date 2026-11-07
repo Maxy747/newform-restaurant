@@ -171,11 +171,11 @@ async function handle(req:Request):Promise<Response>{
   }
   if(['delivery_address','delivery_quote'].includes(body.action)&&!deliveryOn(await settings())) throw new Error('Home delivery is currently unavailable. Please choose takeaway or dine in.');
   if(body.action==='delivery_address') {
-   if(!await rpc('oms_rate_limit',{p_bucket:await sha256(identity+':geocoding'),p_limit:8})) throw new Error('Please wait a minute before searching again.');
+   if(!await rpc('oms_rate_limit',{p_bucket:await sha256(identity+':geocoding'),p_limit:20})) throw new Error('Please wait a minute before searching again.');
    return json({matches:await addressLocation(body.address,Deno.env.get('ORS_API_KEY'))});
   }
   if(body.action==='delivery_quote') {
-   if(!await rpc('oms_rate_limit',{p_bucket:await sha256(identity+':routing'),p_limit:8})) throw new Error('Please wait a minute before calculating another route.');
+   if(!await rpc('oms_rate_limit',{p_bucket:await sha256(identity+':routing'),p_limit:20})) throw new Error('Please wait a minute before calculating another route.');
    const route=await roadQuote(body.location,Deno.env.get('ORS_API_KEY'),deliveryPricing(await settings()));
    const quote=checked(await db.from('delivery_quotes').insert({...route,user_id:userId}).select('id,fee,distance_m,expires_at').single());
    return json({quote});

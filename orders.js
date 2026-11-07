@@ -8,7 +8,7 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
  let config={payments:false,testMode:true},placing=false,paying=false,addressEditing=false,methodChosen=false,staffLoginRedirect=false;
  let historyPage=0,realtimeTimer;
  const lastStatus=new Map();
- let deliveryQuote=null,quoteVersion=0;
+ let deliveryQuote=null,quoteVersion=0,quoteSource=null;
  const $=id=>document.getElementById(id);
  const active=id=>$(id)?.classList.contains('active');
  const receiptKey='newform_order_receipts_v1',pendingKey='newform_pending_checkout_v1';
@@ -35,7 +35,7 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
  const run=fn=>async event=>{
   const button=event?.currentTarget; if(button?.disabled)return;
   if(button)button.disabled=true;
-  try{await fn(event);}catch(error){toast(error.message);}finally{if(button)button.disabled=false;}
+  try{await fn(event);}catch(error){toast(error.message,'error');}finally{if(button)button.disabled=false;}
  };
  function updateCheckout() {
   // Admin can pause home delivery; the server rejects delivery orders while it is off.
@@ -139,16 +139,22 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   if(active('trackingModal')&&detailId)await refreshDetail().catch(()=>{});
   if(active('accountModal')&&getSession())await refreshHistory().catch(()=>{});
  }
- const invalidateQuote=()=>{deliveryQuote=null;quoteVersion++;$('deliveryAddressMatches').replaceChildren();$('deliveryAddressMatches').hidden=true;updateCheckout();};
+ const invalidateQuote=()=>{deliveryQuote=null;quoteSource=null;quoteVersion++;$('deliveryAddressMatches').replaceChildren();$('deliveryAddressMatches').hidden=true;updateCheckout();};
+ // Typing the address only discards a fee that was worked out from a searched address. A fee from
+ // "Locate" is for where the customer actually is, so filling in house name / landmark keeps it.
+ const addressEdited=()=>{if(quoteSource==='gps'){$('deliveryAddressMatches').replaceChildren();$('deliveryAddressMatches').hidden=true;return;}invalidateQuote();};
  async function searchDeliveryAddress(address) {
   invalidateQuote();const version=quoteVersion;
   $('deliveryQuoteStatus').textContent='Searching delivery address…';
-  const {matches}=await api('delivery_address',{address});
+  let matches;
+  try { ({matches}=await api('delivery_address',{address})); }
+  catch(error){ if(version===quoteVersion)$('deliveryQuoteStatus').textContent='Address not found · tap Locate or add a landmark'; throw error; }
   if(version!==quoteVersion)throw new Error('Address changed. Please try again.');
   const container=$('deliveryAddressMatches');container.hidden=false;
   $('deliveryQuoteStatus').textContent='Select your delivery address';
   for(const match of matches){
    const choice=document.createElement('button');choice.type='button';choice.className='btn-minimal';choice.textContent=match.label;
+   if(match.approximate)choice.title='Distance from the centre of this area. Tap Locate for an exact fee.';
    choice.style.cssText='display:block;width:100%;margin-top:8px;white-space:normal;text-align:left';
    choice.onclick=run(async()=>{
     if(version!==quoteVersion)return;
@@ -157,7 +163,7 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
     try { ({quote}=await api('delivery_quote',{location:{lat:match.lat,lng:match.lng}})); }
     catch(error){if(version===quoteVersion)$('deliveryQuoteStatus').textContent=error.message;throw error;}
     if(version!==quoteVersion)return;
-    deliveryQuote=quote;updateCheckout();container.hidden=true;container.replaceChildren();
+    deliveryQuote=quote;quoteSource='search';updateCheckout();container.hidden=true;container.replaceChildren();
     toast('Delivery checked. Review total and place order.');
    });container.append(choice);
   }
@@ -166,14 +172,28 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
  async function calculateDeliveryCharge(){
    invalidateQuote();const version=quoteVersion;
    if(!navigator.geolocation)throw new Error('Location is not supported by this browser.');
-   const position=await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,()=>reject(new Error('Location unavailable. Enable location access and try again.')),{enableHighAccuracy:true,timeout:15000,maximumAge:0}));
+   $('deliveryQuoteStatus').textContent='Finding your location…';
+   const locate=highAccuracy=>new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:highAccuracy,timeout:highAccuracy?12000:20000,maximumAge:60000}));
+   let position;
+   try { position=await locate(true); }
+   catch(first) {
+    // Permission problems won't fix themselves; timeouts / no signal get one retry with network location.
+    if(first.code!==1){ try { position=await locate(false); } catch(second){ first=second; } }
+    if(!position){
+     const message=first.code===1?'Location is blocked. Allow location for this site in your browser settings, or type your address and place the order.'
+      :first.code===3?'Finding your location took too long. Try again outdoors / with GPS on, or type your address.'
+      :'Your location is unavailable right now. Turn on GPS, or type your address and place the order.';
+     if(version===quoteVersion)$('deliveryQuoteStatus').textContent=`Delivery ₹${deliveryRate()} per km`;
+     throw new Error(message);
+    }
+   }
    if(version!==quoteVersion)throw new Error('Delivery details changed. Please try again.');
    $('deliveryQuoteStatus').textContent='Calculating driving route…';
    let result;
    try { result=await api('delivery_quote',{location:{lat:position.coords.latitude,lng:position.coords.longitude}}); }
    catch(error) { if(version===quoteVersion)$('deliveryQuoteStatus').textContent=error.message;throw error; }
    if(version!==quoteVersion)throw new Error('Delivery details changed. Please try again.');
-   deliveryQuote=result.quote;updateCheckout();
+   deliveryQuote=result.quote;quoteSource='gps';updateCheckout();
  }
  function init() {
   $('orderType').onchange=()=>{quoteVersion++;updateCheckout();};
@@ -181,7 +201,7 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   setInterval(syncShop,30000);
   setInterval(async()=>{if(document.hidden)return;try{const next=await api('config');config={...config,orderingMode:next.orderingMode};syncShop();}catch { /* keep last known */ }},120000);
   syncShop();
-  $('custAddress').addEventListener('input',invalidateQuote);
+  $('custAddress').addEventListener('input',addressEdited);
   $('useDeliveryLocation').onclick=run(calculateDeliveryCharge);
   $('changeAddressBtn').onclick=()=>{addressEditing=true;updateCheckout();$('custName').focus();};
   $('saveDeliveryBtn').onclick=run(async()=>{
@@ -266,7 +286,7 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   $('resendConfirmation').onclick=run(async()=>{
    const email=$('accountEmail').value.trim();if(!$('accountEmail').checkValidity()||!email)throw new Error('Enter a valid email.');
    const {error}=await supabase.auth.resend({type:'signup',email,options:{emailRedirectTo:location.origin+location.pathname}});
-   if(error)throw error; $('authStatus').textContent='If the account needs verification, a new email has been requested. Check your inbox and spam folder.';
+   if(error)throw authError(error); $('authStatus').textContent='If the account needs verification, a new email has been requested. Check your inbox and spam folder.';
   });
   $('registrationForm').onsubmit=async event=>{
    event.preventDefault();
@@ -276,11 +296,22 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
    try {
     if($('accountPassword').value!==$('confirmAccountPassword').value)throw new Error('Passwords do not match.');
     await authenticate(true);
-   } catch(error) { if($('authStatus'))$('authStatus').textContent=error.message;toast(error.message); }
+   } catch(error) { if($('authStatus'))$('authStatus').textContent=error.message;toast(error.message,'error'); }
    finally {submit.disabled=false;}
   };
   $('accountContent').scrollTop=0;
   $('accountEmail').focus({preventScroll:true});
+ }
+ // Supabase auth messages are technical ("email rate limit exceeded"); say what to do instead.
+ function authError(error) {
+  const code=error?.code||'',text=String(error?.message||'').toLowerCase();
+  let message=error?.message||'Something went wrong. Please try again.';
+  if(code==='over_email_send_rate_limit'||text.includes('rate limit'))message='Too many sign-ups right now, so we could not send the verification email. Please try again in a little while, or place your order as a guest.';
+  else if(code==='invalid_credentials'||text.includes('invalid login'))message='Wrong email or password.';
+  else if(code==='email_not_confirmed'||text.includes('not confirmed'))message='Please verify your email first: open the link we sent (check spam). Use "Resend verification email" if needed.';
+  else if(code==='user_already_exists'||text.includes('already registered'))message='An account with this email already exists. Sign in instead.';
+  else if(code==='weak_password')message='Choose a stronger password (at least 6 characters).';
+  return Object.assign(new Error(message),{cause:error});
  }
  async function authenticate(signUp) {
   const email=$('accountEmail').value.trim(),password=$('accountPassword').value;
@@ -288,7 +319,7 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
   if(signUp&&password.length<6)throw new Error('Use at least 6 characters for your password.');
   staffLoginRedirect=!signUp;
   const {data,error}=signUp?await supabase.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}}):await supabase.auth.signInWithPassword({email,password});
-  if(error) { staffLoginRedirect=false;$('authStatus').textContent=error.message;throw error; }
+  if(error) { staffLoginRedirect=false;const friendly=authError(error);$('authStatus').textContent=friendly.message;throw friendly; }
   if(signUp&&!data.session)$('authStatus').textContent='Verification email requested. Check your inbox and spam folder. If it does not arrive, the restaurant must check its email delivery configuration.';
   else toast('Signed in.');
  }
@@ -355,7 +386,7 @@ export function createOrdering({getSession,getCart,totals,toast,onPlaced,closeAl
    await openDetail(order.id);
    toast(`Order ${orderNumber(order)} placed.`);
    // Customer chooses Send WhatsApp from confirmation; no automatic external message.
-  } catch(error){toast(error.message);}finally{placing=false;button.disabled=false;button.innerHTML='<i class="fa-solid fa-bag-shopping"></i> PLACE ORDER';syncShop();}
+  } catch(error){toast(error.message,'error');}finally{placing=false;button.disabled=false;button.innerHTML='<i class="fa-solid fa-bag-shopping"></i> PLACE ORDER';syncShop();}
  }
  function closeTracking(){detailId=null;detailVersion++;$('trackingModal').classList.remove('active');$('overlay').classList.remove('active');}
  async function openDetail(id) {

@@ -38,11 +38,32 @@ export async function addressLocation(address, key) {
   return [{label:`${plus} — ${address.replace(plus,'').replace(/^\s*,\s*/,'')}`,lat:area.latitudeCenter,lng:area.longitudeCenter}];
  }
  const url=new URL('https://api.openrouteservice.org/geocode/search');
- url.search=new URLSearchParams({text:address.trim(),'boundary.country':'IND','focus.point.lon':String(RESTAURANT[0]),'focus.point.lat':String(RESTAURANT[1]),size:'5'}).toString();
+ url.search=new URLSearchParams({text:address.trim(),'boundary.country':'IND','focus.point.lon':String(RESTAURANT[0]),'focus.point.lat':String(RESTAURANT[1]),size:'10'}).toString();
  const response=await fetch(url,{headers:{Authorization:key},signal:AbortSignal.timeout(15000)});
  if(!response.ok)throw new Error('Address search is unavailable. Please retry or use your location.');
  const data=await response.json();
- const matches=(data.features||[]).filter(f=>['address','venue','street'].includes(f.properties?.layer)&&f.geometry?.coordinates?.length===2&&Math.abs(f.geometry.coordinates[0]-RESTAURANT[0])<0.15&&Math.abs(f.geometry.coordinates[1]-RESTAURANT[1])<0.15);
- if(!matches.length)throw new Error('Address not found precisely. Add a nearby landmark, street and postcode, or use your location.');
- return matches.map(f=>({label:f.properties.label,lat:f.geometry.coordinates[1],lng:f.geometry.coordinates[0]}));
+ return rankMatches(data.features||[]);
+}
+
+// Exact places (buildings, streets, house addresses) first, then area / neighbourhood names, which is
+// how most addresses around Kalpetta are written. Area results are the area's centre, so they are
+// marked approximate. Within each group, nearest to the restaurant first; duplicates dropped.
+const EXACT_LAYERS=['address','venue','street'];
+const AREA_LAYERS=['neighbourhood','borough','locality','localadmin'];
+export function rankMatches(features){
+ const seen=new Set();
+ const matches=features
+  .filter(f=>[...EXACT_LAYERS,...AREA_LAYERS].includes(f.properties?.layer)&&f.geometry?.coordinates?.length===2)
+  .map(f=>{
+   const [lng,lat]=f.geometry.coordinates;
+   const approximate=AREA_LAYERS.includes(f.properties.layer);
+   return {label:f.properties.label+(approximate?' (area, approximate)':''),lat,lng,approximate,away:Math.hypot(lng-RESTAURANT[0],lat-RESTAURANT[1])};
+  })
+  .filter(m=>m.away<0.15)
+  .sort((a,b)=>(a.approximate-b.approximate)||(a.away-b.away))
+  .filter(m=>{const key=m.label.toLowerCase().replace(/[^a-z0-9]/g,'');if(seen.has(key))return false;seen.add(key);return true;})
+  .slice(0,5)
+  .map(({away,...m})=>m);
+ if(!matches.length)throw new Error('Address not found. Tap "Locate" to use your current location, or add a nearby landmark (e.g. bus stand, school, junction).');
+ return matches;
 }

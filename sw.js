@@ -1,12 +1,10 @@
-const CACHE_NAME = 'newform-v4-oms';
+const CACHE_NAME = 'newform-v5-light';
+// Only the page shell; photos load on demand (pre-downloading them cost ~3.5 MB on first visit).
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
-  './assets/hero.png',
-  './assets/mandhi.png',
-  './assets/alfaham.png',
-  './assets/beeffry.png'
+  './icons/icon-192.png'
 ];
 
 self.addEventListener('install', (e) => {

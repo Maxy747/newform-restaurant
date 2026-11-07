@@ -177,7 +177,7 @@ const ordering = createOrdering({
   getSession: () => currentSession,
   getCart: () => cart,
   totals: () => calculateCartTotals(),
-  toast: message => showToast(message),
+  toast: (message, tone) => showToast(message, tone),
   closeAll: () => closeAllModals(),
   onPlaced: () => { cart = []; lastClearedCart = null; saveCartData(); updateCartBadge(); renderMenu(); closeCart(); },
   onStaffChange: (isStaff, siteTheme, stockTag, siteUi, splashStyle, sitePages) => { syncSiteUi(siteUi); syncSitePages(sitePages); syncSplashStyle(splashStyle); syncStaffTheme(isStaff, siteTheme); syncStockTag(stockTag); }
@@ -668,6 +668,12 @@ function isStockPhoto(image) {
   return /^menu-stock\//.test(String(image || '').trim());
 }
 
+// The original bundled placeholder photos are ~900 KB PNGs; lighter WebP copies sit beside them.
+const LIGHT_ASSETS = /(^|\/)assets\/(mandhi|alfaham|beeffry|hero)\.png(\?.*)?$/;
+function photoSrc(image) {
+  return String(image || '').replace(LIGHT_ASSETS, '$1assets/$2.webp');
+}
+
 function hasDishPhoto(image) {
   const src = String(image || '').trim();
   return Boolean(src) && !/(^|\/)assets\/hero\.png(\?.*)?$/.test(src);
@@ -747,7 +753,7 @@ function renderDishSheet() {
   const portions = [['quarter', 'Qtr'], ['half', 'Half'], ['full', 'Full']];
   body.innerHTML = `
     <div class="dish-sheet-media${hasPhoto ? '' : ' photo-missing'}">
-      ${hasPhoto ? `<img src="${escapeHTML(item.image)}" alt="${name}" draggable="false">` : ''}
+      ${hasPhoto ? `<img src="${escapeHTML(photoSrc(item.image))}" alt="${name}" draggable="false" decoding="async">` : ''}
       <div class="card-photo-placeholder" aria-hidden="true"><i class="fa-solid fa-utensils"></i><span>Photo coming soon</span></div>
       ${hasPhoto && isStockPhoto(item.image) ? '<span class="card-stock-tag">Representative image</span>' : ''}
     </div>
@@ -894,7 +900,7 @@ function renderMenu(animate = false) {
     return `
       <div class="food-card${shopState.open ? '' : ' is-closed'}" id="card-${id}" data-dish="${id}">
         <div class="card-img-container${hasPhoto ? '' : ' photo-missing'}">
-          ${hasPhoto ? `<img src="${escapeHTML(item.image)}" alt="${name}" class="card-img" role="button" tabindex="0" aria-label="Preview ${name}" onerror="this.closest('.card-img-container').classList.add('photo-missing'); this.remove();">` : ''}
+          ${hasPhoto ? `<img src="${escapeHTML(photoSrc(item.image))}" alt="${name}" class="card-img" loading="lazy" decoding="async" role="button" tabindex="0" aria-label="Preview ${name}" onerror="this.closest('.card-img-container').classList.add('photo-missing'); this.remove();">` : ''}
           <div class="card-photo-placeholder" aria-hidden="true"><i class="fa-solid fa-utensils"></i><span>Photo coming soon</span></div>
           ${hasPhoto && isStockPhoto(item.image) ? '<span class="card-stock-tag">Representative image</span>' : ''}
         </div>
@@ -1077,7 +1083,7 @@ window.selectPortion = function(itemId, portion) {
 window.addToCart = function(itemId, clickEvent) {
   const item = menuItems.find(i => i.id === itemId);
   if (!item) return;
-  if (item.available === false) return showToast('This dish is currently unavailable.');
+  if (item.available === false) return showToast('This dish is currently unavailable.', 'error');
   const shop = ordering.getShop();
   if (!shop.open) return showToast(shop.message);
 
@@ -1526,7 +1532,7 @@ function setupPlaceSlideshow() {
   refreshPlaceSlides = () => {
     const photos = [...document.querySelectorAll('.gallery-grid .gallery-item img')];
     if (photos.length < 2) return;
-    media.innerHTML = photos.map((photo, i) => `<img class="place-slide${i === 0 ? ' is-active' : ''}" src="${escapeHTML(photo.getAttribute('src'))}" srcset="${escapeHTML(photo.getAttribute('srcset') || '')}" sizes="100vw" alt="" decoding="async"${i === 0 ? '' : ' loading="lazy"'}>`).join('');
+    media.innerHTML = photos.map((photo, i) => `<img class="place-slide${i === 0 ? ' is-active' : ''}" src="${escapeHTML(photo.getAttribute('src'))}" srcset="${escapeHTML(photo.getAttribute('srcset') || '')}" sizes="100vw" alt="" decoding="async"${i === 0 ? '' : ' loading="lazy"'}${i === 0 ? '' : ' loading="lazy"'}>`).join('');
     index = 0;
     sync();
   };
@@ -1842,11 +1848,11 @@ function setupSheetDrag(sheet, onClose) {
 }
 function closeAccountModal() { document.getElementById('overlay').classList.remove('active'); document.getElementById('accountModal').classList.remove('active'); }
 
-function renderAccount() { return ordering.renderAccount().catch(error => showToast(error.message)); }
+function renderAccount() { return ordering.renderAccount().catch(error => showToast(error.message, 'error')); }
 function placeOrder() { return ordering.placeOrder(); }
 
 // Toast notification helper
-function showToast(message) {
+function showToast(message, tone = 'info') {
   const container = document.getElementById('toastContainer');
   if (!container) return;
 
@@ -1860,7 +1866,8 @@ function showToast(message) {
   toast.className = 'toast';
   toast.setAttribute('role', 'status');
   const icon = document.createElement('i');
-  icon.className = 'fa-solid fa-circle-check toast-status-icon';
+  icon.className = tone === 'error' ? 'fa-solid fa-circle-exclamation toast-status-icon is-error' : 'fa-solid fa-circle-check toast-status-icon';
+  if (tone === 'error') toast.classList.add('toast-error');
   const text = document.createElement('span');
   text.className = 'toast-message';
   text.textContent = message;

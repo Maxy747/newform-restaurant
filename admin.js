@@ -154,7 +154,7 @@ function announce(orders) {
   toast(summary, 'success');
   if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
     try {
-      const note = new Notification('NEWFORM · ' + summary, { body: orders.map(o => `${orderNumber(o)} · ${money(o.total)}`).join('\n'), icon: 'assets/newform_logo.png', tag: 'newform-new-order' });
+      const note = new Notification('NEWFORM · ' + summary, { body: orders.map(o => `${orderNumber(o)} · ${money(o.total)}`).join('\n'), icon: 'icons/icon-192.png', tag: 'newform-new-order' });
       note.onclick = () => { window.focus(); note.close(); };
     } catch { /* some mobile browsers only allow notifications from a service worker */ }
   }

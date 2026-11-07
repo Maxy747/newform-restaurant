@@ -95,6 +95,18 @@ async function oms(body) {
     case 'set_cod': codEnabled = body.enabled; return { codEnabled };
     case 'set_admin_access': adminAccess = Object.fromEntries(ACCESS_KEYS.map(k => [k, body.access?.[k] === true])); try { localStorage.setItem('mock_admin_access', JSON.stringify(adminAccess)); } catch { /* ignore */ } return { adminAccess };
     case 'team': return { team };
+    // Delivery: straight-line distance x1.3 from the restaurant stands in for the road route.
+    case 'delivery_address': {
+      const text = String(body.address || '').toLowerCase();
+      if (!text.includes('mandayapuram') && !text.includes('kalpetta')) throw new Error('Address not found. Tap "Locate" to use your current location, or add a nearby landmark (e.g. bus stand, school, junction).');
+      return { matches: [{ label: 'Mandayapuram, Kalpetta, Wayanad', lat: 11.611, lng: 76.083, approximate: false }, { label: 'Kalpetta, Wayanad (area, approximate)', lat: 11.6085, lng: 76.0828, approximate: true }] };
+    }
+    case 'delivery_quote': {
+      const { lat, lng } = body.location || {}, R = 6371000, rad = x => x * Math.PI / 180;
+      const d = 2 * R * Math.asin(Math.sqrt(Math.sin(rad(lat - 11.6052) / 2) ** 2 + Math.cos(rad(lat)) * Math.cos(rad(11.6052)) * Math.sin(rad(lng - 76.0835) / 2) ** 2)) * 1.3;
+      if (d > deliveryMaxKm * 1000) throw new Error(`Sorry, we deliver within ${deliveryMaxKm} km by road.`);
+      return { quote: { id: uuid(900), distance_m: Math.round(d), fee: Math.max(1, Math.ceil(d / 1000 * deliveryPerKm)), expires_at: new Date(Date.now() + 15 * 60000).toISOString() } };
+    }
     case 'set_payment_rules': paymentRules = { prepayRequired: body.prepayRequired, partialPayment: body.prepayRequired && body.partialPayment, advancePercent: Number(body.advancePercent), upiId: body.upiId || null, upiName: body.upiName || null }; try { localStorage.setItem('mock_payment_rules', JSON.stringify(paymentRules)); } catch { /* ignore */ } return paymentRules;
     case 'confirm_upi': { const order = orders.find(o => o.id === body.id); if (!order || order.order_status !== 'awaiting_payment') throw new Error('This order is not waiting for a UPI payment'); order.advance_paid = order.advance_due; order.order_status = 'new'; if (order.payment_method === 'upi') order.payment_status = 'paid'; return { ok: true }; }
     case 'set_delivery_pricing': deliveryMaxKm = Number(body.maxKm); deliveryPerKm = Number(body.perKm); try { localStorage.setItem('mock_delivery_pricing', JSON.stringify([deliveryMaxKm, deliveryPerKm])); } catch { /* ignore */ } return { deliveryMaxKm, deliveryPerKm };

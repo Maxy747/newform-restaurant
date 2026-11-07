@@ -1,6 +1,6 @@
 import { escapeHTML as e } from './oms-policy.js';
 import { buildMenuRow, menuPrices } from './admin-policy.js';
-import { photoForUpload } from './image-resize.js';
+import { originalOrResized, decode, encode } from './image-resize.js';
 
 const STORAGE_MARKER = '/storage/v1/object/public/menu-images/';
 // Large inputs are fine: photos over the bucket limit are resized in the browser before upload.
@@ -8,6 +8,9 @@ const MAX_PHOTO_BYTES = 25 * 1024 * 1024;
 const PHOTO_WIDTH = 2560;
 // menu-images bucket limit (5 MB); originals up to this size are stored untouched.
 const MAX_STORED_BYTES = 5 * 1024 * 1024;
+// What customers download: a 1200px copy at 82% (~100-250 KB). The original is kept next to it.
+const DISPLAY_WIDTH = 1200;
+const DISPLAY_QUALITY = 0.82;
 
 // Menu and category management. Writes go straight to Supabase and rely on the existing admin-only RLS policies.
 // canEdit: full menu editing. Without it (the owner's Stock switch only) the tab just marks
@@ -143,19 +146,31 @@ export function createMenuAdmin({ supabase, api, toast, run, isAdmin, canEdit = 
     form.elements.name.focus();
   }
 
+  // Stores the original (as before) as `<id>-original.<ext>` plus a light display copy `<id>.<ext>`;
+  // the menu shows the display copy so customers don't download multi-MB originals.
   async function uploadPhoto(file) {
-    // The original file, or a 2560px / 92% copy when it is too big for the bucket.
-    const photo = await photoForUpload(file, PHOTO_WIDTH, MAX_STORED_BYTES);
-    const path = `${crypto.randomUUID()}.${photo.extension}`;
-    const { error } = await supabase.storage.from('menu-images').upload(path, photo.blob, { cacheControl: '31536000', upsert: false, contentType: photo.blob.type });
-    if (error) throw new Error(`Photo upload failed: ${error.message}`);
-    return { path, url: supabase.storage.from('menu-images').getPublicUrl(path).data.publicUrl };
+    const bitmap = await decode(file);
+    let original, display;
+    try {
+      original = await originalOrResized(file, bitmap, PHOTO_WIDTH, MAX_STORED_BYTES);
+      display = await encode(bitmap, DISPLAY_WIDTH, DISPLAY_QUALITY);
+    } finally { bitmap.close?.(); }
+    const id = crypto.randomUUID();
+    const paths = [`${id}-original.${original.extension}`, `${id}.${display.extension}`];
+    const bucket = supabase.storage.from('menu-images');
+    for (const [path, photo] of [[paths[0], original], [paths[1], display]]) {
+      const { error } = await bucket.upload(path, photo.blob, { cacheControl: '31536000', upsert: false, contentType: photo.blob.type });
+      if (error) { await bucket.remove(paths); throw new Error(`Photo upload failed: ${error.message}`); }
+    }
+    return { paths, url: bucket.getPublicUrl(paths[1]).data.publicUrl };
   }
 
   async function removeStoredPhoto(url) {
     const path = storagePath(url);
     if (!path) return;
-    const { error } = await supabase.storage.from('menu-images').remove([path]);
+    // Also remove the kept original that sits beside a display copy (missing files are ignored).
+    const base = path.replace(/\.[a-z]+$/i, '');
+    const { error } = await supabase.storage.from('menu-images').remove([path, ...['jpg', 'png', 'webp'].map(ext => `${base}-original.${ext}`)]);
     if (error) console.warn('Old menu photo was not removed:', error.message);
   }
 
@@ -177,7 +192,7 @@ export function createMenuAdmin({ supabase, api, toast, run, isAdmin, canEdit = 
     const { data, error } = await request.select().single();
     if (error || !data) {
       // Don't leave an orphaned upload behind when the row was rejected.
-      if (uploaded) await supabase.storage.from('menu-images').remove([uploaded.path]);
+      if (uploaded) await supabase.storage.from('menu-images').remove(uploaded.paths);
       throw new Error(error?.code === 'PGRST116' ? 'Save was not allowed. Make sure you are signed in as admin.' : `Could not save dish: ${error?.message || 'unknown error'}`);
     }
     if (previousImage && previousImage !== data.image) await removeStoredPhoto(previousImage);
