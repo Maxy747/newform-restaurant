@@ -47,7 +47,8 @@ export async function addressLocation(address, key) {
 
 // Exact places (buildings, streets, house addresses) first, then area / neighbourhood names, which is
 // how most addresses around Kalpetta are written. Area results are the area's centre, so they are
-// marked approximate. Within each group, nearest to the restaurant first; duplicates dropped.
+// marked approximate. Within each group the geocoder's relevance order is kept (best text match
+// first); places far from Kalpetta and duplicates are dropped.
 const EXACT_LAYERS=['address','venue','street'];
 const AREA_LAYERS=['neighbourhood','borough','locality','localadmin'];
 export function rankMatches(features){
@@ -60,7 +61,7 @@ export function rankMatches(features){
    return {label:f.properties.label+(approximate?' (area, approximate)':''),lat,lng,approximate,away:Math.hypot(lng-RESTAURANT[0],lat-RESTAURANT[1])};
   })
   .filter(m=>m.away<0.15)
-  .sort((a,b)=>(a.approximate-b.approximate)||(a.away-b.away))
+  .sort((a,b)=>a.approximate-b.approximate)
   .filter(m=>{const key=m.label.toLowerCase().replace(/[^a-z0-9]/g,'');if(seen.has(key))return false;seen.add(key);return true;})
   .slice(0,5)
   .map(({away,...m})=>m);
