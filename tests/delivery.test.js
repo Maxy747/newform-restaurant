@@ -31,7 +31,7 @@ test('address search accepts area names, exact places first, nearest first, no d
   f('Kalpetta Bus Stand','venue',76.0843,11.6055),
   f('Far away town','locality',76.6,11.9),
   f('Some county','county',76.08,11.61),
- ]);
+ ],'Green villa, near Bus Stand, Kalpetta');
  assert.deepEqual(out.map(m=>m.label),['Kalpetta Bus Stand','Hibernest Kalpetta','Mandayapuram, Kalpetta (area, approximate)']);
  assert.equal(out[2].approximate,true);assert.equal(out[0].approximate,false);
  assert.throws(()=>rankMatches([f('Far away town','locality',76.6,11.9)]),/Locate/);

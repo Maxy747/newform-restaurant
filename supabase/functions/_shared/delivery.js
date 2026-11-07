@@ -42,29 +42,32 @@ export async function addressLocation(address, key) {
  const response=await fetch(url,{headers:{Authorization:key},signal:AbortSignal.timeout(15000)});
  if(!response.ok)throw new Error('Address search is unavailable. Please retry or use your location.');
  const data=await response.json();
- return rankMatches(data.features||[]);
+ return rankMatches(data.features||[],address);
 }
 
 // Exact places (buildings, streets, house addresses) first, then area / neighbourhood names, which is
 // how most addresses around Kalpetta are written. Area results are the area's centre, so they are
-// marked approximate. Within each group the geocoder's relevance order is kept (best text match
-// first); places far from Kalpetta and duplicates are dropped.
+// marked approximate. Within each group, results naming more of the typed words come first (the
+// geocoder's own order is unreliable here), then nearest; far-away places and duplicates are dropped.
 const EXACT_LAYERS=['address','venue','street'];
 const AREA_LAYERS=['neighbourhood','borough','locality','localadmin'];
-export function rankMatches(features){
+const COMMON_WORDS=new Set(['kalpetta','wayanad','kerala','india','near','road','the','and','house','opp','junction']);
+export function rankMatches(features,query=''){
  const seen=new Set();
+ const words=String(query).toLowerCase().split(/[^a-z0-9]+/).filter(w=>w.length>=3&&!COMMON_WORDS.has(w));
+ const score=label=>{const text=label.toLowerCase();return words.filter(w=>text.includes(w)).length;};
  const matches=features
   .filter(f=>[...EXACT_LAYERS,...AREA_LAYERS].includes(f.properties?.layer)&&f.geometry?.coordinates?.length===2)
   .map(f=>{
    const [lng,lat]=f.geometry.coordinates;
    const approximate=AREA_LAYERS.includes(f.properties.layer);
-   return {label:f.properties.label+(approximate?' (area, approximate)':''),lat,lng,approximate,away:Math.hypot(lng-RESTAURANT[0],lat-RESTAURANT[1])};
+   return {label:f.properties.label+(approximate?' (area, approximate)':''),lat,lng,approximate,hits:score(f.properties.label),away:Math.hypot(lng-RESTAURANT[0],lat-RESTAURANT[1])};
   })
   .filter(m=>m.away<0.15)
-  .sort((a,b)=>a.approximate-b.approximate)
+  .sort((a,b)=>(a.approximate-b.approximate)||(b.hits-a.hits)||(a.away-b.away))
   .filter(m=>{const key=m.label.toLowerCase().replace(/[^a-z0-9]/g,'');if(seen.has(key))return false;seen.add(key);return true;})
   .slice(0,5)
-  .map(({away,...m})=>m);
+  .map(({away,hits,...m})=>m);
  if(!matches.length)throw new Error('Address not found. Tap "Locate" to use your current location, or add a nearby landmark (e.g. bus stand, school, junction).');
  return matches;
 }
