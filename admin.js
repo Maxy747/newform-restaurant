@@ -1728,17 +1728,22 @@ if (isSupabaseConfigured) {
   });
   // Cache the console itself so it opens without internet (production builds only).
   if ('serviceWorker' in navigator && import.meta.env.PROD) {
-    navigator.serviceWorker.register('./sw.js')
-      .then(() => navigator.serviceWorker.ready)
+    // The worker only keeps the customer site by default; ask it for the console's files too.
+    // Devices upgrading from the old worker answer through it first, so ask again once the new
+    // one takes over (already-cached files are skipped, so asking twice costs nothing).
+    const askToCache = () => navigator.serviceWorker.ready
       .then(registration => new Promise(resolve => {
-        // The worker only keeps the customer site by default; ask it for the console's files too.
         const channel = new MessageChannel();
         channel.port1.onmessage = resolve;
         registration.active?.postMessage({ type: 'cache-groups', groups: ['admin', 'invoice'] }, [channel.port2]);
+        setTimeout(resolve, 20000); // an old worker never replies
       }))
       .then(checkOfflineReady)
       .catch(() => {});
+    navigator.serviceWorker.addEventListener('controllerchange', askToCache);
+    navigator.serviceWorker.register('./sw.js').then(askToCache).catch(() => {});
   }
+
 } else {
   evaluateSession(null);
 }
